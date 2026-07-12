@@ -1,0 +1,59 @@
+--!strict
+
+local PresentationTokens = {
+	Timing = table.freeze({
+		Instant = 0.08,
+		Snap = 0.14,
+		Quick = 0.20,
+		Panel = 0.30,
+		Hero = 0.65,
+		CameraArrival = 0.60,
+		GhostMove = 0.09,
+		GhostRotate = 0.18,
+		GhostSettle = 0.08,
+		GhostAccepted = 0.10,
+		GhostRejected = 0.12,
+		ButtonDown = 0.06,
+		ButtonReturn = 0.12,
+		LidClose = 0.75,
+		LidPause = 0.10,
+		Failure = 1.00,
+		LidOpen = 0.35,
+		GridSweepStep = 0.025,
+		PreviewReveal = 0.45,
+	}),
+	Color = table.freeze({
+		Background = Color3.fromRGB(11, 16, 23),
+		RaisedMetal = Color3.fromRGB(22, 33, 44),
+		SecondaryText = Color3.fromRGB(152, 168, 184),
+		White = Color3.fromRGB(245, 247, 250),
+		Cyan = Color3.fromRGB(34, 211, 230),
+		Amber = Color3.fromRGB(255, 178, 26),
+		Green = Color3.fromRGB(99, 232, 92),
+		Red = Color3.fromRGB(255, 75, 62),
+	}),
+	Camera = table.freeze({
+		FieldOfView = 48,
+		ArrivalDistance = 4.5,
+		ArrivalHeight = 2.0,
+		LightImpulse = 0.08,
+		HeavyImpulse = 0.16,
+		ShippingPullback = 1.6,
+		FailureShake = 0.20,
+	}),
+	Grid = table.freeze({
+		Width = 5,
+		Height = 4,
+		Depth = 5,
+		CellSize = 2,
+	}),
+	Ghost = table.freeze({
+		Transparency = 0.34,
+		InvalidTransparency = 0.42,
+		RotationLift = 0.12,
+		RequestCompression = 0.12,
+		RejectionNudge = 0.16,
+	}),
+}
+
+return table.freeze(PresentationTokens)
