@@ -20,11 +20,15 @@ Phase 01: Grid and Placement Foundation. This phase contains only integer-grid s
 The repository is the only source of truth for Phase 01 scripts:
 
 1. Edit canonical sources under `src/` and mappings in `studio/phase01.manifest.json`.
-2. Run `node tools/build_studio_blueprint.mjs` from the repository root.
-3. Open `.codex-cache/phase01-command-bar.json` and execute each generated command, in order, through Roblox Studio's Command Bar **Run** action while Studio is in Edit mode.
-4. Inspect the live hierarchy and run the Studio test runner.
+2. In Roblox Studio Edit mode, begin from any place state, including a clean Baseplate. Do not manually create the managed folders.
+3. Run `node tools/build_studio_blueprint.mjs` from the repository root.
+4. Run `node tools/test_studio_blueprint.mjs` and stop if the smoke test fails.
+5. Open `.codex-cache/phase01-command-bar.json` and execute every generated operation, in its generated order, through the Command Bar **Run** action.
+6. Confirm that all parent-first `ensureFolder` operations completed before any `writeScript` operation, inspect the exact hierarchy, and run Play tests.
 
-The same build step also emits `.codex-cache/phase01-blueprint.json` for StudioBridge validation/preview when that mutation lane is healthy. Both generated artifacts are temporary, ignored by Git, and rebuilt from the same canonical `src/` plus manifest; scripts must never be edited only in Studio.
+Correct folders and scripts are reused or updated, and missing instances are created. A wrong-class instance at a managed path raises a clear error and is never silently destroyed. Repeating the complete operation list is idempotent and creates no duplicates.
+
+The same build step also emits `.codex-cache/phase01-blueprint.json` for validation and preview. Both generated artifacts are temporary, ignored by Git, and rebuilt deterministically from the same canonical `src/` plus manifest; scripts must never be edited only in Studio.
 
 ## Running Phase 01 tests
 

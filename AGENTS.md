@@ -13,6 +13,7 @@
 
 - Use the `ONE_MORE_ITEM` namespace under `ReplicatedStorage` and `ONE_MORE_ITEM_Server` under `ServerScriptService`.
 - Canonical Luau lives under `src/`; `studio/phase01.manifest.json` maps it into Studio. Generated blueprints under `.codex-cache/` are temporary.
+- Repository-to-Studio synchronization must be folder-first, deterministic, idempotent, and conflict-safe; it must never silently replace or destroy a wrong-class instance.
 - Never maintain a divergent Studio-only copy of a script.
 - Permanent UI is authored as real `StarterGui` instances. Do not build permanent UI at runtime.
 - Permanent map content is authored as real `Workspace` instances. Do not build the arena or permanent decoration at runtime.

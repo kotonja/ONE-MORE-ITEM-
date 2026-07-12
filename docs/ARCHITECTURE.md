@@ -14,6 +14,18 @@ Y-axis rotation applies integer quarter turns, normalizes after rotation, and re
 
 The configured grid is 5 × 5 × 4, but construction accepts explicit positive integer dimensions so the foundation remains testable.
 
+## Finite-integer validation
+
+Grid-facing integers pass one shared runtime rule: the value must have type `number`, equal itself so NaN is rejected, be strictly between negative and positive infinity, and have no fractional component. The check remains small and independent of game policy.
+
+Public boundaries apply policy-specific behavior after that shared check:
+
+- Invalid shape coordinates and invalid quarter turns raise clear validation errors.
+- Invalid grid dimensions raise a positive-finite-integer error.
+- Malformed or non-finite cell coordinates make `IsInsideBounds` and `CanOccupyCells` return `false` before an occupancy key is formatted.
+- Invalid or non-finite solver X/Z requests return `nil` before arithmetic or placement-key formatting.
+- Invalid, negative, fractional, NaN, infinite, or non-number difficulty counts raise a non-negative-finite-integer error.
+
 ## Auto-drop and enumeration
 
 For a rotation and X/Z origin, auto-drop begins at the highest Y where the complete shape fits within the box. If the item cannot occupy that entry layer, no placement exists. Otherwise the rigid item descends one integer layer at a time and rests immediately before the next move would hit the floor or an occupied cell. This preserves bridging/overhang while preventing teleportation through upper obstructions.
@@ -42,3 +54,11 @@ Thresholds are centralized in `GameConfig`: 10+ placements is Easy, 4–9 is Tig
 - `ShapeDefinitions`: immutable development-only shape data with no visual dependency.
 
 World-space physics is not authoritative because floating-point contacts and replication are unsuitable for deterministic packing validation. Future visuals will derive transforms from accepted integer placements.
+
+## Edit-mode hierarchy synchronization
+
+`tools/build_studio_blueprint.mjs` validates the complete Studio manifest and loads every canonical source before writing either generated artifact. Validation covers supported service roots, nonempty paths, unique folder/script paths, cross-kind collisions, valid managed parents, supported script classes, source existence, and real-path containment inside the repository.
+
+Folder paths are ordered parent-first with a stable code-unit comparison. Every generated `ensureFolder` operation precedes every `writeScript` operation. Correct existing instances are reused or updated; missing instances are created; and a missing parent or wrong-class conflict fails visibly without deleting content. New `Script` instances remain disabled while Source and parenting are prepared and are restored to their manifest-enabled state only after a successful write. `ModuleScript` instances have no enabled state.
+
+Running the complete generated list repeatedly is idempotent. Generated blueprint and Command Bar JSON are byte-deterministic, ignored artifacts; `src/`, `studio/phase01.manifest.json`, and the tools remain authoritative. This workflow is Edit-mode authoring only and never creates the permanent hierarchy at runtime.
