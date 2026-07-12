@@ -28,7 +28,8 @@ end
 
 function RoundMath.CalculateShipmentValue(baseValueSum: number, itemCount: number): number
 	validateNonNegativeInteger(baseValueSum, "baseValueSum")
-	return math.floor(baseValueSum * RoundMath.GetMultiplier(itemCount))
+	local multiplierHundredths = math.floor((RoundMath.GetMultiplier(itemCount) * 100) + 0.5)
+	return math.floor((baseValueSum * multiplierHundredths) / 100)
 end
 
 function RoundMath.CalculatePossibleShipmentValue(

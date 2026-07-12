@@ -24,6 +24,7 @@ local StationService = require(script.Parent.Services.StationService)
 local WorldItemService = require(script.Parent.Services.WorldItemService)
 local RoundService = require(script.Parent.Services.RoundService)
 local RequestRateLimiter = require(script.Parent.Services.RequestRateLimiter)
+local PlacementService = require(script.Parent.Services.PlacementService)
 
 local stationService = StationService.Create(stationsRoot)
 local worldItemService = WorldItemService.Create(cellBlockTemplate, stationService)
@@ -103,24 +104,22 @@ end)
 
 PlaceItemRequest.OnServerEvent:Connect(function(player: Player, payload: unknown)
 	if not rateAllowed(player, "PlaceItemRequest") then
-		PlacementResponse:FireClient(player, {
-			Accepted = false,
-			Reason = "RATE_LIMITED",
-			ClientSequence = -1,
-			RoundId = 0,
-			StateVersion = 0,
-		})
+		PlacementResponse:FireClient(player, PlacementService.CreateResponse(
+			roundService:GetRound(player),
+			false,
+			"RATE_LIMITED",
+			PlacementService.GetClientSequence(payload)
+		))
 		return
 	end
 	local result = roundService:HandlePlacement(player, payload)
 	local round = roundService:GetRound(player)
-	PlacementResponse:FireClient(player, {
-		Accepted = result.Accepted,
-		Reason = result.Reason,
-		ClientSequence = result.ClientSequence,
-		RoundId = if round then round.RoundId else 0,
-		StateVersion = if round then round.StateVersion else 0,
-	})
+	PlacementResponse:FireClient(player, PlacementService.CreateResponse(
+		round,
+		result.Accepted,
+		result.Reason,
+		result.ClientSequence
+	))
 	if not result.Accepted then
 		roundService:HandleClientReady(player)
 	end

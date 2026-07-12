@@ -401,16 +401,17 @@ function RoundService.HandleDecision(self: RoundServiceImpl, player: Player, pay
 	then
 		return false, "DUPLICATE_SEQUENCE"
 	end
-	round.LastClientSequences.Decision = sequenceValue :: number
 	if round.DecisionDeadline == nil or self._clock() > round.DecisionDeadline then
 		return false, "DECISION_EXPIRED"
 	end
 
 	local choice = request.Choice
 	if choice == "SHIP" then
+		round.LastClientSequences.Decision = sequenceValue :: number
 		self:_enterShipping(player, "PLAYER_SHIPPED")
 		return true, "SHIPPING"
 	elseif choice == "ONE_MORE" and round.PreviewedNextItemId then
+		round.LastClientSequences.Decision = sequenceValue :: number
 		round.CurrentItemId = round.PreviewedNextItemId
 		round.PreviewedNextItemId = nil
 		round.PreviewDifficulty = nil
@@ -436,6 +437,9 @@ function RoundService.HandleRestart(self: RoundServiceImpl, player: Player, payl
 	end
 	if round.State ~= "Results" then
 		return false, "WRONG_STATE"
+	end
+	if self._stationService:GetStationId(player) ~= round.StationId or player.UserId ~= round.PlayerUserId then
+		return false, "WRONG_PLAYER_OR_STATION"
 	end
 	local sequenceValue = request.ClientSequence
 	if not IntegerValidation.IsFiniteInteger(sequenceValue)

@@ -7,9 +7,11 @@ local IntegerValidation = require(Root.Shared.Grid.IntegerValidation)
 local PlacementSolver = require(Root.Shared.Grid.PlacementSolver)
 local ShapeRotation = require(Root.Shared.Grid.ShapeRotation)
 local GridTypes = require(Root.Shared.Grid.GridTypes)
+local NetworkTypes = require(Root.Shared.Net.NetworkTypes)
 local RoundTypes = require(Root.Shared.Round.RoundTypes)
 
 type Placement = GridTypes.Placement
+type PlacementResponse = NetworkTypes.PlacementResponse
 type RoundRecord = RoundTypes.RoundRecord
 
 export type PlacementResult = {
@@ -20,6 +22,30 @@ export type PlacementResult = {
 }
 
 local PlacementService = {}
+
+function PlacementService.GetClientSequence(payload: unknown): number
+	if type(payload) ~= "table" then
+		return -1
+	end
+	local request = payload :: { [string]: unknown }
+	local value = request.ClientSequence
+	return if IntegerValidation.IsFiniteInteger(value) then value :: number else -1
+end
+
+function PlacementService.CreateResponse(
+	round: RoundRecord?,
+	accepted: boolean,
+	reason: string,
+	clientSequence: number
+): PlacementResponse
+	return {
+		Accepted = accepted,
+		Reason = reason,
+		ClientSequence = clientSequence,
+		RoundId = if round then round.RoundId else 0,
+		StateVersion = if round then round.StateVersion else 0,
+	}
+end
 
 local function reject(reason: string, sequence: number): PlacementResult
 	return { Accepted = false, Reason = reason, ClientSequence = sequence, Placement = nil }
@@ -36,8 +62,7 @@ function PlacementService.ValidateAndApply(
 		return reject("MALFORMED_REQUEST", -1)
 	end
 	local request = payload :: { [string]: unknown }
-	local sequenceValue = request.ClientSequence
-	local sequence = if IntegerValidation.IsFiniteInteger(sequenceValue) then sequenceValue :: number else -1
+	local sequence = PlacementService.GetClientSequence(payload)
 
 	if senderUserId ~= round.PlayerUserId or assignedStationId ~= round.StationId then
 		return reject("WRONG_PLAYER_OR_STATION", sequence)

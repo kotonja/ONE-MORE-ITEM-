@@ -155,6 +155,10 @@ addSuite("Round math", {
 		Run = function() expectEqual(RoundMath.CalculateShipmentValue(41, 2), 47) end,
 	},
 	{
+		Name = "exact multiplier boundaries do not underpay from floating point",
+		Run = function() expectEqual(RoundMath.CalculateShipmentValue(100, 2), 115) end,
+	},
+	{
 		Name = "preview uses next item and next multiplier",
 		Run = function() expectEqual(RoundMath.CalculatePossibleShipmentValue(15, 1, 25), 46) end,
 	},
@@ -534,6 +538,38 @@ addSuite("Round state", {
 		end,
 	},
 	{
+		Name = "invalid decision does not consume its sequence",
+		Run = function()
+			local harness = newHarness()
+			local round = acceptParcel(harness)
+			local accepted, reason = harness.Service:HandleDecision(harness.Player, {
+				RoundId = round.RoundId, StateVersion = round.StateVersion, Choice = "INVALID", ClientSequence = 1,
+			})
+			expect(not accepted, "Invalid choice should reject")
+			expectEqual(reason, "INVALID_CHOICE")
+			expectEqual(round.LastClientSequences.Decision, -1)
+			local corrected = harness.Service:HandleDecision(harness.Player, {
+				RoundId = round.RoundId, StateVersion = round.StateVersion, Choice = "SHIP", ClientSequence = 1,
+			})
+			expect(corrected, "Corrected decision should reuse the unconsumed sequence")
+		end,
+	},
+	{
+		Name = "expired decision does not consume its sequence",
+		Run = function()
+			local harness = newHarness()
+			local round = acceptParcel(harness)
+			harness.ClockState.Now = (round.DecisionDeadline :: number) + 0.01
+			local accepted, reason = harness.Service:HandleDecision(harness.Player, {
+				RoundId = round.RoundId, StateVersion = round.StateVersion, Choice = "SHIP", ClientSequence = 1,
+			})
+			expect(not accepted, "Expired decision should reject")
+			expectEqual(reason, "DECISION_EXPIRED")
+			expectEqual(round.LastClientSequences.Decision, -1)
+			expectEqual(round.State, "Decision")
+		end,
+	},
+	{
 		Name = "Pack Again creates a fresh RoundId",
 		Run = function()
 			local harness = newHarness()
@@ -738,7 +774,7 @@ addSuite("Station assignment", {
 			local rootPart = Instance.new("Part")
 			rootPart.Name = "HumanoidRootPart"
 			rootPart.Parent = character
-			service:RebindCharacter(player, character)
+			(player :: any)._TestEvent:Fire(character)
 			expectNear((rootPart.Position - (station.PlayerStand :: BasePart).Position).Magnitude, 0, 0.000001)
 			expectEqual(service:GetStationId(player), "station_01")
 			service:Destroy()
@@ -749,6 +785,22 @@ addSuite("Station assignment", {
 })
 
 addSuite("Rate limiting", {
+	{
+		Name = "rate-limited placement response preserves request correlation",
+		Run = function()
+			local round = makeRound()
+			local request = validPlacementRequest(round, 42)
+			local response = PlacementService.CreateResponse(
+				round,
+				false,
+				"RATE_LIMITED",
+				PlacementService.GetClientSequence(request)
+			)
+			expectEqual(response.ClientSequence, 42)
+			expectEqual(response.RoundId, round.RoundId)
+			expectEqual(response.StateVersion, round.StateVersion)
+		end,
+	},
 	{
 		Name = "configured request count is accepted within one second",
 		Run = function()
