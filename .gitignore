@@ -16,6 +16,7 @@ Desktop.ini
 
 # Generated bridge/cache/temp output
 .codex-cache/
+.codex-studio/
 .cache/
 tmp/
 temp/
