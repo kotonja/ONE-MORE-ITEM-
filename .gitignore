@@ -1,0 +1,23 @@
+# Operating system and editors
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Local Roblox Studio artifacts
+*.rbxl.lock
+*.rbxlx.lock
+*.autosave.rbxl
+*.autosave.rbxlx
+
+# Generated bridge/cache/temp output
+.codex-cache/
+.cache/
+tmp/
+temp/
+*.tmp
+*.log

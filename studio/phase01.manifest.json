@@ -1,0 +1,24 @@
+{
+  "name": "ONE MORE ITEM Phase 01 Grid Foundation",
+  "folders": [
+    "ReplicatedStorage.ONE_MORE_ITEM",
+    "ReplicatedStorage.ONE_MORE_ITEM.Shared",
+    "ReplicatedStorage.ONE_MORE_ITEM.Shared.Config",
+    "ReplicatedStorage.ONE_MORE_ITEM.Shared.Content",
+    "ReplicatedStorage.ONE_MORE_ITEM.Shared.Grid",
+    "ServerScriptService.ONE_MORE_ITEM_Server",
+    "ServerScriptService.ONE_MORE_ITEM_Server.Dev"
+  ],
+  "scripts": [
+    { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Config.GameConfig", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Config/GameConfig.luau" },
+    { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Content.ShapeDefinitions", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Content/ShapeDefinitions.luau" },
+    { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Grid.GridTypes", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Grid/GridTypes.luau" },
+    { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Grid.IntegerValidation", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Grid/IntegerValidation.luau" },
+    { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Grid.ShapeRotation", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Grid/ShapeRotation.luau" },
+    { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Grid.OccupancyGrid", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Grid/OccupancyGrid.luau" },
+    { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Grid.PlacementSolver", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Grid/PlacementSolver.luau" },
+    { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Grid.DifficultyClassifier", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Grid/DifficultyClassifier.luau" },
+    { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Dev.FoundationTestSuite", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Dev/FoundationTestSuite.luau" },
+    { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Dev.RunFoundationTests", "className": "Script", "enabled": true, "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Dev/RunFoundationTests.server.luau" }
+  ]
+}
