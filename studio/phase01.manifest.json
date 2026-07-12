@@ -18,6 +18,6 @@
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Grid.PlacementSolver", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Grid/PlacementSolver.luau" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Grid.DifficultyClassifier", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Grid/DifficultyClassifier.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Dev.FoundationTestSuite", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Dev/FoundationTestSuite.luau" },
-    { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Dev.RunFoundationTests", "className": "Script", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Dev/RunFoundationTests.server.luau" }
+    { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Dev.RunFoundationTests", "className": "Script", "enabled": true, "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Dev/RunFoundationTests.server.luau" }
   ]
 }
