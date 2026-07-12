@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-07-12 — Phase 01 persistence recovery and CI gate
+
+- Added the dependency-free `Phase 01 Node Validation` GitHub Actions job for pull requests targeting `main` and pushes to `main` or `codex/phase-01-grid-foundation`.
+- Diagnosed the earlier Studio cloud failures as two fixed-duration publish-request timeouts that surfaced as `Internal server error.`; the log exposed no HTTP status, Roblox error code, correlation ID, or response body.
+- Created a temporary backup outside the repository, closed all duplicate Studio sessions, and restarted with exactly one Studio process.
+- Successfully published/saved the original private cloud place, closed Studio, and reopened that place directly from Roblox.
+- Verified the reopened place at `7/7` folders, `10/10` scripts, `10/10` exact source matches, zero duplicates, and 69/69 passing foundation tests with the fixed 1,000-case fuzz run.
+- Kept the existing draft PR and Phase 01 scope intact; no diagnostic replacement place or Phase 02 content was created.
+
 ## 2026-07-12 — Phase 01 review corrections
 
 - Made repository-to-Studio synchronization clean-place reproducible with parent-first folder operations, manifest validation, safe Script preparation, idempotent updates, and visible non-destructive conflict errors.

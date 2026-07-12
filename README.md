@@ -14,6 +14,7 @@ Phase 01: Grid and Placement Foundation. This phase contains only integer-grid s
 - Phase 01 uses `codex/phase-01-grid-foundation`.
 - Pull before editing, never force-push, and keep every meaningful Studio/code change committed and pushed.
 - `docs/DEVELOPMENT_STATUS.md` is updated on every task.
+- GitHub Actions runs `node tools/test_studio_blueprint.mjs` on pull requests targeting `main` and on pushes to `main` or the Phase 01 branch. The workflow installs no project dependencies.
 
 ## Studio source workflow
 
@@ -37,6 +38,10 @@ The same build step also emits `.codex-cache/phase01-blueprint.json` for validat
 3. Read the Output window for `[ONE_MORE_ITEM][FoundationTests]` totals, exact failures, fuzz seed/case count, and benchmark timing.
 
 The runner exits immediately outside Roblox Studio and fails visibly with `error()` if any test fails.
+
+## Phase 01 persistence status
+
+The original private cloud place is verified as persistent. After a controlled cloud publish/save, every Studio process was closed, one clean Studio session reopened the place directly from Roblox, the managed hierarchy matched `7/7` folders and `10/10` scripts with `10/10` exact source matches and zero duplicates, and all 69 foundation tests passed again. The earlier `Internal server error.` incidents were fixed-duration cloud publish timeouts; the later controlled session completed successfully, so no diagnostic replacement place was needed.
 
 ## Permanent authoring rule
 

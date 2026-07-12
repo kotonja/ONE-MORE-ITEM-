@@ -1,93 +1,74 @@
 # Development status
 
-- **Current phase:** Phase 01 review-correction pass — **blocked by Roblox Studio cloud persistence**
+- **Current phase:** Phase 01 persistence recovery and CI gate — complete and ready for final review
 - **Current branch:** `codex/phase-01-grid-foundation`
 - **Existing draft PR:** https://github.com/kotonja/ONE-MORE-ITEM-/pull/1
-- **Latest relevant implementation commit:** `d065e4f` (`test: harden grid foundation contracts`)
+- **Verified implementation/CI evidence commit:** `7d5e5c34bd518c9728fe0cd01c3bb281e3e8c4c2` (the final documentation commit and current branch HEAD are listed in PR #1)
+- **Phase 02:** Not started
 
-## Corrected implementation
+## GitHub Actions
 
-- Command Bar synchronization now includes all seven parent-first `ensureFolder` operations before any `writeScript` operation and works without a pre-existing project hierarchy.
-- Manifest validation rejects duplicate/colliding paths, unsupported services/classes, missing or escaping sources, and unmanaged parents before writing output.
-- Correct instances are reused or updated, missing instances are created, wrong-class conflicts fail visibly without deletion, and new Scripts remain disabled until Source and parenting succeed.
-- Shared finite-integer validation rejects NaN, both infinities, fractions, and runtime non-number values with boundary-specific behavior.
-- `BOX_CAPACITY` is derived from width × height × depth and remains 100.
-- All 46 original tests remain, with 23 additional clone, snapshot, enumeration-order, malformed/non-finite, top-entry, and configuration contract tests.
+- **Workflow:** `Phase 01 Node Validation`
+- **Command:** `node tools/test_studio_blueprint.mjs`
+- **Result:** Passed on PR #1 and the branch push.
+- **PR workflow run:** https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29211088519
+- **Branch-push workflow run:** https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29211088342
+- **Exact Node result:** `[StudioSyncSmoke] PASS checks=16 folders=7 scripts=10 deterministic=true`
+- **Workflow commit:** `7d5e5c34bd518c9728fe0cd01c3bb281e3e8c4c2` (`ci: validate Phase 01 Studio synchronization`)
 
-## Node verification
+## Controlled Studio context
 
-- **Commands:** `node tools/build_studio_blueprint.mjs` and `node tools/test_studio_blueprint.mjs`
-- **Result:** Passed all 16 smoke checks; 7 folder operations and 10 script operations; both generated artifacts were byte-identical across two runs.
-- **Checks:** manifest parsing, source existence, folder presence/order, parent-first ordering, script-parent guarantees, managed-path uniqueness, manifest counts, non-destructive conflict behavior, absence of absolute machine paths, and deterministic blueprint/Command Bar bytes.
-- **Exact summary:** `[StudioSyncSmoke] PASS checks=16 folders=7 scripts=10 deterministic=true`
+- **Operating system:** Windows 11 Home 64-bit, version/build `10.0.26200`
+- **Roblox Studio:** `0.729.0.7290838`
+- **Duplicate-session precondition:** Three Studio processes existed before cleanup: two visible windows and one background process.
+- **Controlled session:** A temporary local backup was stored outside the repository, all Studio processes were closed, and the test restarted with exactly one Studio process and one cloud-place window.
+- **Original place type:** Published place inside an experience; Creator Hub explicitly showed the audience as `Private`, and it opened normally from Roblox before the controlled save.
+- **Original Place ID:** `134193642444044`
+- **Original Universe/Game ID:** `10493030248`
+- **Publishing permission:** Creator Hub's Owner field confirmed that the signed-in account owns the experience. The successful publish/save also proves effective publishing permission. No account name is recorded here.
+- **Team Create:** Active.
+- **Third-party plugins observed:** AstraForge, Codex Studio Bridge, MCPPlugin, and Superbullet AI Game Builder v0.1.35.
+- **Codex mutation state:** The Codex bridge was connected, but no bridge command was mutating the place during the successful save. Repository synchronization had already completed.
+- **Failed-save mutation context:** During both controlled failed saves, synchronization had completed and no bridge place-mutation command was running. The earliest legacy failure coincided with Command Bar writes and is not treated as plugin-isolation evidence.
 
-## Clean Studio verification
+## Persistence result
 
-- **Environment:** New throwaway Baseplate in Edit mode.
-- **Precondition proof:** `[StudioSyncVerify] cleanBefore=true replicatedRoot=nil serverRoot=nil`
-- **Method:** Executed only the 17 operations from `.codex-cache/phase01-command-bar.json`, in generated order: 7 `ensureFolder`, then 10 `writeScript`. No managed folder was created manually.
-- **First synchronization:** `[StudioSyncVerify] firstSync folders=7/7 scripts=10/10 sources=10/10 duplicates=0`
-- **Second synchronization:** `[StudioSyncVerify] secondSync folders=7/7 scripts=10/10 sources=10/10 duplicates=0`
-- **Intended-place parity after final synchronization:** `[StudioSyncVerify] intendedPlace folders=7/7 scripts=10/10 sources=10/10 duplicates=0`
+- **Original save:** Succeeded in the controlled session through Studio's normal cloud publish/save path.
+- **Close/reopen:** Succeeded. Every Studio process was closed, Studio restarted once, and the original place reopened directly from Roblox in a single session.
+- **Reopened identity:** `game.PlaceId=134193642444044`, `game.GameId=10493030248`.
+- **Reopened source parity:** `[StudioPersistenceVerify] originalCloudReopen placeId=134193642444044 gameId=10493030248 folders=7/7 scripts=10/10 sources=10/10 duplicates=0`
+- **Diagnostic place:** Not created. The original place satisfied the required save, full close, direct Roblox reopen, exact parity, and post-reopen test proof.
+- **Blank diagnostic save:** Not applicable.
+- **Phase 01 diagnostic save:** Not applicable.
+- **Verified replacement candidate:** No replacement was needed; the original place itself is verified.
 
-Exact managed hierarchy:
+## Foundation tests after cloud reopen
 
-```text
-ReplicatedStorage
-└── ONE_MORE_ITEM
-    └── Shared
-        ├── Config
-        │   └── GameConfig (ModuleScript)
-        ├── Content
-        │   └── ShapeDefinitions (ModuleScript)
-        └── Grid
-            ├── DifficultyClassifier (ModuleScript)
-            ├── GridTypes (ModuleScript)
-            ├── IntegerValidation (ModuleScript)
-            ├── OccupancyGrid (ModuleScript)
-            ├── PlacementSolver (ModuleScript)
-            └── ShapeRotation (ModuleScript)
-ServerScriptService
-└── ONE_MORE_ITEM_Server
-    └── Dev
-        ├── FoundationTestSuite (ModuleScript)
-        └── RunFoundationTests (enabled Script)
-```
-
-## Foundation test results
-
-- **Environment:** Intended project place, Roblox Studio Play, server-side runner after final source synchronization
 - **Suites:** 15
 - **Tests:** 69
 - **Passed:** 69
 - **Failed:** 0
-- **Execution duration:** 0.268413 seconds
 - **Fuzz:** 1,000 cases, seed `24012026`
-- **Benchmark:** 100 FlatL enumerations, 4,800 total placements, 0.115732 seconds
-- **Exact final Output:**
+- **Benchmark:** 100 FlatL enumerations, 4,800 total placements, 0.142743 seconds
+- **Execution duration:** 0.310789 seconds
+- **Exact final result:** `[ONE_MORE_ITEM][FoundationTests] RESULT suites=15 tests=69 passed=69 failed=0 duration=0.310789s fuzzCases=1000 fuzzSeed=24012026`
+- **Exact pass line:** `[ONE_MORE_ITEM][FoundationTests] PASS: all 69 tests passed`
 
-```text
-[ONE_MORE_ITEM][FoundationTests] BENCHMARK 100 FlatL enumerations, 4800 total placements, 0.115732 seconds
-[ONE_MORE_ITEM][FoundationTests] RESULT suites=15 tests=69 passed=69 failed=0 duration=0.268413s fuzzCases=1000 fuzzSeed=24012026
-[ONE_MORE_ITEM][FoundationTests] PASS: all 69 tests passed
-```
+## Sanitized save-log diagnosis
 
-The clean Baseplate run also passed 69/69 with a 0.129149-second benchmark and 0.277051-second total duration.
+- The two earlier failed save attempts ended at `2026-07-12 21:08:29Z` and `2026-07-12 21:21:55Z`, each after approximately 240 seconds.
+- Studio's local-place publish mediator reported a server publish-request timeout and then surfaced the visible `Internal server error.` message.
+- The log contained the expected original Place ID and Universe/Game ID, but no HTTP status, Roblox error code, request/correlation ID, or useful response body.
+- Likely category: transient Roblox Studio cloud/Team Create publish timeout, not a source-parity, serialization, or repository-content failure.
+- Repeated localhost connection-refused entries were unrelated plugin/bridge noise.
+- No raw logs, credentials, authentication data, account details, or personal filesystem paths are stored in the repository.
 
-## Studio save and persistence
+## Remaining issues
 
-- **Normal method:** `Ctrl+S` / Save to Roblox on the intended project place.
-- **Result:** Failed twice. The first correction-pass retry failed at 17:08:30; the final post-synchronization retry failed at 17:21:56.
-- **Exact error:** `Internal server error.`
-- **Save to File:** Succeeded to temporary `%LOCALAPPDATA%\Temp\ONE_MORE_ITEM_phase01_clean_test.rbxl`; no place file was added to the repository.
-- **Reopen:** The temporary file reopened read-only because the first local-file Studio instance was still open. Verification passed: `[StudioSyncVerify] reopenedLocal folders=7/7 scripts=10/10 sources=10/10 duplicates=0`.
-- **Post-reopen test:** 15 suites, 69 tests, 69 passed, 0 failed; 1,000 fuzz cases at seed `24012026`; 0.119085-second benchmark; 0.266346-second duration.
-
-**BLOCKER:** Roblox Studio save failed during both normal Save to Roblox attempts with `Internal server error.` Save to File succeeded, and reopening the local file preserved the complete hierarchy and exact sources. Permanent Workspace and StarterGui construction must not begin until Studio cloud persistence is reliable.
-
-## Current known issues
-
-- Roblox cloud place saving remains unavailable for the intended place despite two normal retries. Git and the manifest remain authoritative, and temporary local-file persistence is proven, but permanent cloud Studio state is not yet reliable.
+- No Phase 01 persistence blocker remains. The earlier timeout was not reproducible after duplicate-session cleanup and a clean Studio restart.
+- The account ownership check is complete, and effective permission is proven by the successful publish.
+- Team Create reopening took several minutes but completed normally.
+- Non-blocking plugin icon warnings may still appear in Studio Output.
 
 ## Deferred by design
 
@@ -95,4 +76,4 @@ Arena/map construction, packing stations, StarterGui/HUD, buttons, camera/input,
 
 ## Exact next step
 
-Resolve or wait out the Roblox cloud-save failure, then re-synchronize the intended place from this branch, save normally, reopen it, verify source parity, and rerun all 69 tests. PR #1 can be reviewed for the correction code now, but it must remain draft and is not ready for final approval or Phase 02 while Studio persistence is blocked.
+Review draft PR #1 and the passing required workflow. Phase 01 is ready for final review. Keep the PR unmerged until that review is complete, and do not begin Phase 02 as part of this task.
