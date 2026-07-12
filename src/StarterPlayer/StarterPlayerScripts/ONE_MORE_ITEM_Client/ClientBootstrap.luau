@@ -78,7 +78,10 @@ local stations = requireChild(arena, "Stations")
 local station = requireModel(stations, "Station_01")
 
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
-local gameplayGuiInstance = requireChild(playerGui, "ONE_MORE_ITEM_Gameplay")
+local gameplayGuiInstance = playerGui:WaitForChild("ONE_MORE_ITEM_Gameplay", 10)
+if gameplayGuiInstance == nil then
+	error("ClientBootstrap requires ONE_MORE_ITEM_Gameplay to clone into PlayerGui within 10 seconds")
+end
 if not gameplayGuiInstance:IsA("ScreenGui") then
 	error("ClientBootstrap requires ONE_MORE_ITEM_Gameplay to be a ScreenGui")
 end

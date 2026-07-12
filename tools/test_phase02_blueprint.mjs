@@ -333,6 +333,11 @@ try {
     const clientBootstrap = fs.readFileSync(path.resolve(repositoryRoot, "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/ClientBootstrap.luau"), "utf8");
     assert.doesNotMatch(serverBootstrap, /Instance\.new\s*\(/, "Server bootstrap must bind authored instances, not build the map");
     assert.doesNotMatch(clientBootstrap, /Instance\.new\s*\(/, "Client bootstrap must bind authored instances, not build the HUD");
+    assert.match(
+      clientBootstrap,
+      /playerGui:WaitForChild\s*\(\s*["']ONE_MORE_ITEM_Gameplay["']\s*,\s*10\s*\)/,
+      "Client bootstrap must tolerate Roblox cloning the authored ScreenGui after StarterPlayerScripts starts",
+    );
   });
 
   let phase01Result;
