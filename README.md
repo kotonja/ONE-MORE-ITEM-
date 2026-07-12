@@ -19,12 +19,12 @@ Phase 01: Grid and Placement Foundation. This phase contains only integer-grid s
 
 The repository is the only source of truth for Phase 01 scripts:
 
-1. Edit canonical sources under `src/`.
+1. Edit canonical sources under `src/` and mappings in `studio/phase01.manifest.json`.
 2. Run `node tools/build_studio_blueprint.mjs` from the repository root.
-3. From the installed StudioBridge helper repository, run `tools\bridge.cmd blueprint validate "<repo>\.codex-cache\phase01-blueprint.json"`, then `tools\bridge.cmd blueprint apply "<repo>\.codex-cache\phase01-blueprint.json"`.
+3. Open `.codex-cache/phase01-command-bar.json` and execute each generated command, in order, through Roblox Studio's Command Bar **Run** action while Studio is in Edit mode.
 4. Inspect the live hierarchy and run the Studio test runner.
 
-The generated `.codex-cache/phase01-blueprint.json` is temporary and ignored by Git. It is always rebuilt from `src/` plus `studio/phase01.manifest.json`; scripts must never be edited only in Studio.
+The same build step also emits `.codex-cache/phase01-blueprint.json` for StudioBridge validation/preview when that mutation lane is healthy. Both generated artifacts are temporary, ignored by Git, and rebuilt from the same canonical `src/` plus manifest; scripts must never be edited only in Studio.
 
 ## Running Phase 01 tests
 
