@@ -13,6 +13,7 @@
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Config.GameConfig", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Config/GameConfig.luau" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Content.ShapeDefinitions", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Content/ShapeDefinitions.luau" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Grid.GridTypes", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Grid/GridTypes.luau" },
+    { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Grid.IntegerValidation", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Grid/IntegerValidation.luau" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Grid.ShapeRotation", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Grid/ShapeRotation.luau" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Grid.OccupancyGrid", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Grid/OccupancyGrid.luau" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Grid.PlacementSolver", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Grid/PlacementSolver.luau" },

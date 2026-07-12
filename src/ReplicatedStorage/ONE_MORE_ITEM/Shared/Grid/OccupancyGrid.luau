@@ -1,6 +1,7 @@
 --!strict
 
 local GridTypes = require(script.Parent.GridTypes)
+local IntegerValidation = require(script.Parent.IntegerValidation)
 
 type Cell = GridTypes.Cell
 type Placement = GridTypes.Placement
@@ -15,12 +16,8 @@ local OccupancyGrid = {}
 local GridMethods = {}
 GridMethods.__index = GridMethods
 
-local function isPositiveInteger(value: number): boolean
-	return value > 0 and value == math.floor(value)
-end
-
-local function isInteger(value: number): boolean
-	return value == math.floor(value)
+local function isPositiveInteger(value: unknown): boolean
+	return IntegerValidation.IsFiniteInteger(value) and (value :: number) > 0
 end
 
 local function cellKey(cell: Cell): string
@@ -29,7 +26,7 @@ end
 
 function OccupancyGrid.CreateGrid(width: number, height: number, depth: number): Grid
 	if not isPositiveInteger(width) or not isPositiveInteger(height) or not isPositiveInteger(depth) then
-		error("Grid dimensions must be positive integers", 2)
+		error("Grid dimensions must be positive finite integers", 2)
 	end
 
 	local grid: InternalGrid = setmetatable({
@@ -43,9 +40,13 @@ function OccupancyGrid.CreateGrid(width: number, height: number, depth: number):
 end
 
 function GridMethods.IsInsideBounds(self: InternalGrid, cell: Cell): boolean
-	return isInteger(cell.X)
-		and isInteger(cell.Y)
-		and isInteger(cell.Z)
+	if type(cell) ~= "table" then
+		return false
+	end
+
+	return IntegerValidation.IsFiniteInteger(cell.X)
+		and IntegerValidation.IsFiniteInteger(cell.Y)
+		and IntegerValidation.IsFiniteInteger(cell.Z)
 		and cell.X >= 0
 		and cell.X < self.Width
 		and cell.Y >= 0
@@ -62,7 +63,7 @@ function GridMethods.IsCellOccupied(self: InternalGrid, cell: Cell): boolean
 end
 
 function GridMethods.CanOccupyCells(self: InternalGrid, cells: { Cell }): boolean
-	if #cells == 0 then
+	if type(cells) ~= "table" or #cells == 0 then
 		return false
 	end
 	local seen: { [string]: boolean } = {}

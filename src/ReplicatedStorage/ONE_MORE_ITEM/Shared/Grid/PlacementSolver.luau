@@ -1,6 +1,7 @@
 --!strict
 
 local GridTypes = require(script.Parent.GridTypes)
+local IntegerValidation = require(script.Parent.IntegerValidation)
 local ShapeRotation = require(script.Parent.ShapeRotation)
 
 type Cell = GridTypes.Cell
@@ -10,10 +11,6 @@ type ShapeDefinition = GridTypes.ShapeDefinition
 type Rotation = GridTypes.ShapeRotation
 
 local PlacementSolver = {}
-
-local function isInteger(value: number): boolean
-	return value == math.floor(value)
-end
 
 local function translatedCells(rotation: Rotation, x: number, y: number, z: number): { Cell }
 	local cells: { Cell } = {}
@@ -43,7 +40,7 @@ function PlacementSolver.GetAutoDropPlacement(
 	shapeId: string?,
 	rotationIndex: number?
 ): Placement?
-	if not isInteger(x) or not isInteger(z) then
+	if not IntegerValidation.IsFiniteInteger(x) or not IntegerValidation.IsFiniteInteger(z) then
 		return nil
 	end
 	if x < 0 or z < 0 or x + rotation.SizeX > grid.Width or z + rotation.SizeZ > grid.Depth then

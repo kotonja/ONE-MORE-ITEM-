@@ -1,16 +1,13 @@
 --!strict
 
 local GridTypes = require(script.Parent.GridTypes)
+local IntegerValidation = require(script.Parent.IntegerValidation)
 
 type Cell = GridTypes.Cell
 type ShapeDefinition = GridTypes.ShapeDefinition
 type ShapeRotation = GridTypes.ShapeRotation
 
 local ShapeRotationModule = {}
-
-local function isInteger(value: unknown): boolean
-	return type(value) == "number" and value == math.floor(value :: number)
-end
 
 local function cellKey(cell: Cell): string
 	return string.format("%d,%d,%d", cell.X, cell.Y, cell.Z)
@@ -42,8 +39,11 @@ function ShapeRotationModule.ValidateShapeCells(cells: { Cell }): ()
 		if type(cell) ~= "table" then
 			error(string.format("Shape cell %d must be a table", index), 2)
 		end
-		if not isInteger(cell.X) or not isInteger(cell.Y) or not isInteger(cell.Z) then
-			error(string.format("Shape cell %d must use integer X, Y, and Z coordinates", index), 2)
+		if not IntegerValidation.IsFiniteInteger(cell.X)
+			or not IntegerValidation.IsFiniteInteger(cell.Y)
+			or not IntegerValidation.IsFiniteInteger(cell.Z)
+		then
+			error(string.format("Shape cell %d must use finite integer X, Y, and Z coordinates", index), 2)
 		end
 		local key = cellKey(cell)
 		if seen[key] then
@@ -87,8 +87,8 @@ function ShapeRotationModule.GetCanonicalKey(cells: { Cell }): string
 end
 
 function ShapeRotationModule.RotateShapeY(cells: { Cell }, quarterTurns: number): { Cell }
-	if not isInteger(quarterTurns) then
-		error("quarterTurns must be an integer", 2)
+	if not IntegerValidation.IsFiniteInteger(quarterTurns) then
+		error("quarterTurns must be a finite integer", 2)
 	end
 	ShapeRotationModule.ValidateShapeCells(cells)
 

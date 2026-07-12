@@ -94,6 +94,14 @@ local function applyCells(grid: Grid, cells: { Cell })
 	expect(grid:ApplyPlacement(makePlacement(cells)), "Test fixture placement should apply")
 end
 
+local function cellListKey(cells: { Cell }): string
+	local parts: { string } = {}
+	for _, cell in ipairs(cells) do
+		table.insert(parts, string.format("%d:%d:%d", cell.X, cell.Y, cell.Z))
+	end
+	return table.concat(parts, "|")
+end
+
 local function fullGrid(): Grid
 	local grid = newGrid()
 	local cells: { Cell } = {}
@@ -232,6 +240,123 @@ addSuite("Bounds", {
 	},
 })
 
+addSuite("Finite integer boundaries", {
+	{
+		Name = "NaN coordinates are rejected without crashing grid queries",
+		Run = function()
+			local nan = 0 / 0
+			local cell = ({ X = nan, Y = 0, Z = 0 } :: any)
+			expect(not newGrid():IsInsideBounds(cell), "NaN coordinate must be outside bounds")
+			expect(not newGrid():CanOccupyCells({ cell }), "NaN coordinate must not be occupiable")
+			expectError(function()
+				ShapeRotation.NormalizeShape({ cell })
+			end, "finite integer")
+		end,
+	},
+	{
+		Name = "positive infinity coordinates are rejected without crashing grid queries",
+		Run = function()
+			local cell = ({ X = math.huge, Y = 0, Z = 0 } :: any)
+			expect(not newGrid():IsInsideBounds(cell), "Positive infinity must be outside bounds")
+			expect(not newGrid():CanOccupyCells({ cell }), "Positive infinity must not be occupiable")
+			expectError(function()
+				ShapeRotation.NormalizeShape({ cell })
+			end, "finite integer")
+		end,
+	},
+	{
+		Name = "negative infinity coordinates are rejected without crashing grid queries",
+		Run = function()
+			local cell = ({ X = -math.huge, Y = 0, Z = 0 } :: any)
+			expect(not newGrid():IsInsideBounds(cell), "Negative infinity must be outside bounds")
+			expect(not newGrid():CanOccupyCells({ cell }), "Negative infinity must not be occupiable")
+			expectError(function()
+				ShapeRotation.NormalizeShape({ cell })
+			end, "finite integer")
+		end,
+	},
+	{
+		Name = "fractional coordinates are rejected by grid boundaries",
+		Run = function()
+			local cell = { X = 1.25, Y = 0, Z = 0 }
+			expect(not newGrid():IsInsideBounds(cell), "Fractional coordinate must be outside bounds")
+			expect(not newGrid():CanOccupyCells({ cell }), "Fractional coordinate must not be occupiable")
+		end,
+	},
+	{
+		Name = "malformed coordinate and collection values are rejected safely",
+		Run = function()
+			local grid = newGrid()
+			expect(not grid:IsInsideBounds((nil :: any)), "Non-table cell must be outside bounds")
+			expect(not grid:IsInsideBounds(({ X = "1", Y = 0, Z = 0 } :: any)), "String coordinate must be outside bounds")
+			expect(not grid:CanOccupyCells(("not-cells" :: any)), "Non-table cell collection must be rejected")
+			expect(not grid:CanOccupyCells(({ "not-a-cell" } :: any)), "Malformed cell member must be rejected")
+			expectError(function()
+				ShapeRotation.NormalizeShape(({ { X = "1", Y = 0, Z = 0 } } :: any))
+			end, "finite integer")
+		end,
+	},
+	{
+		Name = "invalid grid dimensions fail with a clear finite-integer error",
+		Run = function()
+			local invalidValues: { any } = { 0 / 0, math.huge, -math.huge, 1.5, "5" }
+			for _, value in ipairs(invalidValues) do
+				expectError(function()
+					OccupancyGrid.CreateGrid(value, 4, 5)
+				end, "finite integer")
+			end
+			expectError(function()
+				OccupancyGrid.CreateGrid(5, (nil :: any), 5)
+			end, "finite integer")
+			expectError(function()
+				OccupancyGrid.CreateGrid(5, 4, 0)
+			end, "positive finite integer")
+		end,
+	},
+	{
+		Name = "invalid solver X and Z values return no placement",
+		Run = function()
+			local grid = newGrid()
+			local rotation = ShapeRotation.GetUniqueRotations(ShapeDefinitions.SingleCube)[1]
+			local invalidValues: { any } = { 0 / 0, math.huge, -math.huge, 1.5, "1" }
+			for _, value in ipairs(invalidValues) do
+				expectEqual(PlacementSolver.GetAutoDropPlacement(grid, rotation, value, 0), nil)
+				expectEqual(PlacementSolver.GetAutoDropPlacement(grid, rotation, 0, value), nil)
+			end
+			expectEqual(PlacementSolver.GetAutoDropPlacement(grid, rotation, (nil :: any), 0), nil)
+			expectEqual(PlacementSolver.GetAutoDropPlacement(grid, rotation, 0, (nil :: any)), nil)
+		end,
+	},
+	{
+		Name = "invalid difficulty counts fail with a clear finite-integer error",
+		Run = function()
+			local invalidValues: { any } = { 0 / 0, math.huge, -math.huge, 1.5, -1, "10" }
+			for _, value in ipairs(invalidValues) do
+				expectError(function()
+					DifficultyClassifier.ClassifyPlacementCount(value)
+				end, "finite integer")
+			end
+			expectError(function()
+				DifficultyClassifier.ClassifyPlacementCount((nil :: any))
+			end, "finite integer")
+		end,
+	},
+	{
+		Name = "invalid quarter-turn values fail with a clear finite-integer error",
+		Run = function()
+			local invalidValues: { any } = { 0 / 0, math.huge, -math.huge, 0.5, "1" }
+			for _, value in ipairs(invalidValues) do
+				expectError(function()
+					ShapeRotation.RotateShapeY(ShapeDefinitions.FlatL.Cells, value)
+				end, "finite integer")
+			end
+			expectError(function()
+				ShapeRotation.RotateShapeY(ShapeDefinitions.FlatL.Cells, (nil :: any))
+			end, "finite integer")
+		end,
+	},
+})
+
 addSuite("Collision", {
 	{
 		Name = "non-overlapping placement passes",
@@ -268,6 +393,89 @@ addSuite("Collision", {
 			expect(not applied, "Invalid placement must fail")
 			expectEqual(grid:GetOccupiedCellCount(), 1)
 			expect(not grid:IsCellOccupied({ X = 1, Y = 0, Z = 0 }), "Non-colliding prefix must not be applied")
+		end,
+	},
+})
+
+addSuite("Grid clone independence", {
+	{
+		Name = "clone starts with identical dimensions occupancy and count",
+		Run = function()
+			local grid = newGrid()
+			applyCells(grid, { { X = 3, Y = 2, Z = 1 }, { X = 1, Y = 1, Z = 1 } })
+			local clone = grid:Clone()
+			expectEqual(clone.Width, grid.Width)
+			expectEqual(clone.Height, grid.Height)
+			expectEqual(clone.Depth, grid.Depth)
+			expectEqual(clone:GetOccupiedCellCount(), grid:GetOccupiedCellCount())
+			expectEqual(cellListKey(clone:GetOccupiedCells()), cellListKey(grid:GetOccupiedCells()))
+		end,
+	},
+	{
+		Name = "mutating clone does not mutate original",
+		Run = function()
+			local grid = newGrid()
+			applyCells(grid, { { X = 1, Y = 1, Z = 1 } })
+			local clone = grid:Clone()
+			applyCells(clone, { { X = 2, Y = 2, Z = 2 } })
+			expectEqual(grid:GetOccupiedCellCount(), 1)
+			expectEqual(clone:GetOccupiedCellCount(), 2)
+			expect(not grid:IsCellOccupied({ X = 2, Y = 2, Z = 2 }), "Original must not see clone mutation")
+		end,
+	},
+	{
+		Name = "mutating original does not mutate clone",
+		Run = function()
+			local grid = newGrid()
+			applyCells(grid, { { X = 1, Y = 1, Z = 1 } })
+			local clone = grid:Clone()
+			applyCells(grid, { { X = 3, Y = 2, Z = 3 } })
+			expectEqual(grid:GetOccupiedCellCount(), 2)
+			expectEqual(clone:GetOccupiedCellCount(), 1)
+			expect(not clone:IsCellOccupied({ X = 3, Y = 2, Z = 3 }), "Clone must not see original mutation")
+		end,
+	},
+})
+
+addSuite("Occupied snapshot contract", {
+	{
+		Name = "occupied snapshot is canonically ordered by X then Y then Z",
+		Run = function()
+			local grid = newGrid()
+			applyCells(grid, {
+				{ X = 2, Y = 0, Z = 2 },
+				{ X = 0, Y = 3, Z = 4 },
+				{ X = 0, Y = 1, Z = 4 },
+				{ X = 0, Y = 1, Z = 2 },
+				{ X = 1, Y = 0, Z = 0 },
+			})
+			expectEqual(cellListKey(grid:GetOccupiedCells()), "0:1:2|0:1:4|0:3:4|1:0:0|2:0:2")
+		end,
+	},
+	{
+		Name = "mutating snapshot list does not mutate grid occupancy",
+		Run = function()
+			local grid = newGrid()
+			applyCells(grid, { { X = 0, Y = 0, Z = 0 }, { X = 1, Y = 0, Z = 0 } })
+			local snapshot = grid:GetOccupiedCells()
+			table.remove(snapshot, 1)
+			table.insert(snapshot, { X = 4, Y = 3, Z = 4 })
+			expectEqual(grid:GetOccupiedCellCount(), 2)
+			expect(grid:IsCellOccupied({ X = 0, Y = 0, Z = 0 }), "Removed snapshot entry must remain occupied")
+			expect(not grid:IsCellOccupied({ X = 4, Y = 3, Z = 4 }), "Inserted snapshot entry must not become occupied")
+		end,
+	},
+	{
+		Name = "mutating snapshot cells does not mutate grid occupancy",
+		Run = function()
+			local grid = newGrid()
+			applyCells(grid, { { X = 0, Y = 0, Z = 0 } })
+			local snapshot = grid:GetOccupiedCells()
+			snapshot[1].X = 4
+			snapshot[1].Y = 3
+			snapshot[1].Z = 4
+			expect(grid:IsCellOccupied({ X = 0, Y = 0, Z = 0 }), "Original coordinate must remain occupied")
+			expect(not grid:IsCellOccupied({ X = 4, Y = 3, Z = 4 }), "Mutated snapshot coordinate must remain empty")
 		end,
 	},
 })
@@ -319,6 +527,22 @@ addSuite("Auto-drop", {
 			local grid = newGrid()
 			applyCells(grid, { { X = 0, Y = 3, Z = 0 } })
 			local rotation = ShapeRotation.GetUniqueRotations(ShapeDefinitions.SingleCube)[1]
+			expectEqual(PlacementSolver.GetAutoDropPlacement(grid, rotation, 0, 0), nil)
+		end,
+	},
+	{
+		Name = "irregular multi-cell shape cannot teleport past lower-part entry obstruction",
+		Run = function()
+			local grid = newGrid()
+			local rotation = ShapeRotation.GetUniqueRotations(ShapeDefinitions.LargeIrregular)[1]
+			local entryY = grid.Height - rotation.SizeY
+			applyCells(grid, { { X = 2, Y = entryY, Z = 0 } })
+
+			local lowerCells: { Cell } = {}
+			for _, shapeCell in ipairs(rotation.Cells) do
+				table.insert(lowerCells, { X = shapeCell.X, Y = shapeCell.Y, Z = shapeCell.Z })
+			end
+			expect(grid:CanOccupyCells(lowerCells), "Lower cavity should fit if entry collision were ignored")
 			expectEqual(PlacementSolver.GetAutoDropPlacement(grid, rotation, 0, 0), nil)
 		end,
 	},
@@ -400,6 +624,80 @@ addSuite("Enumeration", {
 	},
 })
 
+addSuite("Enumeration ordering contract", {
+	{
+		Name = "repeated enumeration returns the exact same key sequence",
+		Run = function()
+			local grid = newGrid()
+			local first = PlacementSolver.EnumerateLegalPlacements(grid, ShapeDefinitions.FlatL)
+			local second = PlacementSolver.EnumerateLegalPlacements(grid, ShapeDefinitions.FlatL)
+			expectEqual(#first, #second)
+			for index, placement in ipairs(first) do
+				expectEqual(placement.Key, second[index].Key, string.format("Enumeration differs at index %d", index))
+			end
+		end,
+	},
+	{
+		Name = "rotation index is nondecreasing",
+		Run = function()
+			local previousRotation = 0
+			for _, placement in ipairs(PlacementSolver.EnumerateLegalPlacements(newGrid(), ShapeDefinitions.FlatL)) do
+				expect(placement.RotationIndex >= previousRotation, "Rotation index moved backward")
+				previousRotation = placement.RotationIndex
+			end
+		end,
+	},
+	{
+		Name = "X is nondecreasing within each rotation",
+		Run = function()
+			local previousRotation = 0
+			local previousX = -1
+			for _, placement in ipairs(PlacementSolver.EnumerateLegalPlacements(newGrid(), ShapeDefinitions.FlatL)) do
+				if placement.RotationIndex ~= previousRotation then
+					previousRotation = placement.RotationIndex
+					previousX = -1
+				end
+				expect(placement.Origin.X >= previousX, "X moved backward within a rotation")
+				previousX = placement.Origin.X
+			end
+		end,
+	},
+	{
+		Name = "Z is strictly increasing within each rotation and X group",
+		Run = function()
+			local previousRotation = 0
+			local previousX = -1
+			local previousZ = -1
+			for _, placement in ipairs(PlacementSolver.EnumerateLegalPlacements(newGrid(), ShapeDefinitions.FlatL)) do
+				if placement.RotationIndex ~= previousRotation or placement.Origin.X ~= previousX then
+					previousRotation = placement.RotationIndex
+					previousX = placement.Origin.X
+					previousZ = -1
+				end
+				expect(placement.Origin.Z > previousZ, "Z did not strictly increase within an X group")
+				previousZ = placement.Origin.Z
+			end
+		end,
+	},
+	{
+		Name = "single-cube enumeration follows exact rotation X Z loop order",
+		Run = function()
+			local placements = PlacementSolver.EnumerateLegalPlacements(newGrid(), ShapeDefinitions.SingleCube)
+			local index = 0
+			for x = 0, GameConfig.BOX_WIDTH - 1 do
+				for z = 0, GameConfig.BOX_DEPTH - 1 do
+					index += 1
+					local placement = placements[index]
+					expectEqual(placement.RotationIndex, 1)
+					expectEqual(placement.Origin.X, x)
+					expectEqual(placement.Origin.Z, z)
+				end
+			end
+			expectEqual(index, #placements)
+		end,
+	},
+})
+
 addSuite("Grid accounting", {
 	{
 		Name = "empty grid reports zero cells and zero fill",
@@ -432,6 +730,25 @@ addSuite("Grid accounting", {
 			local empty = newGrid():GetFillRatio()
 			local full = fullGrid():GetFillRatio()
 			expect(empty >= 0 and empty <= 1 and full >= 0 and full <= 1, "Fill ratios must be bounded")
+		end,
+	},
+})
+
+addSuite("Capacity product contract", {
+	{
+		Name = "configured capacity equals width times height times depth",
+		Run = function()
+			expectEqual(
+				GameConfig.BOX_CAPACITY,
+				GameConfig.BOX_WIDTH * GameConfig.BOX_HEIGHT * GameConfig.BOX_DEPTH
+			)
+		end,
+	},
+	{
+		Name = "Phase 01 box dimensions retain the 100-cell capacity contract",
+		Run = function()
+			expectEqual(GameConfig.BOX_CAPACITY, 100)
+			expectEqual(newGrid().Width * newGrid().Height * newGrid().Depth, GameConfig.BOX_CAPACITY)
 		end,
 	},
 })
