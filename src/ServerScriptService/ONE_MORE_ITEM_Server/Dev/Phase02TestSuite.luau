@@ -406,13 +406,30 @@ type Harness = {
 }
 
 local function fakePlayer(userId: number): Player
-	local event = Instance.new("BindableEvent")
-	return ({
+	local characterAddedCallback: ((Model) -> ())? = nil
+	local connection = {
+		Disconnect = function()
+			characterAddedCallback = nil
+		end,
+	}
+	local signal = {
+		Connect = function(_self, callback: (Model) -> ())
+			characterAddedCallback = callback
+			return connection
+		end,
+	}
+	local player = {
 		UserId = userId,
 		Character = nil,
-		CharacterAdded = event.Event,
-		_TestEvent = event,
-	} :: any) :: Player
+		CharacterAdded = signal,
+		_FireCharacterAdded = function(_self, character: Model)
+			local callback = characterAddedCallback
+			if callback then
+				callback(character)
+			end
+		end,
+	}
+	return (player :: any) :: Player
 end
 
 local function newHarness(userId: number?): Harness
@@ -775,7 +792,7 @@ addSuite("Station assignment", {
 			rootPart.Name = "HumanoidRootPart"
 			rootPart.Parent = character
 			local testPlayer = player :: any
-			testPlayer._TestEvent:Fire(character)
+			testPlayer:_FireCharacterAdded(character)
 			expectNear((rootPart.Position - (station.PlayerStand :: BasePart).Position).Magnitude, 0, 0.000001)
 			expectEqual(service:GetStationId(player), "station_01")
 			service:Destroy()
