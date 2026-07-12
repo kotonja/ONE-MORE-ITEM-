@@ -774,7 +774,8 @@ addSuite("Station assignment", {
 			local rootPart = Instance.new("Part")
 			rootPart.Name = "HumanoidRootPart"
 			rootPart.Parent = character
-			(player :: any)._TestEvent:Fire(character)
+			local testPlayer = player :: any
+			testPlayer._TestEvent:Fire(character)
 			expectNear((rootPart.Position - (station.PlayerStand :: BasePart).Position).Magnitude, 0, 0.000001)
 			expectEqual(service:GetStationId(player), "station_01")
 			service:Destroy()
