@@ -17,6 +17,7 @@ local WorldItemServiceModule = require(script.Parent.WorldItemService)
 
 type RoundRecord = RoundTypes.RoundRecord
 type RoundState = RoundTypes.RoundState
+type PreparationMode = "INITIAL" | "RESTART"
 type RoundSnapshot = NetworkTypes.RoundSnapshot
 type Cell = NetworkTypes.Cell
 type PlacementResult = PlacementService.PlacementResult
@@ -32,7 +33,7 @@ export type Service = {
 	GetRound: (self: Service, player: Player) -> RoundRecord?,
 	GetSnapshot: (self: Service, player: Player) -> RoundSnapshot?,
 	HandleClientReady: (self: Service, player: Player) -> RoundRecord?,
-	StartRound: (self: Service, player: Player) -> RoundRecord?,
+	StartRound: (self: Service, player: Player, preparationMode: PreparationMode?) -> RoundRecord?,
 	HandleCapturedTimer: (
 		self: Service,
 		player: Player,
@@ -47,6 +48,7 @@ export type Service = {
 	_emitSnapshot: (self: Service, player: Player) -> (),
 	_transition: (self: Service, player: Player, newState: RoundState) -> (),
 	_scheduleCurrentState: (self: Service, player: Player, duration: number) -> (),
+	_enterPresentingItem: (self: Service, player: Player) -> (),
 	_enterAwaitingPlacement: (self: Service, player: Player) -> (),
 	_enterShipping: (self: Service, player: Player, reason: string) -> (),
 	_enterFailure: (self: Service, player: Player, reason: string) -> (),
@@ -179,7 +181,11 @@ function RoundService._scheduleCurrentState(self: RoundServiceImpl, player: Play
 	end)
 end
 
-function RoundService.StartRound(self: RoundServiceImpl, player: Player): RoundRecord?
+function RoundService.StartRound(
+	self: RoundServiceImpl,
+	player: Player,
+	preparationMode: PreparationMode?
+): RoundRecord?
 	local stationId = self._stationService:GetStationId(player)
 	if not stationId then
 		return nil
@@ -214,8 +220,11 @@ function RoundService.StartRound(self: RoundServiceImpl, player: Player): RoundR
 	}
 	self._rounds[player] = round
 	self._sequences[player] = sequence
-	self:_transition(player, "PresentingItem")
-	self:_scheduleCurrentState(player, RoundConfig.PRESENTATION_DURATION)
+	self:_emitSnapshot(player)
+	local preparationDuration = if preparationMode == "RESTART"
+		then RoundConfig.RESTART_PREPARING_DURATION
+		else RoundConfig.INITIAL_PREPARING_DURATION
+	self:_scheduleCurrentState(player, preparationDuration)
 	return round
 end
 
@@ -226,6 +235,11 @@ function RoundService.HandleClientReady(self: RoundServiceImpl, player: Player):
 		return existing
 	end
 	return self:StartRound(player)
+end
+
+function RoundService._enterPresentingItem(self: RoundServiceImpl, player: Player)
+	self:_transition(player, "PresentingItem")
+	self:_scheduleCurrentState(player, RoundConfig.PRESENTATION_DURATION)
 end
 
 function RoundService._enterAwaitingPlacement(self: RoundServiceImpl, player: Player)
@@ -301,7 +315,9 @@ function RoundService.HandleCapturedTimer(
 		return false
 	end
 
-	if expectedState == "PresentingItem" then
+	if expectedState == "Preparing" then
+		self:_enterPresentingItem(player)
+	elseif expectedState == "PresentingItem" then
 		self:_enterAwaitingPlacement(player)
 	elseif expectedState == "AwaitingPlacement" then
 		self:_enterFailure(player, "PLACEMENT_TIMEOUT")
@@ -416,8 +432,7 @@ function RoundService.HandleDecision(self: RoundServiceImpl, player: Player, pay
 		round.PreviewedNextItemId = nil
 		round.PreviewDifficulty = nil
 		round.DecisionDeadline = nil
-		self:_transition(player, "PresentingItem")
-		self:_scheduleCurrentState(player, RoundConfig.PRESENTATION_DURATION)
+		self:_enterPresentingItem(player)
 		return true, "ONE_MORE_ACCEPTED"
 	end
 	return false, "INVALID_CHOICE"
@@ -450,7 +465,7 @@ function RoundService.HandleRestart(self: RoundServiceImpl, player: Player, payl
 	round.LastClientSequences.Restart = sequenceValue :: number
 	self._worldItemService:ClearPlayer(player)
 	local previousRoundId = round.RoundId
-	local nextRound = self:StartRound(player)
+	local nextRound = self:StartRound(player, "RESTART")
 	if not nextRound or nextRound.RoundId == previousRoundId then
 		return false, "RESTART_FAILED"
 	end

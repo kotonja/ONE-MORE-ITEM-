@@ -23,6 +23,8 @@ local rateLimits: { [string]: number } = {
 table.freeze(rateLimits)
 
 local RoundConfig = {
+	INITIAL_PREPARING_DURATION = 0.12,
+	RESTART_PREPARING_DURATION = 0.72,
 	PRESENTATION_DURATION = 0.45,
 	PLACEMENT_DURATION = 30,
 	DECISION_DURATION = 8,

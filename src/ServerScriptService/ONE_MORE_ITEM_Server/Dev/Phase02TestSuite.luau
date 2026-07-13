@@ -396,11 +396,17 @@ addSuite("Placement security", {
 	},
 })
 
+type ScheduledTimer = {
+	Duration: number,
+	Callback: () -> (),
+}
+
 type Harness = {
 	Player: Player,
 	Service: any,
 	ClockState: { Now: number },
 	Snapshots: { any },
+	ScheduledTimers: { ScheduledTimer },
 	SpawnCount: { Value: number },
 	ClearCount: { Value: number },
 }
@@ -436,6 +442,7 @@ local function newHarness(userId: number?): Harness
 	local player = fakePlayer(userId or 303)
 	local clockState = { Now = 100 }
 	local snapshots: { any } = {}
+	local scheduledTimers: { ScheduledTimer } = {}
 	local spawnCount = { Value = 0 }
 	local clearCount = { Value = 0 }
 	local station = ({
@@ -456,7 +463,9 @@ local function newHarness(userId: number?): Harness
 		station,
 		world,
 		function(): number return clockState.Now end,
-		function(_duration: number, _callback: () -> ()) end,
+		function(duration: number, callback: () -> ())
+			table.insert(scheduledTimers, { Duration = duration, Callback = callback })
+		end,
 		function(_player: Player, snapshot)
 			table.insert(snapshots, snapshot)
 		end
@@ -466,20 +475,32 @@ local function newHarness(userId: number?): Harness
 		Service = service,
 		ClockState = clockState,
 		Snapshots = snapshots,
+		ScheduledTimers = scheduledTimers,
 		SpawnCount = spawnCount,
 		ClearCount = clearCount,
 	}
 end
 
+local function takeScheduledTimer(harness: Harness, expectedDuration: number, message: string): ScheduledTimer
+	local timer = table.remove(harness.ScheduledTimers, 1)
+	expect(timer ~= nil, message .. " should schedule a timer")
+	expectNear((timer :: ScheduledTimer).Duration, expectedDuration, 0.000001)
+	return timer :: ScheduledTimer
+end
+
 local function startAwaiting(harness: Harness): RoundRecord
 	local round = harness.Service:StartRound(harness.Player) :: RoundRecord
+	expectEqual(round.State, "Preparing")
+	local preparingTimer = takeScheduledTimer(
+		harness,
+		RoundConfig.INITIAL_PREPARING_DURATION,
+		"Initial Preparing"
+	)
+	preparingTimer.Callback()
 	expectEqual(round.State, "PresentingItem")
-	expect(harness.Service:HandleCapturedTimer(
-		harness.Player,
-		round.RoundId,
-		round.StateVersion,
-		"PresentingItem"
-	), "Presentation timer should advance")
+	local presentationTimer = takeScheduledTimer(harness, RoundConfig.PRESENTATION_DURATION, "PresentingItem")
+	presentationTimer.Callback()
+	expectEqual(round.State, "AwaitingPlacement")
 	return round
 end
 
@@ -492,10 +513,88 @@ end
 
 addSuite("Round state", {
 	{
-		Name = "Preparing reaches PresentingItem",
+		Name = "StartRound begins in Preparing",
 		Run = function()
 			local harness = newHarness()
-			expectEqual((harness.Service:StartRound(harness.Player) :: RoundRecord).State, "PresentingItem")
+			local round = harness.Service:StartRound(harness.Player) :: RoundRecord
+			expectEqual(round.State, "Preparing")
+			expectEqual(round.StateVersion, 0)
+			expectEqual(round.PlacementDeadline, nil)
+			expectEqual(round.DecisionDeadline, nil)
+		end,
+	},
+	{
+		Name = "Preparing snapshot is emitted",
+		Run = function()
+			local harness = newHarness()
+			local round = harness.Service:StartRound(harness.Player) :: RoundRecord
+			expectEqual(#harness.Snapshots, 1)
+			expectEqual(harness.Snapshots[1].RoundId, round.RoundId)
+			expectEqual(harness.Snapshots[1].StateVersion, 0)
+			expectEqual(harness.Snapshots[1].State, "Preparing")
+		end,
+	},
+	{
+		Name = "initial Preparing timer reaches PresentingItem",
+		Run = function()
+			local harness = newHarness()
+			local round = harness.Service:StartRound(harness.Player) :: RoundRecord
+			local timer = takeScheduledTimer(
+				harness,
+				RoundConfig.INITIAL_PREPARING_DURATION,
+				"Initial Preparing"
+			)
+			timer.Callback()
+			expectEqual(round.State, "PresentingItem")
+			expectEqual(round.StateVersion, 1)
+			expectEqual(harness.Snapshots[#harness.Snapshots].State, "PresentingItem")
+			takeScheduledTimer(harness, RoundConfig.PRESENTATION_DURATION, "PresentingItem")
+		end,
+	},
+	{
+		Name = "initial and restart preparation durations are distinct",
+		Run = function()
+			expect(
+				RoundConfig.INITIAL_PREPARING_DURATION >= 0.10
+					and RoundConfig.INITIAL_PREPARING_DURATION <= 0.15,
+				"Initial preparation must stay within its approved timing window"
+			)
+			expect(
+				RoundConfig.RESTART_PREPARING_DURATION >= 0.70
+					and RoundConfig.RESTART_PREPARING_DURATION <= 0.75,
+				"Restart preparation must stay within its approved timing window"
+			)
+			expect(
+				RoundConfig.INITIAL_PREPARING_DURATION ~= RoundConfig.RESTART_PREPARING_DURATION,
+				"Initial and restart preparation durations must be distinct"
+			)
+		end,
+	},
+	{
+		Name = "restart Preparing timer reaches PresentingItem",
+		Run = function()
+			local harness = newHarness()
+			local round = acceptParcel(harness)
+			harness.Service:HandleCapturedTimer(harness.Player, round.RoundId, round.StateVersion, "Decision")
+			harness.Service:HandleCapturedTimer(harness.Player, round.RoundId, round.StateVersion, "Shipping")
+			table.clear(harness.ScheduledTimers)
+			local accepted = harness.Service:HandleRestart(harness.Player, {
+				RoundId = round.RoundId,
+				StateVersion = round.StateVersion,
+				ClientSequence = 1,
+			})
+			expect(accepted, "Restart should pass")
+			local restarted = harness.Service:GetRound(harness.Player) :: RoundRecord
+			expectEqual(restarted.State, "Preparing")
+			expectEqual(harness.Snapshots[#harness.Snapshots].State, "Preparing")
+			local timer = takeScheduledTimer(
+				harness,
+				RoundConfig.RESTART_PREPARING_DURATION,
+				"Restart Preparing"
+			)
+			timer.Callback()
+			expectEqual(restarted.State, "PresentingItem")
+			expectEqual(restarted.StateVersion, 1)
 		end,
 	},
 	{
@@ -603,23 +702,63 @@ addSuite("Round state", {
 		end,
 	},
 	{
+		Name = "stale Preparing timer cannot affect a newer round",
+		Run = function()
+			local harness = newHarness()
+			local oldRound = harness.Service:StartRound(harness.Player) :: RoundRecord
+			local oldTimer = takeScheduledTimer(
+				harness,
+				RoundConfig.INITIAL_PREPARING_DURATION,
+				"Initial Preparing"
+			)
+			local newerRound = harness.Service:StartRound(harness.Player, "RESTART") :: RoundRecord
+			expect(newerRound.RoundId > oldRound.RoundId, "Fixture should create a newer round")
+			oldTimer.Callback()
+			expectEqual((harness.Service:GetRound(harness.Player) :: RoundRecord).RoundId, newerRound.RoundId)
+			expectEqual(newerRound.State, "Preparing")
+			expectEqual(newerRound.StateVersion, 0)
+		end,
+	},
+	{
 		Name = "stale delayed callbacks do nothing",
 		Run = function()
 			local harness = newHarness()
 			local round = harness.Service:StartRound(harness.Player) :: RoundRecord
-			local version = round.StateVersion
-			expect(not harness.Service:HandleCapturedTimer(harness.Player, round.RoundId, version + 1, "PresentingItem"), "Stale timer must reject")
-			expectEqual(round.State, "PresentingItem")
+			expect(
+				not harness.Service:HandleCapturedTimer(
+					harness.Player,
+					round.RoundId,
+					round.StateVersion + 1,
+					"Preparing"
+				),
+				"Mismatched StateVersion must reject"
+			)
+			expectEqual(round.State, "Preparing")
+			expectEqual(round.StateVersion, 0)
 		end,
 	},
 	{
-		Name = "StateVersion strictly increases",
+		Name = "StateVersion increases on Preparing to PresentingItem",
 		Run = function()
 			local harness = newHarness()
 			local round = harness.Service:StartRound(harness.Player) :: RoundRecord
 			local before = round.StateVersion
-			harness.Service:HandleCapturedTimer(harness.Player, round.RoundId, round.StateVersion, "PresentingItem")
+			takeScheduledTimer(harness, RoundConfig.INITIAL_PREPARING_DURATION, "Initial Preparing").Callback()
 			expect(round.StateVersion > before, "Version must increase")
+			expectEqual(round.State, "PresentingItem")
+		end,
+	},
+	{
+		Name = "placement cannot succeed during Preparing",
+		Run = function()
+			local harness = newHarness()
+			local round = harness.Service:StartRound(harness.Player) :: RoundRecord
+			local result = harness.Service:HandlePlacement(harness.Player, validPlacementRequest(round, 1))
+			expect(not result.Accepted, "Preparing placement must reject")
+			expectEqual(result.Reason, "WRONG_STATE")
+			expectEqual(round.State, "Preparing")
+			expectEqual(round.Grid:GetOccupiedCellCount(), 0)
+			expectEqual(harness.SpawnCount.Value, 0)
 		end,
 	},
 	{
@@ -636,6 +775,7 @@ addSuite("Round state", {
 				RoundId = round.RoundId, StateVersion = round.StateVersion, ClientSequence = 1,
 			})
 			local later = harness.Service:GetRound(harness.Player) :: RoundRecord
+			harness.Service:HandleCapturedTimer(harness.Player, later.RoundId, later.StateVersion, "Preparing")
 			harness.Service:HandleCapturedTimer(harness.Player, later.RoundId, later.StateVersion, "PresentingItem")
 			harness.Service:HandleCapturedTimer(harness.Player, later.RoundId, later.StateVersion, "AwaitingPlacement")
 			expectEqual(later.SessionBank, bank)
