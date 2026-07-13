@@ -20,7 +20,7 @@ type PlacementResponse = ClientRoundStore.PlacementResponse
 type Cell = ClientRoundStore.Cell
 
 local function requireChild(parent: Instance, name: string): Instance
-	local child = parent:FindFirstChild(name)
+	local child = parent:WaitForChild(name, 10)
 	if child == nil then
 		error(string.format("ClientBootstrap requires %s.%s", parent:GetFullName(), name), 2)
 	end

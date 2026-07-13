@@ -78,7 +78,7 @@ local ControllerMethods = {}
 ControllerMethods.__index = ControllerMethods
 
 local function requirePart(parent: Instance, name: string): BasePart
-	local child = parent:FindFirstChild(name)
+	local child = parent:WaitForChild(name, 10)
 	if child == nil or not child:IsA("BasePart") then
 		error(string.format("PlacementController requires BasePart %s.%s", parent:GetFullName(), name), 3)
 	end
@@ -86,7 +86,7 @@ local function requirePart(parent: Instance, name: string): BasePart
 end
 
 local function requireChild(parent: Instance, name: string): Instance
-	local child = parent:FindFirstChild(name)
+	local child = parent:WaitForChild(name, 10)
 	if child == nil then
 		error(string.format("PlacementController requires %s.%s", parent:GetFullName(), name), 3)
 	end

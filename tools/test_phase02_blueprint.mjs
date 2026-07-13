@@ -338,6 +338,14 @@ try {
       /playerGui:WaitForChild\s*\(\s*["']ONE_MORE_ITEM_Gameplay["']\s*,\s*10\s*\)/,
       "Client bootstrap must tolerate Roblox cloning the authored ScreenGui after StarterPlayerScripts starts",
     );
+    for (const clientSourcePath of listLuauFiles(path.resolve(repositoryRoot, "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client"))) {
+      const clientSource = fs.readFileSync(clientSourcePath, "utf8");
+      assert.doesNotMatch(
+        clientSource,
+        /local child = parent:FindFirstChild\(name\)/,
+        `Required authored descendants must tolerate multiplayer replication delay: ${path.relative(repositoryRoot, clientSourcePath)}`,
+      );
+    }
   });
 
   let phase01Result;

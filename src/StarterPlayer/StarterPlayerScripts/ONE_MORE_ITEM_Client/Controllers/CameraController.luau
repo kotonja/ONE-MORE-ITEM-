@@ -35,7 +35,7 @@ local ControllerMethods = {}
 ControllerMethods.__index = ControllerMethods
 
 local function requirePart(parent: Instance, name: string): BasePart
-	local child = parent:FindFirstChild(name)
+	local child = parent:WaitForChild(name, 10)
 	if child == nil or not child:IsA("BasePart") then
 		error(string.format("CameraController requires BasePart %s.%s", parent:GetFullName(), name), 3)
 	end

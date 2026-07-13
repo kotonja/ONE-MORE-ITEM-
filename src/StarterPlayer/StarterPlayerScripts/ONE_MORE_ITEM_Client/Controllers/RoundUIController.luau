@@ -52,7 +52,7 @@ local ControllerMethods = {}
 ControllerMethods.__index = ControllerMethods
 
 local function requireGui(parent: Instance, name: string): GuiObject
-	local child = parent:FindFirstChild(name)
+	local child = parent:WaitForChild(name, 10)
 	if child == nil or not child:IsA("GuiObject") then
 		error(string.format("RoundUIController requires GuiObject %s.%s", parent:GetFullName(), name), 3)
 	end
@@ -60,7 +60,7 @@ local function requireGui(parent: Instance, name: string): GuiObject
 end
 
 local function requireLabel(parent: Instance, name: string): TextLabel
-	local child = parent:FindFirstChild(name)
+	local child = parent:WaitForChild(name, 10)
 	if child == nil or not child:IsA("TextLabel") then
 		error(string.format("RoundUIController requires TextLabel %s.%s", parent:GetFullName(), name), 3)
 	end
@@ -68,7 +68,7 @@ local function requireLabel(parent: Instance, name: string): TextLabel
 end
 
 local function requireButton(parent: Instance, name: string): TextButton
-	local child = parent:FindFirstChild(name)
+	local child = parent:WaitForChild(name, 10)
 	if child == nil or not child:IsA("TextButton") then
 		error(string.format("RoundUIController requires TextButton %s.%s", parent:GetFullName(), name), 3)
 	end

@@ -42,7 +42,7 @@ local ControllerMethods = {}
 ControllerMethods.__index = ControllerMethods
 
 local function requireInstance(parent: Instance, name: string): Instance
-	local child = parent:FindFirstChild(name)
+	local child = parent:WaitForChild(name, 10)
 	if child == nil then
 		error(string.format("WorldMotionController requires %s.%s", parent:GetFullName(), name), 3)
 	end
