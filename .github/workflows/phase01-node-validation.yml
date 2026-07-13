@@ -1,4 +1,4 @@
-name: Phase 01 Node Validation
+name: Phase 01 and Phase 02 Node Validation
 
 on:
   pull_request:
@@ -7,14 +7,14 @@ on:
   push:
     branches:
       - main
-      - codex/phase-01-grid-foundation
+      - 'codex/**'
 
 permissions:
   contents: read
 
 jobs:
-  phase01-node-validation:
-    name: Phase 01 Node Validation
+  node-validation:
+    name: Phase 01 and Phase 02 Node Validation
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -25,5 +25,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Run Studio synchronization smoke test
+      - name: Run Phase 01 Studio synchronization smoke test
         run: node tools/test_studio_blueprint.mjs
+
+      - name: Run Phase 02 typed instance authoring smoke test
+        run: node tools/test_phase02_blueprint.mjs

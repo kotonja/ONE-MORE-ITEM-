@@ -12,11 +12,13 @@
 ## Roblox Studio hierarchy and source control
 
 - Use the `ONE_MORE_ITEM` namespace under `ReplicatedStorage` and `ONE_MORE_ITEM_Server` under `ServerScriptService`.
-- Canonical Luau lives under `src/`; `studio/phase01.manifest.json` maps it into Studio. Generated blueprints under `.codex-cache/` are temporary.
+- Canonical Luau lives under `src/`; the source-controlled manifests under `studio/` map each phase into Studio. Generated blueprints under `.codex-cache/` are temporary.
 - Repository-to-Studio synchronization must be folder-first, deterministic, idempotent, and conflict-safe; it must never silently replace or destroy a wrong-class instance.
 - Never maintain a divergent Studio-only copy of a script.
 - Permanent UI is authored as real `StarterGui` instances. Do not build permanent UI at runtime.
 - Permanent map content is authored as real `Workspace` instances. Do not build the arena or permanent decoration at runtime.
+- Permanent networking instances and development templates are authored through the manifest as real `ReplicatedStorage` instances. Runtime scripts may bind or clone them but may not recreate them.
+- Treat `StarterPlayer.StarterPlayerScripts` as a built-in container, not a managed `Folder`; author children beneath it without replacing it.
 - Runtime creation is limited to temporary gameplay/cosmetic objects cloned from prepared templates.
 
 ## Luau and architecture
