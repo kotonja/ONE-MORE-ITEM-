@@ -11,6 +11,13 @@ type LayoutClass = ResponsiveLayout.LayoutClass
 type SafeInsets = ResponsiveLayout.SafeInsets
 type TargetName = ResponsiveLayout.TargetName
 
+type TweenProperty = "AnchorPoint" | "Position" | "Size"
+type GeometryTweens = {
+	AnchorPoint: Tween?,
+	Position: Tween?,
+	Size: Tween?,
+}
+
 export type Callbacks = {
 	BeforeApply: (panelPositions: { [GuiObject]: UDim2 }, buttonSizes: { [TextButton]: UDim2 }) -> (),
 	LayoutChanged: (layoutClass: LayoutClass) -> (),
@@ -30,7 +37,7 @@ type InternalController = Controller & {
 	_constraints: { [TargetName]: UISizeConstraint },
 	_callbacks: Callbacks,
 	_connections: { RBXScriptConnection },
-	_tweens: { [GuiObject]: Tween },
+	_tweens: { [GuiObject]: GeometryTweens },
 	_layout: Layout?,
 	_layoutClass: LayoutClass,
 	_signature: string?,
@@ -84,8 +91,16 @@ end
 
 local function activeTweenCount(self: InternalController): number
 	local count = 0
-	for _object in pairs(self._tweens) do
-		count += 1
+	for _, tweens in pairs(self._tweens) do
+		if tweens.AnchorPoint ~= nil then
+			count += 1
+		end
+		if tweens.Position ~= nil then
+			count += 1
+		end
+		if tweens.Size ~= nil then
+			count += 1
+		end
 	end
 	return count
 end
@@ -166,12 +181,38 @@ local function applyCompactMinimums(self: InternalController, layoutClass: Layou
 	end
 end
 
-local function cancelTween(self: InternalController, object: GuiObject)
-	local existing = self._tweens[object]
-	if existing ~= nil then
-		self._tweens[object] = nil
-		existing:Cancel()
+local function cancelTweens(self: InternalController, object: GuiObject)
+	local tweens = self._tweens[object]
+	if tweens == nil then
+		return
 	end
+	self._tweens[object] = nil
+	for _, tween in { tweens.AnchorPoint, tweens.Position, tweens.Size } do
+		if tween ~= nil then
+			tween:Cancel()
+		end
+	end
+end
+
+local function trackTween(
+	self: InternalController,
+	object: GuiObject,
+	tweens: GeometryTweens,
+	propertyName: TweenProperty,
+	tween: Tween
+)
+	tweens[propertyName] = tween
+	tween.Completed:Once(function()
+		if self._destroyed or self._tweens[object] ~= tweens or tweens[propertyName] ~= tween then
+			return
+		end
+		tweens[propertyName] = nil
+		if tweens.AnchorPoint == nil and tweens.Position == nil and tweens.Size == nil then
+			self._tweens[object] = nil
+		end
+		observe(self)
+	end)
+	tween:Play()
 end
 
 local function applyLayout(self: InternalController, layout: Layout)
@@ -192,29 +233,32 @@ local function applyLayout(self: InternalController, layout: Layout)
 	local instant = not self._hasApplied
 	for targetName, target in pairs(layout.Targets) do
 		local object = self._objects[targetName]
-		cancelTween(self, object)
+		cancelTweens(self, object)
 		if instant then
 			object.AnchorPoint = target.AnchorPoint
 			object.Position = target.Position
 			object.Size = target.Size
 		else
-			local tween = TweenService:Create(
-				object,
-				TweenInfo.new(PresentationTokens.Timing.Layout, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-				{
-					AnchorPoint = target.AnchorPoint,
-					Position = target.Position,
-					Size = target.Size,
-				}
+			local tweenInfo = TweenInfo.new(
+				PresentationTokens.Timing.Layout,
+				Enum.EasingStyle.Quart,
+				Enum.EasingDirection.Out
 			)
-			self._tweens[object] = tween
-			tween.Completed:Once(function()
-				if self._tweens[object] == tween then
-					self._tweens[object] = nil
-					observe(self)
-				end
-			end)
-			tween:Play()
+			local tweens: GeometryTweens = {
+				AnchorPoint = nil,
+				Position = nil,
+				Size = nil,
+			}
+			self._tweens[object] = tweens
+			trackTween(self, object, tweens, "AnchorPoint", TweenService:Create(object, tweenInfo, {
+				AnchorPoint = target.AnchorPoint,
+			}))
+			trackTween(self, object, tweens, "Position", TweenService:Create(object, tweenInfo, {
+				Position = target.Position,
+			}))
+			trackTween(self, object, tweens, "Size", TweenService:Create(object, tweenInfo, {
+				Size = target.Size,
+			}))
 		end
 	end
 	self._hasApplied = true
@@ -316,9 +360,12 @@ function ControllerMethods.Destroy(self: InternalController)
 		connection:Disconnect()
 	end
 	table.clear(self._connections)
-	for object, tween in pairs(self._tweens) do
-		self._tweens[object] = nil
-		tween:Cancel()
+	local activeObjects: { GuiObject } = {}
+	for object in pairs(self._tweens) do
+		table.insert(activeObjects, object)
+	end
+	for _, object in ipairs(activeObjects) do
+		cancelTweens(self, object)
 	end
 	observe(self)
 end

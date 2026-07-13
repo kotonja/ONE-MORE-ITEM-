@@ -263,24 +263,47 @@ local function emitMove(self: InternalController, direction: Direction)
 	end
 end
 
-local function dPadDirection(keyCode: Enum.KeyCode): Direction?
-	if keyCode == Enum.KeyCode.DPadUp then
-		return { X = 0, Z = -1 }
-	elseif keyCode == Enum.KeyCode.DPadDown then
-		return { X = 0, Z = 1 }
-	elseif keyCode == Enum.KeyCode.DPadLeft then
-		return { X = -1, Z = 0 }
-	elseif keyCode == Enum.KeyCode.DPadRight then
-		return { X = 1, Z = 0 }
-	end
-	return nil
-end
-
 local function handleDecisionNavigation(self: InternalController, horizontal: number)
 	if self._state ~= "Decision" or not isEnabled(self) or horizontal == 0 then
 		return
 	end
 	setSelection(self, if horizontal < 0 then "SHIP" else "ONE_MORE")
+end
+
+local function dispatchButtonAction(self: InternalController, action: ActionCommand?)
+	if action == "MOVE_UP" then
+		emitMove(self, { X = 0, Z = -1 })
+	elseif action == "MOVE_DOWN" then
+		emitMove(self, { X = 0, Z = 1 })
+	elseif action == "MOVE_LEFT" then
+		emitMove(self, { X = -1, Z = 0 })
+	elseif action == "MOVE_RIGHT" then
+		emitMove(self, { X = 1, Z = 0 })
+	elseif action == "ROTATE" then
+		self._callbacks.Rotate()
+	elseif action == "PLACE" then
+		self._callbacks.Place()
+	elseif action == "SELECT_SHIP" then
+		setSelection(self, "SHIP")
+	elseif action == "SELECT_ONE_MORE" then
+		setSelection(self, "ONE_MORE")
+	elseif action == "CONFIRM_SHIP" then
+		self._callbacks.Decision("SHIP")
+	elseif action == "CONFIRM_ONE_MORE" then
+		self._callbacks.Decision("ONE_MORE")
+	elseif action == "RESTART" then
+		self._callbacks.Restart()
+	end
+end
+
+local function resolveButtonAction(self: InternalController, keyCode: Enum.KeyCode): ActionCommand?
+	return GamepadInputController.ResolveButtonAction(
+		self._state,
+		self._assigned,
+		self._callbacks.IsPlacementPending(),
+		keyCode,
+		self._selectedAction
+	)
 end
 
 local function handleMoveAction(
@@ -316,14 +339,7 @@ local function handleMoveAction(
 		return Enum.ContextActionResult.Sink
 	end
 	if inputState == Enum.UserInputState.Begin then
-		local direction = dPadDirection(input.KeyCode)
-		if direction ~= nil then
-			if self._state == "Decision" and direction.X ~= 0 then
-				handleDecisionNavigation(self, direction.X)
-			elseif self._state == "AwaitingPlacement" then
-				emitMove(self, direction)
-			end
-		end
+		dispatchButtonAction(self, resolveButtonAction(self, input.KeyCode))
 	end
 	return Enum.ContextActionResult.Sink
 end
@@ -332,19 +348,13 @@ local function handleRotateAction(
 	self: InternalController,
 	_inputName: string,
 	inputState: Enum.UserInputState,
-	_input: InputObject
+	input: InputObject
 ): Enum.ContextActionResult
 	if not isEnabled(self) then
 		return Enum.ContextActionResult.Pass
 	end
-	if inputState == Enum.UserInputState.Begin
-		and GamepadInputController.IsPlacementInputEnabled(
-			self._state,
-			self._assigned,
-			self._callbacks.IsPlacementPending()
-		)
-	then
-		self._callbacks.Rotate()
+	if inputState == Enum.UserInputState.Begin then
+		dispatchButtonAction(self, resolveButtonAction(self, input.KeyCode))
 	end
 	return Enum.ContextActionResult.Sink
 end
@@ -353,7 +363,7 @@ local function handleConfirmAction(
 	self: InternalController,
 	_inputName: string,
 	inputState: Enum.UserInputState,
-	_input: InputObject
+	input: InputObject
 ): Enum.ContextActionResult
 	if not isEnabled(self) then
 		return Enum.ContextActionResult.Pass
@@ -361,17 +371,7 @@ local function handleConfirmAction(
 	if inputState ~= Enum.UserInputState.Begin then
 		return Enum.ContextActionResult.Sink
 	end
-	if GamepadInputController.IsPlacementInputEnabled(
-		self._state,
-		self._assigned,
-		self._callbacks.IsPlacementPending()
-	) then
-		self._callbacks.Place()
-	elseif self._state == "Decision" then
-		self._callbacks.Decision(self._selectedAction == "ONE_MORE" and "ONE_MORE" or "SHIP")
-	elseif self._state == "Results" then
-		self._callbacks.Restart()
-	end
+	dispatchButtonAction(self, resolveButtonAction(self, input.KeyCode))
 	return Enum.ContextActionResult.Sink
 end
 

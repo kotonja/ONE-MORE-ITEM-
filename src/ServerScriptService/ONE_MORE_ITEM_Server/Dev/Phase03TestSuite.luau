@@ -980,6 +980,30 @@ addSuite("Control cleanup and remote discipline", {
 		end,
 	},
 	{
+		Name = "late humanoid suppression rechecks assignment destruction and character identity",
+		Run = function()
+			expect(CharacterController.ShouldSuppressAutoRotate(true, false, true, true))
+			expect(not CharacterController.ShouldSuppressAutoRotate(false, false, true, true))
+			expect(not CharacterController.ShouldSuppressAutoRotate(true, true, true, true))
+			expect(not CharacterController.ShouldSuppressAutoRotate(true, false, false, true))
+			expect(not CharacterController.ShouldSuppressAutoRotate(true, false, true, false))
+		end,
+	},
+	{
+		Name = "auto rotate lease restores the exact prior value and does not retain a released state",
+		Run = function()
+			local previouslyDisabled = CharacterController.newAutoRotateLeaseState()
+			expectEqual(CharacterController.BeginAutoRotateLease(previouslyDisabled, false), false)
+			expectEqual(CharacterController.BeginAutoRotateLease(previouslyDisabled, true), false)
+			expectEqual(CharacterController.ReleaseAutoRotateLease(previouslyDisabled), false)
+			expectEqual(CharacterController.ReleaseAutoRotateLease(previouslyDisabled), nil)
+
+			local previouslyEnabled = CharacterController.newAutoRotateLeaseState()
+			expectEqual(CharacterController.BeginAutoRotateLease(previouslyEnabled, true), false)
+			expectEqual(CharacterController.ReleaseAutoRotateLease(previouslyEnabled), true)
+		end,
+	},
+	{
 		Name = "destroy restores controls acquired by the assignment lease",
 		Run = function()
 			local state = CharacterController.newControlLeaseState()
@@ -1011,6 +1035,32 @@ addSuite("Control cleanup and remote discipline", {
 			expectEqual(InputController.NetworkRequestForAction("SHIP"), "DecisionRequest")
 			expectEqual(InputController.NetworkRequestForAction("ONE_MORE"), "DecisionRequest")
 			expectEqual(InputController.NetworkRequestForAction("RESTART"), "RestartRequest")
+		end,
+	},
+	{
+		Name = "runtime network dispatcher invokes only the mapped injected handler",
+		Run = function()
+			local calls: { string } = {}
+			local callbacks: InputController.NetworkCallbacks = {
+				Place = function()
+					table.insert(calls, "PLACE")
+				end,
+				Decision = function(choice: string)
+					table.insert(calls, choice)
+				end,
+				Restart = function()
+					table.insert(calls, "RESTART")
+				end,
+			}
+
+			expectEqual(InputController.DispatchNetworkAction(callbacks, "MOVE"), nil)
+			expectEqual(InputController.DispatchNetworkAction(callbacks, "ROTATE"), nil)
+			expectEqual(#calls, 0, "Local-only actions must not reach a network handler")
+			expectEqual(InputController.DispatchNetworkAction(callbacks, "PLACE"), "PlaceItemRequest")
+			expectEqual(InputController.DispatchNetworkAction(callbacks, "SHIP"), "DecisionRequest")
+			expectEqual(InputController.DispatchNetworkAction(callbacks, "ONE_MORE"), "DecisionRequest")
+			expectEqual(InputController.DispatchNetworkAction(callbacks, "RESTART"), "RestartRequest")
+			expectEqual(table.concat(calls, ","), "PLACE,SHIP,ONE_MORE,RESTART")
 		end,
 	},
 	{

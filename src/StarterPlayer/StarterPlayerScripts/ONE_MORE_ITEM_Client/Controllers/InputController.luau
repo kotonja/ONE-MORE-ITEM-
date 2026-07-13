@@ -17,6 +17,12 @@ type SelectedAction = GamepadInputController.SelectedAction
 export type RoutedAction = "MOVE" | "POINTER" | "ROTATE" | "PLACE" | "SHIP" | "ONE_MORE" | "RESTART"
 export type NetworkRequest = "PlaceItemRequest" | "DecisionRequest" | "RestartRequest"
 
+export type NetworkCallbacks = {
+	Place: () -> (),
+	Decision: (choice: string) -> (),
+	Restart: () -> (),
+}
+
 export type Callbacks = {
 	Move: (deltaX: number, deltaZ: number) -> (),
 	Rotate: () -> (),
@@ -84,6 +90,18 @@ function InputController.NetworkRequestForAction(action: RoutedAction): NetworkR
 	return nil
 end
 
+function InputController.DispatchNetworkAction(callbacks: NetworkCallbacks, action: RoutedAction): NetworkRequest?
+	local request = InputController.NetworkRequestForAction(action)
+	if request == "PlaceItemRequest" then
+		callbacks.Place()
+	elseif request == "DecisionRequest" then
+		callbacks.Decision(if action == "ONE_MORE" then "ONE_MORE" else "SHIP")
+	elseif request == "RestartRequest" then
+		callbacks.Restart()
+	end
+	return request
+end
+
 local function isTyping(): boolean
 	return UserInputService:GetFocusedTextBox() ~= nil
 end
@@ -122,6 +140,10 @@ local function awaitingPlacement(self: InternalController): boolean
 	return self._assigned
 		and currentState(self) == "AwaitingPlacement"
 		and not self._callbacks.IsPlacementPending()
+end
+
+local function dispatchNetworkAction(self: InternalController, action: RoutedAction): NetworkRequest?
+	return InputController.DispatchNetworkAction(self._callbacks, action)
 end
 
 local function observe(self: InternalController)
@@ -180,20 +202,20 @@ local function handleKeyboardMouse(self: InternalController, input: InputObject,
 		elseif keyCode == Enum.KeyCode.R then
 			self._callbacks.Rotate()
 		elseif keyCode == Enum.KeyCode.Space then
-			self._callbacks.Place()
+			dispatchNetworkAction(self, "PLACE")
 			refreshContexts(self)
 		elseif input.UserInputType == Enum.UserInputType.MouseButton1 and not isPointerOverButton() then
-			self._callbacks.Place()
+			dispatchNetworkAction(self, "PLACE")
 			refreshContexts(self)
 		end
 	elseif state == "Decision" then
 		if keyCode == Enum.KeyCode.Q then
-			self._callbacks.Decision("SHIP")
+			dispatchNetworkAction(self, "SHIP")
 		elseif keyCode == Enum.KeyCode.E then
-			self._callbacks.Decision("ONE_MORE")
+			dispatchNetworkAction(self, "ONE_MORE")
 		end
 	elseif state == "Results" and (keyCode == Enum.KeyCode.Return or keyCode == Enum.KeyCode.KeypadEnter) then
-		self._callbacks.Restart()
+		dispatchNetworkAction(self, "RESTART")
 	end
 end
 
@@ -213,23 +235,23 @@ local function bindAuthoredButtons(self: InternalController, buttons: Buttons)
 	end)
 	connect(buttons.Place, function()
 		if awaitingPlacement(self) then
-			self._callbacks.Place()
+			dispatchNetworkAction(self, "PLACE")
 			refreshContexts(self)
 		end
 	end)
 	connect(buttons.Ship, function()
 		if currentState(self) == "Decision" then
-			self._callbacks.Decision("SHIP")
+			dispatchNetworkAction(self, "SHIP")
 		end
 	end)
 	connect(buttons.OneMore, function()
 		if currentState(self) == "Decision" then
-			self._callbacks.Decision("ONE_MORE")
+			dispatchNetworkAction(self, "ONE_MORE")
 		end
 	end)
 	connect(buttons.PackAgain, function()
 		if currentState(self) == "Results" then
-			self._callbacks.Restart()
+			dispatchNetworkAction(self, "RESTART")
 		end
 	end)
 end
@@ -272,11 +294,19 @@ function InputController.new(
 		Move = callbacks.Move,
 		Rotate = callbacks.Rotate,
 		Place = function()
-			callbacks.Place()
+			dispatchNetworkAction(self, "PLACE")
 			refreshContexts(self)
 		end,
-		Decision = callbacks.Decision,
-		Restart = callbacks.Restart,
+		Decision = function(choice: string)
+			if choice == "SHIP" then
+				dispatchNetworkAction(self, "SHIP")
+			elseif choice == "ONE_MORE" then
+				dispatchNetworkAction(self, "ONE_MORE")
+			end
+		end,
+		Restart = function()
+			dispatchNetworkAction(self, "RESTART")
+		end,
 		IsPlacementPending = callbacks.IsPlacementPending,
 		SelectionChanged = function(action: SelectedAction?)
 			self._selectedAction = action

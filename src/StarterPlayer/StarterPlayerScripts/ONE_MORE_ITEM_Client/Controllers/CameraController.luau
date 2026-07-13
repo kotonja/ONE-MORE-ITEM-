@@ -114,13 +114,16 @@ local function retarget(self: InternalController)
 	local station = self._station
 	local focus = self._focus
 	local camera = self._camera
-	if station == nil or focus == nil or camera == nil then
+	local transition = CameraController.ResolveTransition(
+		station ~= nil and focus ~= nil and camera ~= nil,
+		self._anchorName,
+		self._layoutClass,
+		self._inputMode
+	)
+	if transition ~= "RETARGET" or station == nil or focus == nil or camera == nil then
 		return
 	end
 	local anchorName = CameraController.SelectAnchorName(self._layoutClass, self._inputMode)
-	if self._anchorName == anchorName then
-		return
-	end
 	local anchor = requirePart(station, anchorName)
 	local target = targetFrom(anchor, focus)
 	self._anchorName = anchorName
@@ -166,6 +169,23 @@ function ControllerMethods.Activate(self: InternalController, station: Model)
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		error("CameraController cannot activate without Workspace.CurrentCamera", 2)
+	end
+
+	local activeForStation = self._camera == camera and self._station == station and self._focus ~= nil
+	local transition = CameraController.ResolveTransition(
+		true,
+		if activeForStation then self._anchorName else nil,
+		self._layoutClass,
+		self._inputMode
+	)
+	if transition == "UNCHANGED" then
+		return
+	elseif transition == "RETARGET" then
+		self._camera = camera
+		self._station = station
+		self._focus = requirePart(station, "CameraFocus")
+		retarget(self)
+		return
 	end
 
 	local anchorName = CameraController.SelectAnchorName(self._layoutClass, self._inputMode)

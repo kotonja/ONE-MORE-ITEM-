@@ -20,6 +20,11 @@ export type ControlLeaseState = {
 	DisabledByUs: boolean,
 }
 
+export type AutoRotateLeaseState = {
+	Active: boolean,
+	Previous: boolean,
+}
+
 export type Controller = {
 	SetAssigned: (self: Controller, assigned: boolean) -> (),
 	Destroy: (self: Controller) -> (),
@@ -29,7 +34,11 @@ type InternalController = Controller & {
 	_controls: PlayerControls?,
 	_controlLease: ControlLeaseState,
 	_assigned: boolean,
-	_autoRotatePrevious: { [Humanoid]: boolean },
+	_autoRotateHumanoid: Humanoid?,
+	_autoRotateLease: AutoRotateLeaseState,
+	_trackedCharacter: Model?,
+	_characterChildAddedConnection: RBXScriptConnection?,
+	_characterChildRemovedConnection: RBXScriptConnection?,
 	_characterConnection: RBXScriptConnection,
 	_bound: boolean,
 	_destroyed: boolean,
@@ -79,6 +88,40 @@ function CharacterController.DestroyControlLease(state: ControlLeaseState): Cont
 	return CharacterController.TransitionControlLease(state, false, false)
 end
 
+function CharacterController.newAutoRotateLeaseState(): AutoRotateLeaseState
+	return {
+		Active = false,
+		Previous = false,
+	}
+end
+
+function CharacterController.BeginAutoRotateLease(state: AutoRotateLeaseState, current: boolean): boolean
+	if not state.Active then
+		state.Active = true
+		state.Previous = current
+	end
+	return false
+end
+
+function CharacterController.ReleaseAutoRotateLease(state: AutoRotateLeaseState): boolean?
+	if not state.Active then
+		return nil
+	end
+	local previous = state.Previous
+	state.Active = false
+	state.Previous = false
+	return previous
+end
+
+function CharacterController.ShouldSuppressAutoRotate(
+	assigned: boolean,
+	destroyed: boolean,
+	trackedCharacterMatches: boolean,
+	currentCharacterMatches: boolean
+): boolean
+	return assigned and not destroyed and trackedCharacterMatches and currentCharacterMatches
+end
+
 local function sinkAction(
 	_actionName: string,
 	_inputState: Enum.UserInputState,
@@ -87,30 +130,80 @@ local function sinkAction(
 	return Enum.ContextActionResult.Sink
 end
 
-local function disableAutoRotate(self: InternalController, character: Model?)
-	if character == nil then
-		return
-	end
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if humanoid ~= nil then
-		if self._autoRotatePrevious[humanoid] == nil then
-			self._autoRotatePrevious[humanoid] = humanoid.AutoRotate
-		end
-		humanoid.AutoRotate = false
+local function restoreTrackedAutoRotate(self: InternalController)
+	local humanoid = self._autoRotateHumanoid
+	self._autoRotateHumanoid = nil
+	local previous = CharacterController.ReleaseAutoRotateLease(self._autoRotateLease)
+	if humanoid ~= nil and previous ~= nil then
+		local targetHumanoid = humanoid :: Humanoid
+		local restoreValue = previous :: boolean
+		pcall(function()
+			targetHumanoid.AutoRotate = restoreValue
+		end)
 	end
 end
 
-local function restoreAutoRotate(self: InternalController, character: Model?)
-	if character ~= nil then
-		local humanoid = character:FindFirstChildOfClass("Humanoid")
-		if humanoid ~= nil then
-			local previous = self._autoRotatePrevious[humanoid]
-			if previous ~= nil then
-				humanoid.AutoRotate = previous
-			end
-		end
+local function disconnectCharacterTracking(self: InternalController)
+	self._trackedCharacter = nil
+	local addedConnection = self._characterChildAddedConnection
+	if addedConnection ~= nil then
+		addedConnection:Disconnect()
+		self._characterChildAddedConnection = nil
 	end
-	table.clear(self._autoRotatePrevious)
+	local removedConnection = self._characterChildRemovedConnection
+	if removedConnection ~= nil then
+		removedConnection:Disconnect()
+		self._characterChildRemovedConnection = nil
+	end
+	restoreTrackedAutoRotate(self)
+end
+
+local function trySuppressAutoRotate(self: InternalController, character: Model, humanoid: Humanoid)
+	local player = Players.LocalPlayer
+	if not CharacterController.ShouldSuppressAutoRotate(
+		self._assigned,
+		self._destroyed,
+		self._trackedCharacter == character,
+		player.Character == character
+	) or humanoid.Parent ~= character then
+		return
+	end
+	if self._autoRotateHumanoid ~= humanoid then
+		restoreTrackedAutoRotate(self)
+		if not CharacterController.ShouldSuppressAutoRotate(
+			self._assigned,
+			self._destroyed,
+			self._trackedCharacter == character,
+			player.Character == character
+		) or humanoid.Parent ~= character then
+			return
+		end
+		self._autoRotateHumanoid = humanoid
+	end
+	humanoid.AutoRotate = CharacterController.BeginAutoRotateLease(self._autoRotateLease, humanoid.AutoRotate)
+end
+
+local function trackCharacterAutoRotate(self: InternalController, character: Model?)
+	disconnectCharacterTracking(self)
+	local player = Players.LocalPlayer
+	if character == nil or self._destroyed or not self._assigned or player.Character ~= character then
+		return
+	end
+	self._trackedCharacter = character
+	self._characterChildAddedConnection = character.ChildAdded:Connect(function(child: Instance)
+		if child:IsA("Humanoid") then
+			trySuppressAutoRotate(self, character, child)
+		end
+	end)
+	self._characterChildRemovedConnection = character.ChildRemoved:Connect(function(child: Instance)
+		if self._trackedCharacter == character and self._autoRotateHumanoid == child then
+			restoreTrackedAutoRotate(self)
+		end
+	end)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid ~= nil then
+		trySuppressAutoRotate(self, character, humanoid)
+	end
 end
 
 local function resolvePlayerControls(): PlayerControls?
@@ -209,17 +302,22 @@ function CharacterController.new(): Controller
 		_controls = resolvePlayerControls(),
 		_controlLease = CharacterController.newControlLeaseState(),
 		_assigned = false,
-		_autoRotatePrevious = {},
+		_autoRotateHumanoid = nil,
+		_autoRotateLease = CharacterController.newAutoRotateLeaseState(),
+		_trackedCharacter = nil,
+		_characterChildAddedConnection = nil,
+		_characterChildRemovedConnection = nil,
 		_bound = false,
 		_destroyed = false,
 		_characterConnection = player.CharacterAdded:Connect(function(character: Model)
-			if self._assigned then
-				local controls = self._controls
-				if controls ~= nil and CharacterController.RespawnControlLease(self._controlLease) == "DISABLE" then
-					controls:Disable()
-				end
-				disableAutoRotate(self, character)
+			if self._destroyed or not self._assigned or player.Character ~= character then
+				return
 			end
+			local controls = self._controls
+			if controls ~= nil and CharacterController.RespawnControlLease(self._controlLease) == "DISABLE" then
+				controls:Disable()
+			end
+			trackCharacterAutoRotate(self, character)
 		end),
 	}, ControllerMethods) :: InternalController
 	return self
@@ -233,11 +331,11 @@ function ControllerMethods.SetAssigned(self: InternalController, assigned: boole
 	if assigned then
 		disablePlayerControls(self)
 		bindFallback(self)
-		disableAutoRotate(self, Players.LocalPlayer.Character)
+		trackCharacterAutoRotate(self, Players.LocalPlayer.Character)
 	else
 		unbindFallback(self)
 		restorePlayerControls(self)
-		restoreAutoRotate(self, Players.LocalPlayer.Character)
+		disconnectCharacterTracking(self)
 	end
 end
 
@@ -248,6 +346,7 @@ function ControllerMethods.Destroy(self: InternalController)
 	self:SetAssigned(false)
 	self._destroyed = true
 	self._characterConnection:Disconnect()
+	disconnectCharacterTracking(self)
 end
 
 return table.freeze(CharacterController)
