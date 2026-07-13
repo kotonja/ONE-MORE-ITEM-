@@ -309,6 +309,34 @@ try {
     }
   });
 
+  criterion("zero-value placement timeouts remain failure results", () => {
+    const roundUiSource = fs.readFileSync(
+      path.resolve(repositoryRoot, "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/RoundUIController.luau"),
+      "utf8",
+    );
+    assert.match(roundUiSource, /FAILURE_RESULT_REASONS[\s\S]*PLACEMENT_TIMEOUT\s*=\s*true/);
+    assert.match(roundUiSource, /local function isFailureResult\(snapshot: Snapshot\): boolean/);
+    assert.match(roundUiSource, /snapshot\.State == ["']Failing["'] or snapshot\.ResultLostValue > 0/);
+    assert.match(roundUiSource, /local failedResult = isFailureResult\(snapshot\)/);
+    assert.doesNotMatch(roundUiSource, /local failedResult = snapshot\.ResultLostValue > 0/);
+  });
+
+  criterion("terminal placement shipping counts the authoritative result value", () => {
+    const roundUiSource = fs.readFileSync(
+      path.resolve(repositoryRoot, "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/RoundUIController.luau"),
+      "utf8",
+    );
+    assert.match(
+      roundUiSource,
+      /local successfulShipping = state == ["']Shipping["'] and hasStation and not failedResult and snapshot\.ResultValue > 0/,
+    );
+    assert.match(
+      roundUiSource,
+      /local shipmentDisplayTarget = if successfulShipping then snapshot\.ResultValue else snapshot\.ShipmentValue/,
+    );
+    assert.match(roundUiSource, /["']ShipmentValue["'],\s*shipmentDisplayTarget,\s*deciding or successfulShipping/);
+  });
+
   criterion("client scripts use StarterPlayerScripts", () => {
     const clientScripts = manifest.scripts.filter((entry) => entry.path.startsWith("StarterPlayer."));
     assert.ok(clientScripts.length >= 10, "Expected the client bootstrap and focused controllers");

@@ -80,6 +80,9 @@ local SESSION_COUNT_MAX_DURATION = 0.80
 local RESULT_COUNT_DURATION = 0.30
 local SHIPMENT_FULL_DURATION_DIFFERENCE = 100
 local SESSION_FULL_DURATION_DIFFERENCE = 250
+local FAILURE_RESULT_REASONS: { [string]: boolean } = table.freeze({
+	PLACEMENT_TIMEOUT = true,
+})
 
 local function requireGui(parent: Instance, name: string): GuiObject
 	local child = parent:WaitForChild(name, 10)
@@ -336,6 +339,14 @@ local function formatReason(reason: string?): string
 	return string.gsub(reason, "_", " ")
 end
 
+local function isFailureResult(snapshot: Snapshot): boolean
+	if snapshot.State == "Failing" or snapshot.ResultLostValue > 0 then
+		return true
+	end
+	local reason = snapshot.ResultReason
+	return reason ~= nil and FAILURE_RESULT_REASONS[reason] == true
+end
+
 function RoundUIController.new(gui: ScreenGui, resolveItemName: (itemId: string) -> string): Controller
 	local root = requireGui(gui, "Root")
 	local currentItemCard = requireGui(root, "CurrentItemCard")
@@ -485,13 +496,15 @@ function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Sna
 	local deciding = state == "Decision" and hasStation
 	local results = state == "Results" and hasStation
 	local spectator = not hasStation
-	local failedResult = snapshot.ResultLostValue > 0
+	local failedResult = isFailureResult(snapshot)
+	local successfulShipping = state == "Shipping" and hasStation and not failedResult and snapshot.ResultValue > 0
+	local shipmentDisplayTarget = if successfulShipping then snapshot.ResultValue else snapshot.ShipmentValue
 
 	setCountTarget(
 		self,
 		"ShipmentValue",
-		snapshot.ShipmentValue,
-		deciding,
+		shipmentDisplayTarget,
+		deciding or successfulShipping,
 		spectator or state == "Preparing" or state == "Failing" or failedResult,
 		SHIPMENT_COUNT_MIN_DURATION,
 		SHIPMENT_COUNT_MAX_DURATION,
