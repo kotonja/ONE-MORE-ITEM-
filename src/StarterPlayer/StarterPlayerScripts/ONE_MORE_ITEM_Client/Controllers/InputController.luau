@@ -65,6 +65,8 @@ local function pointerRay(): Ray?
 		return nil
 	end
 	local pointer = UserInputService:GetMouseLocation()
+	-- GetMouseLocation and ViewportPointToRay use the same inset-adjusted
+	-- viewport coordinates. Pairing them avoids applying the GUI inset twice.
 	return camera:ViewportPointToRay(pointer.X, pointer.Y)
 end
 
