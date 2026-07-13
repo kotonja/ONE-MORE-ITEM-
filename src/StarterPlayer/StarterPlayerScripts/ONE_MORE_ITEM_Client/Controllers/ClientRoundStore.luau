@@ -112,11 +112,13 @@ function StoreMethods.ApplySnapshot(self: InternalStore, snapshot: Snapshot): bo
 	end
 
 	local previous = self._snapshot
-	if previous ~= nil
-		and previous.RoundId == snapshot.RoundId
-		and snapshot.StateVersion <= previous.StateVersion
-	then
-		return false
+	if previous ~= nil then
+		if snapshot.RoundId < previous.RoundId then
+			return false
+		end
+		if snapshot.RoundId == previous.RoundId and snapshot.StateVersion <= previous.StateVersion then
+			return false
+		end
 	end
 
 	local copied = copySnapshot(snapshot)
