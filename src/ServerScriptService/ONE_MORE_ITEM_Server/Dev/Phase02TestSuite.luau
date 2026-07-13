@@ -1,6 +1,7 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterPlayer = game:GetService("StarterPlayer")
 
 local Root = ReplicatedStorage:WaitForChild("ONE_MORE_ITEM")
 local GameConfig = require(Root.Shared.Config.GameConfig)
@@ -15,6 +16,31 @@ local RoundMath = require(Root.Shared.Round.RoundMath)
 local GridWorldTransform = require(Root.Shared.World.GridWorldTransform)
 local DevelopmentItemRenderer = require(Root.Shared.World.DevelopmentItemRenderer)
 
+local ClientRoundStore = require(
+	StarterPlayer:WaitForChild("StarterPlayerScripts")
+		:WaitForChild("ONE_MORE_ITEM_Client")
+		:WaitForChild("Controllers")
+		:WaitForChild("ClientRoundStore")
+)
+local PlacementController = require(
+	StarterPlayer:WaitForChild("StarterPlayerScripts")
+		:WaitForChild("ONE_MORE_ITEM_Client")
+		:WaitForChild("Controllers")
+		:WaitForChild("PlacementController")
+)
+local PresentationTokens = require(
+	StarterPlayer:WaitForChild("StarterPlayerScripts")
+		:WaitForChild("ONE_MORE_ITEM_Client")
+		:WaitForChild("Controllers")
+		:WaitForChild("PresentationTokens")
+)
+local WorldMotionController = require(
+	StarterPlayer:WaitForChild("StarterPlayerScripts")
+		:WaitForChild("ONE_MORE_ITEM_Client")
+		:WaitForChild("Controllers")
+		:WaitForChild("WorldMotionController")
+)
+
 local PlacementService = require(script.Parent.Parent.Services.PlacementService)
 local RequestRateLimiter = require(script.Parent.Parent.Services.RequestRateLimiter)
 local RoundService = require(script.Parent.Parent.Services.RoundService)
@@ -26,6 +52,8 @@ type Cell = GridTypes.Cell
 type Grid = GridTypes.Grid
 type Placement = GridTypes.Placement
 type RoundRecord = RoundTypes.RoundRecord
+type ClientSnapshot = ClientRoundStore.Snapshot
+type ClientCell = ClientRoundStore.Cell
 
 type TestCase = {
 	Name: string,
@@ -783,6 +811,115 @@ addSuite("Round state", {
 	},
 })
 
+local function makeClientSnapshot(roundId: number, stateVersion: number): ClientSnapshot
+	return {
+		RoundId = roundId,
+		StateVersion = stateVersion,
+		State = "AwaitingPlacement",
+		StationId = "station_01",
+		CurrentItemId = "parcel",
+		CurrentShapeId = "single_cube",
+		NextItemId = nil,
+		NextShapeId = nil,
+		NextDifficulty = nil,
+		OccupiedCells = { { X = 1, Y = 0, Z = 2 } },
+		ItemCount = 1,
+		BaseValueSum = 15,
+		ShipmentValue = 15,
+		PossibleNextShipmentValue = 0,
+		CurrentMultiplier = 1,
+		SessionBank = 0,
+		PlacementDeadline = 130,
+		DecisionDeadline = nil,
+		ResultReason = nil,
+		ResultValue = 0,
+		ResultLostValue = 0,
+	}
+end
+
+addSuite("Client round store", {
+	{
+		Name = "older RoundId arriving late is rejected",
+		Run = function()
+			local store = ClientRoundStore.new()
+			expect(store:ApplySnapshot(makeClientSnapshot(8, 4)), "Initial snapshot should apply")
+			expect(
+				not store:ApplySnapshot(makeClientSnapshot(7, 99)),
+				"A lower RoundId must reject even when its StateVersion is higher"
+			)
+			local current = store:GetSnapshot() :: ClientSnapshot
+			expectEqual(current.RoundId, 8)
+			expectEqual(current.StateVersion, 4)
+			store:Destroy()
+		end,
+	},
+	{
+		Name = "equal RoundId and equal StateVersion is rejected",
+		Run = function()
+			local store = ClientRoundStore.new()
+			expect(store:ApplySnapshot(makeClientSnapshot(8, 4)), "Initial snapshot should apply")
+			expect(
+				not store:ApplySnapshot(makeClientSnapshot(8, 4)),
+				"A duplicate StateVersion must reject"
+			)
+			local current = store:GetSnapshot() :: ClientSnapshot
+			expectEqual(current.RoundId, 8)
+			expectEqual(current.StateVersion, 4)
+			store:Destroy()
+		end,
+	},
+	{
+		Name = "equal RoundId and lower StateVersion is rejected",
+		Run = function()
+			local store = ClientRoundStore.new()
+			expect(store:ApplySnapshot(makeClientSnapshot(8, 4)), "Initial snapshot should apply")
+			expect(
+				not store:ApplySnapshot(makeClientSnapshot(8, 3)),
+				"A lower StateVersion in the current round must reject"
+			)
+			local current = store:GetSnapshot() :: ClientSnapshot
+			expectEqual(current.RoundId, 8)
+			expectEqual(current.StateVersion, 4)
+			store:Destroy()
+		end,
+	},
+	{
+		Name = "higher RoundId with reset StateVersion is accepted",
+		Run = function()
+			local store = ClientRoundStore.new()
+			expect(store:ApplySnapshot(makeClientSnapshot(8, 12)), "Initial snapshot should apply")
+			expect(
+				store:ApplySnapshot(makeClientSnapshot(9, 0)),
+				"A newer round must accept when its StateVersion restarts at zero"
+			)
+			local current = store:GetSnapshot() :: ClientSnapshot
+			expectEqual(current.RoundId, 9)
+			expectEqual(current.StateVersion, 0)
+			store:Destroy()
+		end,
+	},
+	{
+		Name = "snapshot mutation remains isolated from stored data",
+		Run = function()
+			local store = ClientRoundStore.new()
+			local source = makeClientSnapshot(8, 4)
+			expect(store:ApplySnapshot(source), "Snapshot should apply")
+
+			source.State = "Results"
+			source.OccupiedCells[1].X = 4
+			table.insert(source.OccupiedCells, { X = 3, Y = 2, Z = 1 })
+
+			local current = store:GetSnapshot() :: ClientSnapshot
+			expectEqual(current.State, "AwaitingPlacement")
+			expectEqual(#current.OccupiedCells, 1)
+			expectEqual(current.OccupiedCells[1].X, 1)
+			expectEqual(current.OccupiedCells[1].Y, 0)
+			expectEqual(current.OccupiedCells[1].Z, 2)
+			store:Destroy()
+		end,
+	},
+})
+
 addSuite("Serialization", {
 	{
 		Name = "snapshot cells are independent from server grid",
@@ -983,6 +1120,541 @@ addSuite("Rate limiting", {
 			limiter:Check(1, "ClientReadyRequest", 1)
 			limiter:Check(1, "ClientReadyRequest", 1)
 			expect(limiter:Check(1, "ClientReadyRequest", 2.01), "Expired requests should leave the window")
+		end,
+	},
+})
+
+type ClientMotionFixture = {
+	Station: Model,
+	RuntimePresentation: Folder,
+	PlacedItems: Folder,
+	PlacedBlock: BasePart,
+	PresentationPoint: BasePart,
+	Template: BasePart,
+}
+
+type PlacementCallbackLog = {
+	ImpactCount: number,
+	RejectedCount: number,
+	AcceptedResponseCount: number,
+}
+
+type PendingPlacementFixture = {
+	RoundId: number,
+	ClientSequence: number,
+	Cells: { ClientCell },
+	ImpactPosition: Vector3,
+	Heavy: boolean,
+	ResponseReceived: boolean,
+	SnapshotAccepted: boolean,
+	VisualCompleted: boolean,
+	DeferredSnapshot: ClientSnapshot?,
+}
+
+type InspectablePlacementController = PlacementController.Controller & {
+	_pendingPlacement: PendingPlacementFixture?,
+	_acceptedCorrelations: { [string]: boolean },
+	_acceptedCorrelationOrder: { string },
+	_ghost: Model?,
+	_originX: number,
+	_originZ: number,
+	_rotationIndex: number,
+}
+
+local function makeClientMotionFixture(): ClientMotionFixture
+	local station = Instance.new("Model")
+	station.Name = "ClientMotionFixture"
+
+	local crate = Instance.new("Folder")
+	crate.Name = "Crate"
+	crate.Parent = station
+
+	local gridOrigin = Instance.new("Part")
+	gridOrigin.Name = "GridOrigin"
+	gridOrigin.Anchored = true
+	gridOrigin.Size = Vector3.new(0.25, 0.25, 0.25)
+	gridOrigin.CFrame = CFrame.new(0, 2, 0)
+	gridOrigin.Parent = crate
+
+	local lid = Instance.new("Part")
+	lid.Name = "Lid"
+	lid.Anchored = true
+	lid.Size = Vector3.new(11, 0.5, 11)
+	lid.CFrame = CFrame.new(0, 10.5, 0)
+	lid.Color = Color3.fromRGB(22, 33, 44)
+	lid:SetAttribute("ClosedOffsetY", 2)
+	lid.Parent = crate
+
+	local gridTiles = Instance.new("Folder")
+	gridTiles.Name = "GridTiles"
+	gridTiles.Parent = crate
+	for x = 0, PresentationTokens.Grid.Width - 1 do
+		for z = 0, PresentationTokens.Grid.Depth - 1 do
+			local tile = Instance.new("Part")
+			tile.Name = string.format("Cell_%d_%d", x, z)
+			tile.Anchored = true
+			tile.Size = Vector3.new(1.8, 0.1, 1.8)
+			tile.CFrame = CFrame.new(x * PresentationTokens.Grid.CellSize, 1.8, z * PresentationTokens.Grid.CellSize)
+			tile.Color = Color3.fromRGB(30, 43, 55)
+			tile.Parent = gridTiles
+		end
+	end
+
+	local controlConsole = Instance.new("Folder")
+	controlConsole.Name = "ControlConsole"
+	controlConsole.Parent = station
+	for index, name in ipairs({ "RotateButton", "PlaceButton", "ShipButton", "OneMoreButton" }) do
+		local button = Instance.new("Part")
+		button.Name = name
+		button.Anchored = true
+		button.Size = Vector3.new(1.5, 0.5, 1.5)
+		button.CFrame = CFrame.new((index - 1) * 2, 1, -3)
+		button.Color = Color3.fromRGB(34, 211, 230)
+		button.Material = Enum.Material.Metal
+		button.Parent = controlConsole
+	end
+
+	local presentationPoint = Instance.new("Part")
+	presentationPoint.Name = "PresentationPoint"
+	presentationPoint.Anchored = true
+	presentationPoint.Size = Vector3.new(3, 0.5, 3)
+	presentationPoint.CFrame = CFrame.new(0, 7, -4)
+	presentationPoint.Color = Color3.fromRGB(76, 89, 103)
+	presentationPoint.Material = Enum.Material.Metal
+	presentationPoint.Parent = station
+
+	local placedItems = Instance.new("Folder")
+	placedItems.Name = "PlacedItems"
+	placedItems.Parent = station
+	local placedBlock = Instance.new("Part")
+	placedBlock.Name = "PlacedFixture"
+	placedBlock.Anchored = true
+	placedBlock.Size = Vector3.new(2, 2, 2)
+	placedBlock.CFrame = CFrame.new(2, 3, 2)
+	placedBlock.LocalTransparencyModifier = 0.35
+	placedBlock.Parent = placedItems
+
+	local runtimePresentation = Instance.new("Folder")
+	runtimePresentation.Name = "RuntimePresentation"
+	runtimePresentation.Parent = station
+
+	local template = Instance.new("Part")
+	template.Name = "DevelopmentItemTemplate"
+	template.Anchored = true
+	template.Size = Vector3.new(1.8, 1.8, 1.8)
+
+	return {
+		Station = station,
+		RuntimePresentation = runtimePresentation,
+		PlacedItems = placedItems,
+		PlacedBlock = placedBlock,
+		PresentationPoint = presentationPoint,
+		Template = template,
+	}
+end
+
+local function destroyClientMotionFixture(fixture: ClientMotionFixture)
+	fixture.Template:Destroy()
+	fixture.Station:Destroy()
+end
+
+local function countNamedChildren(parent: Instance, name: string): number
+	local count = 0
+	for _, child in ipairs(parent:GetChildren()) do
+		if child.Name == name then
+			count += 1
+		end
+	end
+	return count
+end
+
+local function makePlacementCallbacks(log: PlacementCallbackLog): PlacementController.Callbacks
+	return {
+		FitChanged = function(_valid: boolean?, _x: number?, _y: number?, _z: number?) end,
+		GridFeedback = function(_cells: { ClientCell }, _valid: boolean) end,
+		ClearGridFeedback = function() end,
+		ButtonPressed = function(_action: string) end,
+		PlacementImpact = function(_position: Vector3, _heavy: boolean)
+			log.ImpactCount += 1
+		end,
+		ServerResponse = function(_reason: string, accepted: boolean)
+			if accepted then
+				log.AcceptedResponseCount += 1
+			end
+		end,
+		Rejected = function()
+			log.RejectedCount += 1
+		end,
+		Observability = function(_valid: boolean?, _x: number?, _y: number?, _z: number?) end,
+	}
+end
+
+local function makeMotionSnapshot(state: string, stateVersion: number, itemId: string?): ClientSnapshot
+	local resolvedItemId = itemId or "parcel"
+	local definition = DevelopmentItemDefinitions.Get(resolvedItemId)
+	if definition == nil then
+		error(string.format("Client motion fixture requires known item %s", resolvedItemId), 2)
+	end
+	local snapshot = makeClientSnapshot(21, stateVersion)
+	snapshot.State = state
+	snapshot.CurrentItemId = resolvedItemId
+	snapshot.CurrentShapeId = definition.ShapeId
+	snapshot.OccupiedCells = {}
+	snapshot.ItemCount = 0
+	snapshot.BaseValueSum = 0
+	snapshot.ShipmentValue = 0
+	return snapshot
+end
+
+local function newPlacementHarness(): (
+	ClientMotionFixture,
+	PlacementController.Controller,
+	InspectablePlacementController,
+	PlacementCallbackLog
+)
+	local fixture = makeClientMotionFixture()
+	local log: PlacementCallbackLog = {
+		ImpactCount = 0,
+		RejectedCount = 0,
+		AcceptedResponseCount = 0,
+	}
+	local placeItemRequest = Root:WaitForChild("Net"):WaitForChild("PlaceItemRequest")
+	if not placeItemRequest:IsA("RemoteEvent") then
+		error("Client motion fixture requires ONE_MORE_ITEM.Net.PlaceItemRequest RemoteEvent", 2)
+	end
+	local controller = PlacementController.new(
+		placeItemRequest,
+		fixture.Station,
+		fixture.Template,
+		makePlacementCallbacks(log)
+	)
+	local inspectable: InspectablePlacementController = controller :: any
+	return fixture, controller, inspectable, log
+end
+
+local function injectPendingPlacement(controller: InspectablePlacementController, clientSequence: number)
+	controller._pendingPlacement = {
+		RoundId = 21,
+		ClientSequence = clientSequence,
+		Cells = { { X = 2, Y = 0, Z = 2 } },
+		ImpactPosition = Vector3.new(4, 2, 4),
+		Heavy = false,
+		ResponseReceived = false,
+		SnapshotAccepted = false,
+		VisualCompleted = false,
+		DeferredSnapshot = nil,
+	}
+end
+
+local function acceptedPlacementResponse(clientSequence: number): ClientRoundStore.PlacementResponse
+	return {
+		Accepted = true,
+		Reason = "ACCEPTED",
+		ClientSequence = clientSequence,
+		RoundId = 21,
+		StateVersion = 2,
+	}
+end
+
+local function rejectedPlacementResponse(clientSequence: number): ClientRoundStore.PlacementResponse
+	return {
+		Accepted = false,
+		Reason = "NO_LEGAL_PLACEMENT",
+		ClientSequence = clientSequence,
+		RoundId = 21,
+		StateVersion = 1,
+	}
+end
+
+addSuite("Client motion cleanup", {
+	{
+		Name = "presentation and failure timings match the approved state windows",
+		Run = function()
+			expectNear(PresentationTokens.Timing.PresentationTravel, 0.35, 0.000001)
+			expectNear(PresentationTokens.Timing.PresentationSettle, 0.06, 0.000001)
+			expectNear(PresentationTokens.Timing.PresentationHold, 0.04, 0.000001)
+			expectNear(
+				PresentationTokens.Timing.PresentationTravel
+					+ PresentationTokens.Timing.PresentationSettle
+					+ PresentationTokens.Timing.PresentationHold,
+				RoundConfig.PRESENTATION_DURATION,
+				0.000001
+			)
+			expectNear(PresentationTokens.Timing.GhostRotate, 0.18, 0.000001)
+			expectNear(PresentationTokens.Timing.GhostSettle, 0.08, 0.000001)
+			expectNear(PresentationTokens.Timing.GhostAccepted, 0.10, 0.000001)
+			expectNear(PresentationTokens.Timing.FailureBurst, 0.64, 0.000001)
+			expect(
+				PresentationTokens.Timing.Quick
+					+ PresentationTokens.Timing.FailureImpactPause
+					+ PresentationTokens.Timing.FailureBurst
+				<= RoundConfig.FAILURE_PRESENTATION_DURATION,
+				"Failed close, impact pause, and burst must finish before Results"
+			)
+		end,
+	},
+	{
+		Name = "repeated PresentingItem replacement owns at most one presentation",
+		Run = function()
+			local fixture, controller = newPlacementHarness()
+			for index = 1, 10 do
+				local itemId = if index % 2 == 0 then "parcel" else "long_package"
+				controller:ApplySnapshot(makeMotionSnapshot("PresentingItem", index, itemId))
+				expectEqual(
+					countNamedChildren(fixture.RuntimePresentation, "ItemPresentation"),
+					1,
+					"Every replacement must destroy the prior presentation before creating the next"
+				)
+			end
+			controller:Destroy()
+			expectEqual(#fixture.RuntimePresentation:GetChildren(), 0)
+			destroyClientMotionFixture(fixture)
+		end,
+	},
+	{
+		Name = "leaving PresentingItem clears presentation and restores its authored point",
+		Run = function()
+			local fixture, controller = newPlacementHarness()
+			local originalColor = fixture.PresentationPoint.Color
+			local originalMaterial = fixture.PresentationPoint.Material
+			controller:ApplySnapshot(makeMotionSnapshot("PresentingItem", 1))
+			expectEqual(fixture.PresentationPoint.Material, Enum.Material.Neon)
+			expectEqual(countNamedChildren(fixture.RuntimePresentation, "ItemPresentation"), 1)
+
+			controller:ApplySnapshot(makeMotionSnapshot("Preparing", 2))
+			expectEqual(countNamedChildren(fixture.RuntimePresentation, "ItemPresentation"), 0)
+			expectEqual(fixture.PresentationPoint.Color, originalColor)
+			expectEqual(fixture.PresentationPoint.Material, originalMaterial)
+			controller:Destroy()
+			destroyClientMotionFixture(fixture)
+		end,
+	},
+	{
+		Name = "same-item next presentation resets placement origin and rotation",
+		Run = function()
+			local fixture, controller, inspectable = newPlacementHarness()
+			controller:ApplySnapshot(makeMotionSnapshot("AwaitingPlacement", 1, "parcel"))
+			inspectable._originX = 4
+			inspectable._originZ = 0
+			inspectable._rotationIndex = 3
+			controller:ApplySnapshot(makeMotionSnapshot("Decision", 2, "parcel"))
+			controller:ApplySnapshot(makeMotionSnapshot("PresentingItem", 3, "parcel"))
+
+			expectEqual(inspectable._originX, 2)
+			expectEqual(inspectable._originZ, 2)
+			expectEqual(inspectable._rotationIndex, 1)
+			expectEqual(countNamedChildren(fixture.RuntimePresentation, "ItemPresentation"), 1)
+			controller:Destroy()
+			destroyClientMotionFixture(fixture)
+		end,
+	},
+	{
+		Name = "FailureBurst clears after Results and Preparing restores suppression",
+		Run = function()
+			local fixture = makeClientMotionFixture()
+			local controller = WorldMotionController.new(fixture.Station)
+			local originalTransparency = fixture.PlacedBlock.LocalTransparencyModifier
+
+			controller:SetState("Failing", "AwaitingPlacement")
+			local burst = fixture.RuntimePresentation:FindFirstChild("FailureBurst")
+			expect(burst ~= nil and burst:IsA("Model"), "Failing must create a visible FailureBurst model")
+			expectEqual((burst :: Model):GetAttribute("Deterministic"), true)
+			expectEqual((burst :: Model):GetAttribute("BlockCount"), 1)
+			expectEqual(fixture.PlacedBlock.LocalTransparencyModifier, 1)
+
+			controller:SetState("Results", "Failing")
+			expectEqual(fixture.RuntimePresentation:FindFirstChild("FailureBurst"), nil)
+			expectEqual(
+				fixture.PlacedBlock.LocalTransparencyModifier,
+				1,
+				"Failed contents remain suppressed while the Results state is visible"
+			)
+
+			controller:SetState("Preparing", "Results")
+			expectEqual(fixture.RuntimePresentation:FindFirstChild("FailureBurst"), nil)
+			expectEqual(fixture.PlacedBlock.LocalTransparencyModifier, originalTransparency)
+			controller:Destroy()
+			destroyClientMotionFixture(fixture)
+		end,
+	},
+	{
+		Name = "Preparing interrupts FailureBurst and restores local transparency",
+		Run = function()
+			local fixture = makeClientMotionFixture()
+			local controller = WorldMotionController.new(fixture.Station)
+			local originalTransparency = fixture.PlacedBlock.LocalTransparencyModifier
+			controller:SetState("Failing", "AwaitingPlacement")
+			expect(fixture.RuntimePresentation:FindFirstChild("FailureBurst") ~= nil, "Burst should begin synchronously")
+			expectEqual(fixture.PlacedBlock.LocalTransparencyModifier, 1)
+
+			controller:SetState("Preparing", "Failing")
+			expectEqual(#fixture.RuntimePresentation:GetChildren(), 0)
+			expectEqual(fixture.PlacedBlock.LocalTransparencyModifier, originalTransparency)
+			controller:Destroy()
+			destroyClientMotionFixture(fixture)
+		end,
+	},
+	{
+		Name = "failure capture clones placed contents and ghost before placement cleanup",
+		Run = function()
+			local fixture, placementController = newPlacementHarness()
+			local worldController = WorldMotionController.new(fixture.Station)
+			local originalTransparency = fixture.PlacedBlock.LocalTransparencyModifier
+			placementController:ApplySnapshot(makeMotionSnapshot("AwaitingPlacement", 1))
+			expectEqual(countNamedChildren(fixture.RuntimePresentation, "LocalPlacementGhost"), 1)
+
+			worldController:SetState("Failing", "AwaitingPlacement")
+			local burst = fixture.RuntimePresentation:FindFirstChild("FailureBurst")
+			expect(burst ~= nil and burst:IsA("Model"), "World failure motion must capture before ghost cleanup")
+			expectEqual(
+				(burst :: Model):GetAttribute("BlockCount"),
+				2,
+				"FailureBurst must include one placed block and the one-cell placement ghost"
+			)
+
+			placementController:ApplySnapshot(makeMotionSnapshot("Failing", 2))
+			expectEqual(countNamedChildren(fixture.RuntimePresentation, "LocalPlacementGhost"), 0)
+			expectEqual(countNamedChildren(fixture.RuntimePresentation, "FailureBurst"), 1)
+			expectEqual(#(burst :: Model):GetChildren(), 2, "Captured burst clones must survive source cleanup")
+
+			worldController:SetState("Preparing", "Failing")
+			expectEqual(#fixture.RuntimePresentation:GetChildren(), 0)
+			expectEqual(fixture.PlacedBlock.LocalTransparencyModifier, originalTransparency)
+			worldController:Destroy()
+			placementController:Destroy()
+			destroyClientMotionFixture(fixture)
+		end,
+	},
+	{
+		Name = "ten presentation and failure reset cycles return to baseline",
+		Run = function()
+			local fixture, placementController = newPlacementHarness()
+			local worldController = WorldMotionController.new(fixture.Station)
+			local originalTransparency = fixture.PlacedBlock.LocalTransparencyModifier
+			for index = 1, 10 do
+				local version = (index - 1) * 2
+				placementController:ApplySnapshot(makeMotionSnapshot("PresentingItem", version + 1))
+				expectEqual(countNamedChildren(fixture.RuntimePresentation, "ItemPresentation"), 1)
+				placementController:ApplySnapshot(makeMotionSnapshot("Preparing", version + 2))
+				expectEqual(#fixture.RuntimePresentation:GetChildren(), 0)
+
+				worldController:SetState("Failing", "AwaitingPlacement")
+				expectEqual(countNamedChildren(fixture.RuntimePresentation, "FailureBurst"), 1)
+				worldController:SetState("Preparing", "Failing")
+				expectEqual(#fixture.RuntimePresentation:GetChildren(), 0)
+				expectEqual(fixture.PlacedBlock.LocalTransparencyModifier, originalTransparency)
+			end
+
+			task.wait(math.max(PresentationTokens.Timing.PresentationTravel, PresentationTokens.Timing.FailureImpactPause) + 0.08)
+			expectEqual(#fixture.RuntimePresentation:GetChildren(), 0, "Stale delayed effects must not reappear")
+			expectEqual(fixture.PlacedBlock.LocalTransparencyModifier, originalTransparency)
+			worldController:Destroy()
+			placementController:Destroy()
+			destroyClientMotionFixture(fixture)
+		end,
+	},
+	{
+		Name = "response first plus duplicate accepted snapshot completes once",
+		Run = function()
+			local fixture, controller, inspectable, log = newPlacementHarness()
+			controller:ApplySnapshot(makeMotionSnapshot("AwaitingPlacement", 1))
+			expect(inspectable._ghost ~= nil, "AwaitingPlacement should create a local ghost")
+			injectPendingPlacement(inspectable, 41)
+
+			controller:HandleResponse(acceptedPlacementResponse(41))
+			controller:ApplySnapshot(makeMotionSnapshot("Decision", 2))
+			controller:ApplySnapshot(makeMotionSnapshot("Decision", 3))
+			task.wait(PresentationTokens.Timing.GhostAccepted + 0.06)
+
+			expectEqual(log.ImpactCount, 1, "Accepted visual must impact exactly once")
+			expectEqual(log.AcceptedResponseCount, 1)
+			expectEqual(log.RejectedCount, 0)
+			expectEqual(inspectable._pendingPlacement, nil, "Accepted response must release the request lock")
+			expectEqual(inspectable._ghost, nil)
+			expectEqual(#fixture.RuntimePresentation:GetChildren(), 0)
+			controller:Destroy()
+			destroyClientMotionFixture(fixture)
+		end,
+	},
+	{
+		Name = "snapshot first retains delayed response correlation without locking",
+		Run = function()
+			local fixture, controller, inspectable, log = newPlacementHarness()
+			controller:ApplySnapshot(makeMotionSnapshot("AwaitingPlacement", 1))
+			injectPendingPlacement(inspectable, 42)
+			controller:ApplySnapshot(makeMotionSnapshot("Decision", 2))
+			controller:ApplySnapshot(makeMotionSnapshot("PresentingItem", 3, "long_package"))
+			task.wait(PresentationTokens.Timing.GhostAccepted + 0.06)
+
+			expectEqual(log.ImpactCount, 1)
+			expectEqual(log.AcceptedResponseCount, 0)
+			expectEqual(inspectable._pendingPlacement, nil, "Visual completion must not retain the request lock")
+			expectEqual(
+				inspectable._acceptedCorrelations["21:42"],
+				true,
+				"Delayed response correlation must remain after visual completion"
+			)
+			expectEqual(inspectable._ghost, nil)
+			expectEqual(
+				countNamedChildren(fixture.RuntimePresentation, "ItemPresentation"),
+				1,
+				"A fast next-item snapshot must start after the accepted snap completes"
+			)
+			controller:ApplySnapshot(makeMotionSnapshot("AwaitingPlacement", 4, "long_package"))
+			expect(inspectable._ghost ~= nil, "A later item must become placeable without waiting for the old response")
+			expectEqual(inspectable._pendingPlacement, nil)
+			expectEqual(
+				inspectable._acceptedCorrelations["21:42"],
+				true,
+				"Starting the next item must preserve delayed correlation"
+			)
+
+			controller:HandleResponse(acceptedPlacementResponse(42))
+			expectEqual(log.AcceptedResponseCount, 1)
+			expectEqual(log.RejectedCount, 0)
+			expectEqual(inspectable._acceptedCorrelations["21:42"], nil)
+			expectEqual(#inspectable._acceptedCorrelationOrder, 0)
+			controller:Destroy()
+			destroyClientMotionFixture(fixture)
+		end,
+	},
+	{
+		Name = "rejected response clears its lock and restores the placement ghost",
+		Run = function()
+			local fixture, controller, inspectable, log = newPlacementHarness()
+			controller:ApplySnapshot(makeMotionSnapshot("AwaitingPlacement", 1))
+			expect(inspectable._ghost ~= nil, "AwaitingPlacement should create a local ghost")
+			injectPendingPlacement(inspectable, 43)
+			controller:HandleResponse(rejectedPlacementResponse(43))
+			task.wait(PresentationTokens.Timing.GhostRejected + 0.06)
+
+			expectEqual(log.ImpactCount, 0)
+			expectEqual(log.AcceptedResponseCount, 0)
+			expectEqual(log.RejectedCount, 1)
+			expectEqual(inspectable._pendingPlacement, nil, "A rejected response must release the request lock")
+			expect(inspectable._ghost ~= nil, "Rejection feedback must return to the live placement ghost")
+			expectEqual(countNamedChildren(fixture.RuntimePresentation, "LocalPlacementGhost"), 1)
+			controller:Destroy()
+			destroyClientMotionFixture(fixture)
+		end,
+	},
+	{
+		Name = "non-accepted Failing snapshot never produces placement impact",
+		Run = function()
+			local fixture, controller, inspectable, log = newPlacementHarness()
+			controller:ApplySnapshot(makeMotionSnapshot("AwaitingPlacement", 1))
+			injectPendingPlacement(inspectable, 44)
+			controller:ApplySnapshot(makeMotionSnapshot("Failing", 2))
+			task.wait(PresentationTokens.Timing.GhostAccepted + 0.03)
+
+			expectEqual(log.ImpactCount, 0)
+			expectEqual(log.AcceptedResponseCount, 0)
+			expectEqual(log.RejectedCount, 0)
+			expectEqual(inspectable._pendingPlacement, nil)
+			expectEqual(inspectable._ghost, nil)
+			expectEqual(#fixture.RuntimePresentation:GetChildren(), 0)
+			controller:Destroy()
+			destroyClientMotionFixture(fixture)
 		end,
 	},
 })
