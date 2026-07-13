@@ -6,12 +6,13 @@ ONE MORE ITEM! is a premium, mobile-first Roblox packing game built around fitti
 
 ## Current development phase
 
-Phase 02: Playable Station Vertical Slice. Phase 01's deterministic integer-grid foundation remains authoritative while this branch adds one source-controlled packing station, permanent gameplay HUD, authored remotes, desktop placement presentation, and a server-authoritative session-only round loop. The full arena, persistent progression/economy, mobile/gamepad controls, final assets, audio, monetization, and every later-phase system remain deferred.
+Phase 03: Cross-Platform Interaction and Responsive UI is active on `codex/phase-03-cross-platform-input` and has not yet passed its implementation, Studio, cloud-persistence, or CI gates. Phase 02 is complete and merged through PR #2 at `73b3428c5ff0068f1e57f89d2150ffb8dccfdf20`; its deterministic grid, authored single station, permanent HUD/remotes, desktop presentation, and server-authoritative session-only round loop remain the protected baseline. Phase 03 is limited to responsive safe-area UI, touch, gamepad, dynamic input prompts, responsive camera anchors, and mid-round local input-mode switching.
 
 ## Repository workflow
 
 - `main` is protected by workflow: work happens on `codex/*` feature branches and is reviewed through pull requests.
-- Phase 02 uses `codex/phase-02-playable-station`.
+- Phase 02 was merged through PR #2 at `73b3428c5ff0068f1e57f89d2150ffb8dccfdf20`.
+- Phase 03 uses `codex/phase-03-cross-platform-input`; its draft PR must remain unmerged.
 - Pull before editing, never force-push, and keep every meaningful Studio/code change committed and pushed.
 - `docs/DEVELOPMENT_STATUS.md` is updated on every task.
 - GitHub Actions runs both dependency-free Studio blueprint smoke tests on pull requests targeting `main` and pushes to `main` or `codex/**`.

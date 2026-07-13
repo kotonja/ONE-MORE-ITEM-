@@ -1,13 +1,14 @@
 # Development status
 
-- **Current phase:** Phase 02 — Playable Station Vertical Slice final visual-truth and motion-correction pass complete; implementation, cloud persistence, cold-reopen parity, Play Solo, runtime cleanup, multiplayer isolation, and documentation-record CI verified; PR #2 is ready for final review after the exact status-only head check reported at handoff
-- **Current branch:** `codex/phase-02-playable-station`
-- **Draft PR:** https://github.com/kotonja/ONE-MORE-ITEM-/pull/2 — remains draft and unmerged
-- **Main base SHA:** `88cb4534c0cda4511f521eb01207eab1d630f4fc`
+- **Current phase:** Phase 03 — Cross-Platform Interaction and Responsive UI is active; Phase 03 has not yet passed its implementation, Studio, cloud-persistence, or CI gates
+- **Current branch:** `codex/phase-03-cross-platform-input`
+- **Phase 02 merge:** PR #2 is merged at `73b3428c5ff0068f1e57f89d2150ffb8dccfdf20`
+- **Phase 03 draft PR:** Not opened yet; it must target `main` from `codex/phase-03-cross-platform-input` and remain draft and unmerged
+- **Main base SHA:** `73b3428c5ff0068f1e57f89d2150ffb8dccfdf20`
 - **Latest verified implementation SHA before documentation closeout:** `cd4cf83b01081ccc99e4306a15524d23f0025a65` (`fix: avoid delayed UI replication warning`)
 - **Latest verified documentation-record SHA:** `c86523c4c01beb1fa13550ded23c42b736a6a11b` (`docs: record Phase 02 visual correction results`)
 - **Documentation-head note:** A commit cannot contain its own SHA; the final documentation commit and branch-head equality must be reported from live Git/GitHub state after this file is committed.
-- **Phase 03:** Not started and out of scope for this branch
+- **Phase 03 opening gate:** Clean `main` and both existing dependency-free Node smokes passed before branching; no Phase 03 implementation or Studio result is claimed yet
 
 ## Final review findings
 
@@ -142,12 +143,13 @@ At every static size, both decision buttons are contained, have positive usable 
 
 - Roblox Studio may emit unrelated plugin/bridge request-limit noise; only fresh game-owned failures are gating.
 - The transient cloud-save internal-server error from the first save attempt was recovered without losing the corrected content; the normal retry, recovery copy, clean close, and no-resync cloud reopen all passed.
-- No Phase 02 game, persistence, parity, cleanup, multiplayer, or documentation-record blocker remains. PR #2 is ready for final review when the exact status-only head check recorded in the completion report is green.
+- No Phase 02 game, persistence, parity, cleanup, multiplayer, or merge blocker remains. PR #2 is merged at the Phase 03 base SHA.
+- Phase 03 remains incomplete until responsive safe-area authoring, touch/gamepad/hybrid input, deterministic tests, Studio emulator and multiplayer checks, cloud save/reopen parity, and final-head CI all pass.
 
 ## Deferred by design
 
-The full eight-player arena, seven additional stations, mobile/controller input, camera orbit, final models/animations, audio/music/final VFX, final shipping and dispatch systems, social/leaderboard features, DataStores and permanent economy, progression/collection/challenges/missions, cosmetics/store/monetization, analytics, quests, trading, pets, rebirths, multiple worlds, co-op, tutorial screens, and final launch map remain unstarted. Phase 03 work has not begun.
+The full eight-player arena, seven additional stations, camera orbit, final models/animations, audio/music/final VFX, final shipping and dispatch systems, social/leaderboard features, DataStores and permanent economy, progression/collection/challenges/missions, cosmetics/store/monetization, analytics, quests, trading, pets, rebirths, multiple worlds, co-op, tutorial screens, final launch map, and every Phase 04 system remain unstarted. Phase 03 is limited to cross-platform interaction and responsive presentation for the existing single station.
 
 ## Exact next step
 
-Review draft PR #2 while keeping it draft and unmerged. Phase 03 is the next separate implementation phase; do not begin it on this branch or as part of this task.
+Implement and verify Phase 03 on `codex/phase-03-cross-platform-input`, push meaningful milestones, and keep its pull request draft and unmerged. Do not begin Phase 04.
