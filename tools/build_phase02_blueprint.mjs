@@ -30,6 +30,7 @@ const supportedClasses = new Set([
   "TextLabel",
   "UICorner",
   "UIPadding",
+  "UISizeConstraint",
   "UIStroke",
   "ViewportFrame",
 ]);

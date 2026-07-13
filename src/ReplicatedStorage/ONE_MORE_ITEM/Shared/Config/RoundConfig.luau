@@ -40,7 +40,9 @@ local RoundConfig = {
 	RATE_LIMITS_PER_SECOND = rateLimits,
 	DEVELOPMENT = table.freeze({
 		RUN_PHASE02_TESTS = true,
+		RUN_PHASE03_TESTS = true,
 		TEST_SEED = 24022026,
+		PHASE03_TEST_SEED = 13072026,
 	}),
 }
 

@@ -2,13 +2,20 @@
 
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 
 local PresentationTokens = require(script.Parent.PresentationTokens)
+local InputModeStore = require(script.Parent.InputModeStore)
+local ResponsiveLayout = require(script.Parent.ResponsiveLayout)
 
 export type ImpulseKind = "LIGHT" | "HEAVY" | "SHIPPING" | "FAILURE"
+export type TransitionKind = "INACTIVE" | "ARRIVAL" | "RETARGET" | "UNCHANGED"
+type InputMode = InputModeStore.InputMode
+type LayoutClass = ResponsiveLayout.LayoutClass
 
 export type Controller = {
 	Activate: (self: Controller, station: Model) -> (),
+	SetPresentation: (self: Controller, layoutClass: LayoutClass, inputMode: InputMode) -> (),
 	Deactivate: (self: Controller) -> (),
 	PlayImpulse: (self: Controller, kind: ImpulseKind) -> (),
 	Destroy: (self: Controller) -> (),
@@ -24,6 +31,11 @@ type SavedCamera = {
 type InternalController = Controller & {
 	_camera: Camera?,
 	_saved: SavedCamera?,
+	_station: Model?,
+	_focus: BasePart?,
+	_anchorName: string?,
+	_layoutClass: LayoutClass,
+	_inputMode: InputMode,
 	_target: CFrame?,
 	_tween: Tween?,
 	_impulseEpoch: number,
@@ -49,10 +61,96 @@ local function targetFrom(anchor: BasePart, focus: BasePart): CFrame
 	return CFrame.lookAt(anchor.Position, focus.Position, anchor.CFrame.UpVector)
 end
 
+local function restoredCameraSubject(savedSubject: Humanoid | BasePart?): Humanoid | BasePart?
+	if savedSubject ~= nil and savedSubject.Parent ~= nil then
+		return savedSubject
+	end
+	local character = Players.LocalPlayer.Character
+	if character ~= nil then
+		return character:FindFirstChildOfClass("Humanoid")
+	end
+	return nil
+end
+
+function CameraController.SelectAnchorName(layoutClass: LayoutClass, inputMode: InputMode): string
+	if layoutClass == "Portrait" then
+		return "CameraAnchorTouchPortrait"
+	elseif layoutClass == "CompactLandscape" and inputMode == "Touch" then
+		return "CameraAnchorTouchLandscape"
+	end
+	return "CameraAnchor"
+end
+
+function CameraController.ResolveTransition(
+	active: boolean,
+	currentAnchorName: string?,
+	layoutClass: LayoutClass,
+	inputMode: InputMode
+): TransitionKind
+	if not active then
+		return "INACTIVE"
+	end
+	local nextAnchorName = CameraController.SelectAnchorName(layoutClass, inputMode)
+	if currentAnchorName == nil then
+		return "ARRIVAL"
+	elseif currentAnchorName == nextAnchorName then
+		return "UNCHANGED"
+	end
+	return "RETARGET"
+end
+
+function CameraController.IsCurrentImpulseEpoch(impulseEpoch: number, currentEpoch: number): boolean
+	return impulseEpoch == currentEpoch
+end
+
+local function stopTween(self: InternalController)
+	if self._tween ~= nil then
+		self._tween:Cancel()
+		self._tween = nil
+	end
+end
+
+local function retarget(self: InternalController)
+	local station = self._station
+	local focus = self._focus
+	local camera = self._camera
+	if station == nil or focus == nil or camera == nil then
+		return
+	end
+	local anchorName = CameraController.SelectAnchorName(self._layoutClass, self._inputMode)
+	if self._anchorName == anchorName then
+		return
+	end
+	local anchor = requirePart(station, anchorName)
+	local target = targetFrom(anchor, focus)
+	self._anchorName = anchorName
+	self._target = target
+	self._impulseEpoch += 1
+	stopTween(self)
+	camera.CameraType = Enum.CameraType.Scriptable
+	local tween = TweenService:Create(
+		camera,
+		TweenInfo.new(PresentationTokens.Timing.CameraRetarget, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+		{ CFrame = target, FieldOfView = PresentationTokens.Camera.FieldOfView }
+	)
+	self._tween = tween
+	tween.Completed:Once(function()
+		if self._tween == tween then
+			self._tween = nil
+		end
+	end)
+	tween:Play()
+end
+
 function CameraController.new(): Controller
 	local self: InternalController = setmetatable({
 		_camera = nil,
 		_saved = nil,
+		_station = nil,
+		_focus = nil,
+		_anchorName = nil,
+		_layoutClass = "Wide",
+		_inputMode = "KeyboardMouse",
 		_target = nil,
 		_tween = nil,
 		_impulseEpoch = 0,
@@ -70,7 +168,8 @@ function ControllerMethods.Activate(self: InternalController, station: Model)
 		error("CameraController cannot activate without Workspace.CurrentCamera", 2)
 	end
 
-	local anchor = requirePart(station, "CameraAnchor")
+	local anchorName = CameraController.SelectAnchorName(self._layoutClass, self._inputMode)
+	local anchor = requirePart(station, anchorName)
 	local focus = requirePart(station, "CameraFocus")
 	local target = targetFrom(anchor, focus)
 	if self._saved == nil then
@@ -82,10 +181,11 @@ function ControllerMethods.Activate(self: InternalController, station: Model)
 		}
 	end
 
-	if self._tween ~= nil then
-		self._tween:Cancel()
-	end
+	stopTween(self)
 	self._camera = camera
+	self._station = station
+	self._focus = focus
+	self._anchorName = anchorName
 	self._target = target
 	self._impulseEpoch += 1
 	camera.CameraType = Enum.CameraType.Scriptable
@@ -102,25 +202,39 @@ function ControllerMethods.Activate(self: InternalController, station: Model)
 		{ CFrame = target, FieldOfView = PresentationTokens.Camera.FieldOfView }
 	)
 	self._tween = tween
+	tween.Completed:Once(function()
+		if self._tween == tween then
+			self._tween = nil
+		end
+	end)
 	tween:Play()
+end
+
+function ControllerMethods.SetPresentation(self: InternalController, layoutClass: LayoutClass, inputMode: InputMode)
+	if self._destroyed or (self._layoutClass == layoutClass and self._inputMode == inputMode) then
+		return
+	end
+	self._layoutClass = layoutClass
+	self._inputMode = inputMode
+	retarget(self)
 end
 
 function ControllerMethods.Deactivate(self: InternalController)
 	self._impulseEpoch += 1
-	if self._tween ~= nil then
-		self._tween:Cancel()
-		self._tween = nil
-	end
+	stopTween(self)
 	local camera = self._camera
 	local saved = self._saved
 	if camera ~= nil and saved ~= nil then
 		camera.CameraType = saved.CameraType
-		camera.CameraSubject = saved.CameraSubject
+		camera.CameraSubject = restoredCameraSubject(saved.CameraSubject)
 		camera.CFrame = saved.CFrame
 		camera.FieldOfView = saved.FieldOfView
 	end
 	self._camera = nil
 	self._saved = nil
+	self._station = nil
+	self._focus = nil
+	self._anchorName = nil
 	self._target = nil
 end
 
@@ -132,9 +246,7 @@ function ControllerMethods.PlayImpulse(self: InternalController, kind: ImpulseKi
 	end
 	self._impulseEpoch += 1
 	local epoch = self._impulseEpoch
-	if self._tween ~= nil then
-		self._tween:Cancel()
-	end
+	stopTween(self)
 
 	local offset = CFrame.identity
 	local duration = PresentationTokens.Timing.Instant
@@ -157,7 +269,10 @@ function ControllerMethods.PlayImpulse(self: InternalController, kind: ImpulseKi
 	self._tween = outward
 	outward:Play()
 	outward.Completed:Once(function()
-		if self._destroyed or epoch ~= self._impulseEpoch or self._camera ~= camera then
+		if self._destroyed
+			or not CameraController.IsCurrentImpulseEpoch(epoch, self._impulseEpoch)
+			or self._camera ~= camera
+		then
 			return
 		end
 		local settle = TweenService:Create(
@@ -166,6 +281,11 @@ function ControllerMethods.PlayImpulse(self: InternalController, kind: ImpulseKi
 			{ CFrame = target }
 		)
 		self._tween = settle
+		settle.Completed:Once(function()
+			if self._tween == settle then
+				self._tween = nil
+			end
+		end)
 		settle:Play()
 	end)
 end

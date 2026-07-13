@@ -1,4 +1,4 @@
-name: Phase 01 and Phase 02 Node Validation
+name: Phase 01–03 Node Validation
 
 on:
   pull_request:
@@ -14,19 +14,23 @@ permissions:
 
 jobs:
   node-validation:
-    name: Phase 01 and Phase 02 Node Validation
+    name: Phase 01–03 Node Validation
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
+          package-manager-cache: false
 
       - name: Run Phase 01 Studio synchronization smoke test
         run: node tools/test_studio_blueprint.mjs
 
       - name: Run Phase 02 typed instance authoring smoke test
         run: node tools/test_phase02_blueprint.mjs
+
+      - name: Run Phase 03 cross-platform smoke test
+        run: node tools/test_phase03_cross_platform.mjs

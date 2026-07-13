@@ -9,8 +9,11 @@ local CameraController = require(controllers:WaitForChild("CameraController"))
 local CharacterController = require(controllers:WaitForChild("CharacterController"))
 local ClientRoundStore = require(controllers:WaitForChild("ClientRoundStore"))
 local InputController = require(controllers:WaitForChild("InputController"))
+local InputModeStore = require(controllers:WaitForChild("InputModeStore"))
 local PlacementController = require(controllers:WaitForChild("PlacementController"))
 local PresentationTokens = require(controllers:WaitForChild("PresentationTokens"))
+local ResponsiveLayout = require(controllers:WaitForChild("ResponsiveLayout"))
+local ResponsiveUIController = require(controllers:WaitForChild("ResponsiveUIController"))
 local RoundUIController = require(controllers:WaitForChild("RoundUIController"))
 local ViewportPreviewController = require(controllers:WaitForChild("ViewportPreviewController"))
 local WorldMotionController = require(controllers:WaitForChild("WorldMotionController"))
@@ -18,6 +21,8 @@ local WorldMotionController = require(controllers:WaitForChild("WorldMotionContr
 type Snapshot = ClientRoundStore.Snapshot
 type PlacementResponse = ClientRoundStore.PlacementResponse
 type Cell = ClientRoundStore.Cell
+type InputMode = InputModeStore.InputMode
+type LayoutClass = ResponsiveLayout.LayoutClass
 
 local function requireChild(parent: Instance, name: string): Instance
 	local child = parent:WaitForChild(name, 10)
@@ -47,6 +52,14 @@ local function requireViewport(parent: Instance, name: string): ViewportFrame
 	local child = requireChild(parent, name)
 	if not child:IsA("ViewportFrame") then
 		error(string.format("ClientBootstrap requires ViewportFrame %s", child:GetFullName()), 2)
+	end
+	return child
+end
+
+local function requireFrame(parent: Instance, name: string): Frame
+	local child = requireChild(parent, name)
+	if not child:IsA("Frame") then
+		error(string.format("ClientBootstrap requires Frame %s", child:GetFullName()), 2)
 	end
 	return child
 end
@@ -97,6 +110,10 @@ if not gameplayGuiInstance:IsA("ScreenGui") then
 end
 local gameplayGui: ScreenGui = gameplayGuiInstance
 local guiRoot = requireChild(gameplayGui, "Root")
+if not guiRoot:IsA("GuiObject") then
+	error("ClientBootstrap requires ONE_MORE_ITEM_Gameplay.Root to be a GuiObject")
+end
+local touchDragSurface = requireFrame(guiRoot, "TouchDragSurface")
 local currentItemCard = requireChild(guiRoot, "CurrentItemCard")
 local decisionPanel = requireChild(guiRoot, "DecisionPanel")
 local currentViewport = requireViewport(currentItemCard, "ItemViewport")
@@ -139,6 +156,22 @@ local camera = CameraController.new()
 local character = CharacterController.new()
 local worldMotion = WorldMotionController.new(station)
 local roundUI = RoundUIController.new(gameplayGui, resolveItemName)
+local inputMode: InputMode = "KeyboardMouse"
+local layoutClass: LayoutClass = "Wide"
+local responsiveUI = ResponsiveUIController.new(guiRoot, {
+	BeforeApply = function(panelPositions, buttonSizes)
+		roundUI:SetResponsiveTargets(panelPositions, buttonSizes)
+	end,
+	LayoutChanged = function(newLayoutClass: LayoutClass)
+		layoutClass = newLayoutClass
+		camera:SetPresentation(layoutClass, inputMode)
+		script:SetAttribute("LayoutClass", layoutClass)
+	end,
+	Observability = function(currentLayoutClass: LayoutClass, activeTweens: number)
+		script:SetAttribute("LayoutClass", currentLayoutClass)
+		script:SetAttribute("LayoutTweens", activeTweens)
+	end,
+})
 local viewportPreview = ViewportPreviewController.new(
 	currentViewport,
 	nextViewport,
@@ -147,6 +180,7 @@ local viewportPreview = ViewportPreviewController.new(
 	getItemColor
 )
 
+local inputController: InputController.Controller? = nil
 local placement = PlacementController.new(placeItemRequest, station, cellBlockTemplate, {
 	FitChanged = function(valid: boolean?, x: number?, y: number?, z: number?)
 		roundUI:SetFitState(valid, x, y, z)
@@ -170,6 +204,13 @@ local placement = PlacementController.new(placeItemRequest, station, cellBlockTe
 	end,
 	Rejected = function()
 		worldMotion:PlayRejected()
+	end,
+	PendingChanged = function(pending: boolean)
+		script:SetAttribute("PlacementPending", pending)
+		local activeInput = inputController
+		if activeInput ~= nil then
+			activeInput:RefreshContext()
+		end
 	end,
 	Observability = function(valid: boolean?, x: number?, y: number?, z: number?)
 		script:SetAttribute("GhostValid", valid)
@@ -231,7 +272,29 @@ local input = InputController.new({
 	PointerRay = function(ray: Ray)
 		placement:UpdateFromPointerRay(ray)
 	end,
-}, roundUI:GetButtons())
+	IsPlacementPending = function(): boolean
+		return placement:IsPlacementPending()
+	end,
+	ModeChanged = function(newMode: InputMode)
+		inputMode = newMode
+		camera:SetPresentation(layoutClass, inputMode)
+		script:SetAttribute("InputMode", inputMode)
+	end,
+	Observability = function(
+		currentMode: InputMode,
+		touchActive: boolean,
+		boundGamepadActions: number,
+		repeatActive: boolean,
+		selectedAction: string?
+	)
+		script:SetAttribute("InputMode", currentMode)
+		script:SetAttribute("ActivePlacementTouch", touchActive)
+		script:SetAttribute("BoundGamepadActions", boundGamepadActions)
+		script:SetAttribute("GamepadRepeatActive", repeatActive)
+		script:SetAttribute("SelectedGamepadAction", selectedAction)
+	end,
+}, roundUI:GetButtons(), guiRoot, touchDragSurface)
+inputController = input
 
 local unsubscribe = store:Subscribe(function(snapshot: Snapshot)
 	if destroyed then
@@ -267,6 +330,7 @@ local unsubscribe = store:Subscribe(function(snapshot: Snapshot)
 	roundUI:ApplySnapshot(snapshot)
 	viewportPreview:ApplySnapshot(snapshot)
 	placement:ApplySnapshot(snapshot)
+	input:ApplySnapshot(snapshot)
 
 	script:SetAttribute("RoundId", snapshot.RoundId)
 	script:SetAttribute("StateVersion", snapshot.StateVersion)
@@ -294,6 +358,7 @@ local function cleanup()
 	end
 	table.clear(connections)
 	input:Destroy()
+	responsiveUI:Destroy()
 	placement:Destroy()
 	viewportPreview:Destroy()
 	roundUI:Destroy()
@@ -307,6 +372,8 @@ end
 table.insert(connections, script.Destroying:Connect(cleanup))
 
 script:SetAttribute("Initialized", true)
-script:SetAttribute("ClientVersion", "phase02")
-print("[ONE_MORE_ITEM][Client] READY controls=mouse+keyboard authority=server")
+script:SetAttribute("ClientVersion", "phase03")
+script:SetAttribute("InputMode", inputMode)
+script:SetAttribute("LayoutClass", layoutClass)
+print("[ONE_MORE_ITEM][Client] READY controls=keyboard+mouse+touch+gamepad authority=server")
 clientReadyRequest:FireServer()
