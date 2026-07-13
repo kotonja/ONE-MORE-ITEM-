@@ -51,6 +51,19 @@ local function requireViewport(parent: Instance, name: string): ViewportFrame
 	return child
 end
 
+local function waitForAuthoredChild(parent: Instance, name: string): Instance
+	local resolved = parent:FindFirstChild(name)
+	while resolved == nil do
+		local added = parent.ChildAdded:Wait()
+		if added.Name == name then
+			resolved = added
+		else
+			resolved = parent:FindFirstChild(name)
+		end
+	end
+	return resolved
+end
+
 local root = requireChild(ReplicatedStorage, "ONE_MORE_ITEM")
 local net = requireChild(root, "Net")
 local shared = requireChild(root, "Shared")
@@ -78,7 +91,7 @@ local stations = requireChild(arena, "Stations")
 local station = requireModel(stations, "Station_01")
 
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
-local gameplayGuiInstance = playerGui:WaitForChild("ONE_MORE_ITEM_Gameplay")
+local gameplayGuiInstance = waitForAuthoredChild(playerGui, "ONE_MORE_ITEM_Gameplay")
 if not gameplayGuiInstance:IsA("ScreenGui") then
 	error("ClientBootstrap requires ONE_MORE_ITEM_Gameplay to be a ScreenGui")
 end

@@ -477,13 +477,18 @@ try {
     assert.doesNotMatch(clientBootstrap, /Instance\.new\s*\(/, "Client bootstrap must bind authored instances, not build the HUD");
     assert.match(
       clientBootstrap,
-      /playerGui:WaitForChild\s*\(\s*["']ONE_MORE_ITEM_Gameplay["']\s*\)/,
-      "Client bootstrap must wait without a deadline for Roblox to clone the authored ScreenGui",
+      /local function waitForAuthoredChild\s*\([\s\S]*parent:FindFirstChild\(name\)[\s\S]*parent\.ChildAdded:Wait\(\)[\s\S]*end/,
+      "Client bootstrap must wait event-by-event without a deadline for authored descendants",
+    );
+    assert.match(
+      clientBootstrap,
+      /waitForAuthoredChild\s*\(\s*playerGui\s*,\s*["']ONE_MORE_ITEM_Gameplay["']\s*\)/,
+      "Client bootstrap must use the warning-free authored-child wait for the permanent ScreenGui",
     );
     assert.doesNotMatch(
       clientBootstrap,
-      /playerGui:WaitForChild\s*\(\s*["']ONE_MORE_ITEM_Gameplay["']\s*,/,
-      "Client bootstrap must not abort on a finite authored ScreenGui clone deadline",
+      /playerGui:WaitForChild\s*\(\s*["']ONE_MORE_ITEM_Gameplay["']/,
+      "Client bootstrap must not use warning-producing or finite ScreenGui waits",
     );
     for (const clientSourcePath of listLuauFiles(path.resolve(repositoryRoot, "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client"))) {
       const clientSource = fs.readFileSync(clientSourcePath, "utf8");
