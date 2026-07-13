@@ -1,10 +1,11 @@
 # Development status
 
-- **Current phase:** Phase 02 — Playable Station Vertical Slice final visual-truth and motion-correction pass; implementation, cloud persistence, cold-reopen parity, Play Solo, runtime cleanup, and final two-client isolation verified; documentation-head CI gate pending
+- **Current phase:** Phase 02 — Playable Station Vertical Slice final visual-truth and motion-correction pass complete; implementation, cloud persistence, cold-reopen parity, Play Solo, runtime cleanup, multiplayer isolation, and documentation-record CI verified; PR #2 is ready for final review after the exact status-only head check reported at handoff
 - **Current branch:** `codex/phase-02-playable-station`
 - **Draft PR:** https://github.com/kotonja/ONE-MORE-ITEM-/pull/2 — remains draft and unmerged
 - **Main base SHA:** `88cb4534c0cda4511f521eb01207eab1d630f4fc`
 - **Latest verified implementation SHA before documentation closeout:** `cd4cf83b01081ccc99e4306a15524d23f0025a65` (`fix: avoid delayed UI replication warning`)
+- **Latest verified documentation-record SHA:** `c86523c4c01beb1fa13550ded23c42b736a6a11b` (`docs: record Phase 02 visual correction results`)
 - **Documentation-head note:** A commit cannot contain its own SHA; the final documentation commit and branch-head equality must be reported from live Git/GitHub state after this file is committed.
 - **Phase 03:** Not started and out of scope for this branch
 
@@ -123,7 +124,8 @@ At every static size, both decision buttons are contained, have positive usable 
 - **Triggers:** Pull requests targeting `main`, pushes to `main`, and pushes to `codex/**`.
 - **Permissions/dependencies:** `contents: read`, no dependency installation, and no npm package requirement.
 - **Warning-fix implementation-head result:** Commit `cd4cf83b01081ccc99e4306a15524d23f0025a65` passed both the [branch-push run](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29272062349) ([job](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29272062349/job/86891938174)) and [draft-PR run](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29272066325) ([job](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29272066325/job/86891950607)); checkout, Node setup, Phase 01 smoke, Phase 02 smoke, and completion steps were green.
-- **Final documentation-head gate:** Pending only for the documentation closeout. This file does not claim final-head CI or local/remote/PR-head equality before the documentation commit is pushed and those exact runs finish.
+- **Documentation-record head result:** Commit `c86523c4c01beb1fa13550ded23c42b736a6a11b` passed both the [branch-push run](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29277371368) ([job](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29277371368/job/86909708796)) and [draft-PR run](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29277374496) ([job](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29277374496/job/86909719607)); all eight steps completed successfully with no failures, cancellations, or skips.
+- **Exact final status-only head:** This document cannot contain its own commit SHA. The completion report records that SHA, both exact-head workflow URLs, and local/remote/PR-head equality after the final status-only commit passes.
 
 ## Cloud persistence
 
@@ -138,9 +140,9 @@ At every static size, both decision buttons are contained, have positive usable 
 
 ## Known issues and remaining gates
 
-- The final documentation-head GitHub Actions runs and local/remote/PR-head equality remain required after commit and push.
 - Roblox Studio may emit unrelated plugin/bridge request-limit noise; only fresh game-owned failures are gating.
-- All Studio-side correction, persistence, parity, Play Solo, cleanup, and multiplayer gates are complete. PR #2 is not ready for final review until final documentation-head CI and head equality pass.
+- The transient cloud-save internal-server error from the first save attempt was recovered without losing the corrected content; the normal retry, recovery copy, clean close, and no-resync cloud reopen all passed.
+- No Phase 02 game, persistence, parity, cleanup, multiplayer, or documentation-record blocker remains. PR #2 is ready for final review when the exact status-only head check recorded in the completion report is green.
 
 ## Deferred by design
 
@@ -148,4 +150,4 @@ The full eight-player arena, seven additional stations, mobile/controller input,
 
 ## Exact next step
 
-Commit and push this documentation closeout, verify the exact final branch push and draft-PR workflow runs plus local/remote/PR-head equality, then mark draft PR #2 ready for final review while keeping it unmerged. Do not begin Phase 03 on this branch or as part of this task.
+Review draft PR #2 while keeping it draft and unmerged. Phase 03 is the next separate implementation phase; do not begin it on this branch or as part of this task.

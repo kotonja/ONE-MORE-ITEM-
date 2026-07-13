@@ -260,7 +260,7 @@ Exact run results belong in `docs/DEVELOPMENT_STATUS.md` after they are observed
 - Fresh bridge diagnostics returned `errors=0`, `matching=0`, and `latestActionable=null`; five plugin loops each reported `errors=0`. Studio ended normally with only the main Edit window remaining.
 - Studio saved the warning-free corrected place normally at 2026-07-13 14:02:14 Eastern and reported `Saved new changes in "ONE MORE ITEM!" to Roblox.` The external recovery copy `ONE_MORE_ITEM_phase02_final_warningfix_20260713.rbxl` was verified at 14:03:57 Eastern with a size of 159,447 bytes.
 - Studio closed cleanly and cold-reopened the cloud place without source resynchronization. The active identity remained `PlaceId 134193642444044` and `GameId 10493030248`; Studio's internal `Place2` label is only a local display label and does not override those IDs.
-- Only final documentation-head GitHub Actions and local/remote/PR-head equality remain pending; this section does not claim those gates have passed.
+- Documentation-record commit `c86523c4c01beb1fa13550ded23c42b736a6a11b` passed both the branch-push and draft-PR workflows with every step successful. The completion report records the exact final status-only head, its two workflow URLs, and local/remote/PR-head equality because a commit cannot contain its own SHA.
 
 ## Known limitations and out of scope
 
