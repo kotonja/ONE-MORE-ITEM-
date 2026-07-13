@@ -90,6 +90,21 @@ StarterGui
 
 The debug panel is disabled by default and is never part of normal presentation.
 
+## Decision interface layout contract
+
+`DecisionPanel` stores its visible target in the manifest: `Position = UDim2.new(0.5, 0, 0.96, 0)`, `AnchorPoint = Vector2.new(0.5, 1)`, `Size = UDim2.new(0.5, 0, 0.30, 0)`, and `Visible = false`. The manifest does not store an off-screen hidden position. `RoundUIController` owns a temporary 16-pixel vertical offset, a `0.30s` entrance, and a `0.20s` exit. Target-visibility state and transition epochs prevent repeated snapshots from restarting an entrance and prevent delayed exits from hiding a panel that has reopened.
+
+The source-controlled bounds contract covers every required viewport:
+
+| Viewport | DecisionPanel bounds | ShipButton bounds | OneMoreButton bounds |
+| --- | --- | --- | --- |
+| `1920×1080` | `(480, 712.8)–(1440, 1036.8)` | `(768, 910.44)–(1056, 991.44)` | `(1094.4, 910.44)–(1401.6, 991.44)` |
+| `1366×768` | `(341.5, 506.88)–(1024.5, 737.28)` | `(546.4, 647.42)–(751.3, 705.02)` | `(778.62, 647.42)–(997.18, 705.02)` |
+| `2560×1440` | `(640, 950.4)–(1920, 1382.4)` | `(1024, 1213.92)–(1408, 1321.92)` | `(1459.2, 1213.92)–(1868.8, 1321.92)` |
+| `1100×700` | `(275, 462)–(825, 672)` | `(440, 590.1)–(605, 642.6)` | `(627, 590.1)–(803, 642.6)` |
+
+The static calculation also keeps `CurrentItemCard`, `ShipmentCard`, `PlacementControls`, and `ResultsPanel` inside the viewport and proves that the top cards do not cover either decision action. Permanent UI remains authored under `StarterGui`.
+
 ## Station dimensions and grid transform
 
 - Logical volume: `5 wide × 5 deep × 4 high` integer cells.
@@ -117,6 +132,10 @@ Six permanent `RemoteEvent` instances exist under `ReplicatedStorage.ONE_MORE_IT
 
 Snapshots contain fresh serialized presentation data. They never expose the grid object, mutable server tables, valid solution coordinates, reward authority, or internal service objects.
 
+The client store rejects a lower `RoundId`; for the same round it rejects a `StateVersion` less than or equal to the stored version. A higher round remains valid even when its state version restarts at zero, and every accepted snapshot is copied before storage. Accepted placement presentation is keyed by round and client sequence so either `PlacementResponse` or the authoritative state-changing `RoundSnapshot` may arrive first without duplicating the impact, locking input, or treating `Failing` as acceptance.
+
+Late clients use a warning-free event-driven authored-child wait for Roblox to clone `ONE_MORE_ITEM_Gameplay` into `PlayerGui`. The helper first checks `FindFirstChild`, then waits on `ChildAdded` without a deadline and retains the required `ScreenGui` class check. `ClientBootstrap` does not call `PlayerGui:WaitForChild` for this permanent UI. The Node architecture contract requires the event-driven wait and rejects warning-producing or finite variants.
+
 ## Authority boundary
 
 The server owns station assignment, round IDs and versions, state transitions, occupancy, current and next item, placements, timers, rewards, banked session Tape, shipping, failure, and reset.
@@ -138,6 +157,8 @@ Maximum item count → Shipping (MAX_ITEMS)
 ```
 
 Every transition increments `StateVersion`. Delayed work captures player, round ID, and version and becomes a no-op when any value is stale.
+
+`StartRound` now emits the authoritative `Preparing` snapshot before scheduling its transition. The first session uses `INITIAL_PREPARING_DURATION = 0.12`; Pack Again uses `RESTART_PREPARING_DURATION = 0.72`. A guarded `Preparing` timer advances to `PresentingItem`, whose separate `0.45s` timer advances to `AwaitingPlacement`. Placement cannot succeed during `Preparing`, and the client never selects the preparation mode.
 
 ## Sequence fairness
 
@@ -172,6 +193,8 @@ Tape is deliberately non-persistent. Shipment value is `floor(base-value sum × 
 
 Shipping banks exactly once. A failed unshipped round loses only that round value; Tape banked earlier in the current server session remains. Phase 02 does not use DataStores.
 
+The HUD animates only between server-provided totals: Shipment value counts over `0.25–0.40s`, Session Bank over `0.55–0.80s`, and Result value over `0.30s`. A newer snapshot cancels or retargets an older count. Failure and spectator snapshots cannot create false rewards.
+
 ## Desktop controls and camera
 
 - Mouse: intersect the crate selection plane and place with left click when UI is not consuming input.
@@ -188,18 +211,20 @@ The gameplay camera is stable and scriptable at approximately 48 degrees field o
 
 ## Motion timings
 
-- Item presentation: `0.45s`
+- Initial Preparing: `0.12s`; restart Preparing: `0.72s`
+- Item presentation: `0.35s` travel, `0.06s` settle, and `0.04s` hold
 - Ghost grid interpolation: `0.08–0.10s`
-- Rotation: `0.18s` rise/turn plus `0.08s` settle
+- Rotation: `0.12`-stud lift, `0.18s` rise/turn with no more than four degrees of overshoot, then `0.08s` exact settle
 - Accepted placement snap: approximately `0.10s`
 - Rejected-placement nudge: `0.12s`
-- Decision-panel entrance: approximately `0.30s`
-- One More transition: `0.45–0.55s`
-- Lid close: `0.75s` plus approximately `0.10s` pause
-- Failure presentation: approximately `1.0s`; Pack Again available within `1.6s`
-- Reset: `0.70–0.85s`, including `0.35s` lid rise
+- Panel entrance: `16` pixels over `0.30s`; exit: `0.20s`
+- One More transition: approximately `0.45s` through item presentation
+- Successful shipping lid close: `0.75s` plus approximately `0.10s` pause
+- Failure: `0.20s` failed lid attempt, `0.14s` impact pause, and `0.64s` deterministic burst inside the `1.0s` authoritative failure window; Pack Again remains available within `1.6s`
+- Reset: `0.72s` authoritative Preparing window, including `0.35s` lid rise and one cyan grid sweep
+- Tape counts: Shipment `0.25–0.40s`, Session Bank `0.55–0.80s`, Result `0.30s`
 
-UI tokens centralize instant, snap, quick, panel, and hero motion. No element bounces continuously.
+The temporary presentation proxy and `FailureBurst` live only under `RuntimePresentation`. State/item/round epochs cancel stale motion; restart and destruction clear debris, restore locally suppressed authoritative parts, and return the runtime container to baseline. UI tokens centralize instant, snap, quick, panel, and hero motion. No element bounces continuously.
 
 ## Visual direction
 
@@ -220,14 +245,22 @@ The HUD uses scale-based placement, dark translucent rounded panels, restrained 
 
 Exact run results belong in `docs/DEVELOPMENT_STATUS.md` after they are observed.
 
-## Verified Phase 02 acceptance result
+## Current correction verification
 
-- The original cloud place (`PlaceId 134193642444044`, `GameId 10493030248`) was saved normally, every Studio process was closed, and the user reopened that same place from Roblox.
-- Fresh bridge Studio session `d81093b5-5bae-4347-ae97-eb21720124ba` verified the reopened place in Edit mode, its exact managed trees with zero duplicate paths, and SHA-256 parity for all 36 canonical Luau sources.
-- Post-reopen Studio Output passed the Phase 01 suite at 69/69 and the Phase 02 suite at 71/71.
-- A post-reopen one-item shipment banked 15 Tape and displayed a 15-Tape session total; the fresh verification baseline contained zero warnings and zero errors.
-- The real two-player run passed after replication-delay fix `02b2aeb`: one player owned Station 01 and the other received the authored spectator state, with zero fresh actionable game errors.
-- No Avast setting was changed; the successful direct reopen made the proposed launcher exception unnecessary.
+- The corrected manifest synchronized twice before save with `Created=0 Updated=148 Skipped=0 Failed=0 Warnings=0 Backups=26`. After a clean no-resync cloud reopen, the full audit passed 157/157 managed paths with zero missing, duplicate, wrong-class, or conflicting instances.
+- All 36 canonical Phase 01 and Phase 02 Luau sources matched their live Studio sources by SHA-256. Live `ClientBootstrap` matched `sha256:2327d05560ce4b55e2eecdb45d3a27417e4f37dcb2b0c0a3000112a2c4ed6f02`.
+- The reopened authored `DecisionPanel` retained `AnchorPoint = (0.5, 1)`, `Position = (0.5, 0, 0.96, 0)`, `Size = (0.5, 0, 0.3, 0)`, and `Visible = false`.
+- The dependency-free Node smokes passed after the warning fix at `[StudioSyncSmoke] PASS checks=16 folders=7 scripts=10 deterministic=true` and `[Phase02StudioSyncSmoke] PASS criteria=24 instances=122 scripts=26 remotes=6 deterministic=true phase01=true`.
+- The static layout contract passed at all four sizes in the table above. Real `1920×1080`, `1366×768`, and narrow `1100×700` Play runs kept the full Decision panel and both actions on-screen. At `1366×768`, the visual center resolved to logical `(2, 2)` and the four visible crate corners to `(0, 0)`, `(4, 0)`, `(0, 4)`, and `(4, 4)` without a top-bar shift.
+- Final post-reopen Play Solo passed Phase 01 at 69/69 across 15 suites and Phase 02 at 94/94 across 11 suites. The fixed seeds remain `24012026` with 1,000 Phase 01 fuzz cases and `24022026`; fresh actionable Output warnings and errors were both zero.
+- Final flows covered placement-timeout failure, Pack Again reset, decision-timeout Ship for `+15 TAPE` and `SESSION 15 TAPE`, One More followed by manual Ship for `+57 TAPE` and `SESSION 72 TAPE`, and a packed-content failure for `LOST 15 TAPE` while `SESSION 72 TAPE` remained banked.
+- A final 60 FPS focused capture confirmed the reset-to-placement sequence, temporary PresentationPoint handoff, multi-frame rotation of an irregular One More ghost, accepted Parcel transition into Decision, and Shipment Tape counting through intermediate values before reaching the exact authoritative total.
+- Final cleanup returned `RuntimePresentation=0` and `PlacedItems=0`.
+- The final two-client run after `cd4cf83` logged `READY` on both clients. Pack Again started owner round 2 and progressed through `Preparing → PresentingItem → AwaitingPlacement`; the spectator remained visibly `SPECTATING` with `0 TAPE`, `BANK 0 TAPE`, and disabled Pack Again.
+- Fresh bridge diagnostics returned `errors=0`, `matching=0`, and `latestActionable=null`; five plugin loops each reported `errors=0`. Studio ended normally with only the main Edit window remaining.
+- Studio saved the warning-free corrected place normally at 2026-07-13 14:02:14 Eastern and reported `Saved new changes in "ONE MORE ITEM!" to Roblox.` The external recovery copy `ONE_MORE_ITEM_phase02_final_warningfix_20260713.rbxl` was verified at 14:03:57 Eastern with a size of 159,447 bytes.
+- Studio closed cleanly and cold-reopened the cloud place without source resynchronization. The active identity remained `PlaceId 134193642444044` and `GameId 10493030248`; Studio's internal `Place2` label is only a local display label and does not override those IDs.
+- Only final documentation-head GitHub Actions and local/remote/PR-head equality remain pending; this section does not claim those gates have passed.
 
 ## Known limitations and out of scope
 
