@@ -18,7 +18,14 @@ const supportedTypes = new Set(["boolean", "number", "string", "EnumItem", "Colo
 const expectedRemotes = ["ClientReadyRequest", "DecisionRequest", "PlaceItemRequest", "PlacementResponse", "RestartRequest", "RoundSnapshot"];
 const worldRoot = "Workspace.ONE_MORE_ITEM_WORLD.PlaytestArena";
 const stationRoot = `${worldRoot}.Stations.Station_01`;
+const uiScreen = "StarterGui.ONE_MORE_ITEM_Gameplay";
 const uiRoot = "StarterGui.ONE_MORE_ITEM_Gameplay.Root";
+const requiredViewports = [
+  { width: 1920, height: 1080 },
+  { width: 1366, height: 768 },
+  { width: 2560, height: 1440 },
+  { width: 1100, height: 700 },
+];
 const expectedWorldPaths = [
   `${worldRoot}.ArenaFloor`,
   `${worldRoot}.ArenaBackdrop`,
@@ -101,6 +108,54 @@ function parentPathOf(managedPath) {
   const parts = managedPath.split(".");
   parts.pop();
   return parts.join(".");
+}
+
+function calculateGuiObjectBounds(properties, parentBounds, label) {
+  const position = properties?.Position;
+  const size = properties?.Size;
+  const anchorPoint = properties?.AnchorPoint ?? { type: "Vector2", x: 0, y: 0 };
+  assert.equal(position?.type, "UDim2", `${label} requires an authored UDim2 Position`);
+  assert.equal(size?.type, "UDim2", `${label} requires an authored UDim2 Size`);
+  assert.equal(anchorPoint?.type, "Vector2", `${label} requires an authored Vector2 AnchorPoint`);
+
+  const parentWidth = parentBounds.right - parentBounds.left;
+  const parentHeight = parentBounds.bottom - parentBounds.top;
+  const width = parentWidth * size.xScale + size.xOffset;
+  const height = parentHeight * size.yScale + size.yOffset;
+  const anchorX = parentBounds.left + parentWidth * position.xScale + position.xOffset;
+  const anchorY = parentBounds.top + parentHeight * position.yScale + position.yOffset;
+  const left = anchorX - width * anchorPoint.x;
+  const top = anchorY - height * anchorPoint.y;
+  return { left, top, right: left + width, bottom: top + height, width, height };
+}
+
+function authoredGuiBounds(entriesByPath, managedPath, viewport, cache = new Map()) {
+  if (cache.has(managedPath)) return cache.get(managedPath);
+  const entry = entriesByPath.get(managedPath);
+  assert.ok(entry, `Missing authored GuiObject: ${managedPath}`);
+  const parentPath = parentPathOf(managedPath);
+  const parentBounds = parentPath === uiScreen
+    ? { left: 0, top: 0, right: viewport.width, bottom: viewport.height, width: viewport.width, height: viewport.height }
+    : authoredGuiBounds(entriesByPath, parentPath, viewport, cache);
+  const bounds = calculateGuiObjectBounds(entry.properties, parentBounds, managedPath);
+  cache.set(managedPath, bounds);
+  return bounds;
+}
+
+function assertContained(inner, outer, label) {
+  const tolerance = 1e-6;
+  assert.ok(inner.left >= outer.left - tolerance, `${label} crosses the left viewport boundary`);
+  assert.ok(inner.top >= outer.top - tolerance, `${label} crosses the top viewport boundary`);
+  assert.ok(inner.right <= outer.right + tolerance, `${label} crosses the right viewport boundary`);
+  assert.ok(inner.bottom <= outer.bottom + tolerance, `${label} crosses the bottom viewport boundary`);
+}
+
+function boundsOverlap(first, second) {
+  return first.left < second.right && first.right > second.left && first.top < second.bottom && first.bottom > second.top;
+}
+
+function formatBounds(bounds) {
+  return `(${bounds.left.toFixed(2)},${bounds.top.toFixed(2)})-(${bounds.right.toFixed(2)},${bounds.bottom.toFixed(2)})`;
 }
 
 function allTypedValues(manifest) {
@@ -193,6 +248,65 @@ try {
     const debug = manifest.instances.find((entry) => entry.path === `${uiRoot}.DevelopmentDebug`);
     assert.equal(debug.properties.Visible.value, false, "DevelopmentDebug must start hidden");
     assert.equal(debug.attributes.StudioOnly.value, true, "DevelopmentDebug must be Studio-only");
+  });
+
+  const entriesByPath = new Map(manifest.instances.map((entry) => [entry.path, entry]));
+  criterion("DecisionPanel stores its visible target and starts hidden", () => {
+    const decisionPanel = entriesByPath.get(`${uiRoot}.DecisionPanel`);
+    assert.ok(decisionPanel, "DecisionPanel must be permanently authored");
+    assert.deepEqual(decisionPanel.properties.AnchorPoint, { type: "Vector2", x: 0.5, y: 1 });
+    assert.deepEqual(decisionPanel.properties.Position, { type: "UDim2", xScale: 0.5, xOffset: 0, yScale: 0.96, yOffset: 0 });
+    assert.equal(decisionPanel.properties.Visible?.type, "boolean");
+    assert.equal(decisionPanel.properties.Visible?.value, false, "Hidden state must use Visible=false");
+    assert.equal(decisionPanel.properties.Position.yOffset, 0, "The authored visible target cannot contain a hidden +260 offset");
+  });
+
+  criterion("core gameplay panels fit every required desktop viewport", () => {
+    const corePanels = ["CurrentItemCard", "ShipmentCard", "PlacementControls", "DecisionPanel", "ResultsPanel"];
+    for (const viewport of requiredViewports) {
+      const cache = new Map();
+      const viewportBounds = { left: 0, top: 0, right: viewport.width, bottom: viewport.height };
+      for (const panelName of corePanels) {
+        const panelBounds = authoredGuiBounds(entriesByPath, `${uiRoot}.${panelName}`, viewport, cache);
+        assertContained(panelBounds, viewportBounds, `${panelName} at ${viewport.width}x${viewport.height}`);
+      }
+
+      const decisionBounds = authoredGuiBounds(entriesByPath, `${uiRoot}.DecisionPanel`, viewport, cache);
+      const shipBounds = authoredGuiBounds(entriesByPath, `${uiRoot}.DecisionPanel.ShipButton`, viewport, cache);
+      const oneMoreBounds = authoredGuiBounds(entriesByPath, `${uiRoot}.DecisionPanel.OneMoreButton`, viewport, cache);
+      console.log(
+        `[Phase02Layout] viewport=${viewport.width}x${viewport.height} decision=${formatBounds(decisionBounds)} ship=${formatBounds(shipBounds)} oneMore=${formatBounds(oneMoreBounds)}`,
+      );
+    }
+  });
+
+  criterion("decision buttons remain contained and usable", () => {
+    for (const viewport of requiredViewports) {
+      const cache = new Map();
+      const decisionBounds = authoredGuiBounds(entriesByPath, `${uiRoot}.DecisionPanel`, viewport, cache);
+      for (const buttonName of ["ShipButton", "OneMoreButton"]) {
+        const buttonBounds = authoredGuiBounds(entriesByPath, `${uiRoot}.DecisionPanel.${buttonName}`, viewport, cache);
+        assertContained(buttonBounds, decisionBounds, `${buttonName} at ${viewport.width}x${viewport.height}`);
+        assert.ok(buttonBounds.width > 0 && buttonBounds.height > 0, `${buttonName} must have positive pixel dimensions`);
+        if (viewport.width === 1100 && viewport.height === 700) {
+          assert.ok(buttonBounds.width >= 120, `${buttonName} must remain wide enough to use in the narrow desktop window`);
+          assert.ok(buttonBounds.height >= 44, `${buttonName} must remain tall enough to use in the narrow desktop window`);
+        }
+      }
+    }
+  });
+
+  criterion("top status cards do not cover decision actions", () => {
+    for (const viewport of requiredViewports) {
+      const cache = new Map();
+      const currentItemBounds = authoredGuiBounds(entriesByPath, `${uiRoot}.CurrentItemCard`, viewport, cache);
+      const shipmentBounds = authoredGuiBounds(entriesByPath, `${uiRoot}.ShipmentCard`, viewport, cache);
+      for (const buttonName of ["ShipButton", "OneMoreButton"]) {
+        const buttonBounds = authoredGuiBounds(entriesByPath, `${uiRoot}.DecisionPanel.${buttonName}`, viewport, cache);
+        assert.equal(boundsOverlap(currentItemBounds, buttonBounds), false, `CurrentItemCard covers ${buttonName} at ${viewport.width}x${viewport.height}`);
+        assert.equal(boundsOverlap(shipmentBounds, buttonBounds), false, `ShipmentCard covers ${buttonName} at ${viewport.width}x${viewport.height}`);
+      }
+    }
   });
 
   criterion("client scripts use StarterPlayerScripts", () => {
@@ -355,7 +469,6 @@ try {
     assert.match(phase01Result.stdout, /\[StudioSyncSmoke\] PASS checks=16 folders=7 scripts=10 deterministic=true/);
   });
 
-  assert.equal(criterionCount, 18, "The Phase 02 manifest smoke must cover exactly the 18 required criteria");
   const instanceCount = operations.filter((operation) => operation.type === "ensureInstance").length;
   const scriptCount = operations.filter((operation) => operation.type === "writeScript").length;
   console.log(

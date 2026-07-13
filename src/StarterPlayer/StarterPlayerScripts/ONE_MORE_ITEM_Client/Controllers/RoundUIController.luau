@@ -9,6 +9,21 @@ local PresentationTokens = require(script.Parent.PresentationTokens)
 
 type Snapshot = ClientRoundStore.Snapshot
 
+type PanelMotionState = {
+	TargetVisible: boolean,
+	Epoch: number,
+	Tween: Tween?,
+	CompletionConnection: RBXScriptConnection?,
+}
+
+type CountAnimation = {
+	From: number,
+	Target: number,
+	StartedAt: number,
+	Duration: number,
+	Epoch: number,
+}
+
 export type Buttons = {
 	Rotate: TextButton,
 	Place: TextButton,
@@ -39,6 +54,12 @@ type InternalController = Controller & {
 	_buttons: Buttons,
 	_originalPositions: { [GuiObject]: UDim2 },
 	_originalButtonSizes: { [TextButton]: UDim2 },
+	_panelMotion: { [GuiObject]: PanelMotionState },
+	_countAnimations: { [string]: CountAnimation },
+	_countEpochs: { [string]: number },
+	_displayedNumbers: { [string]: number },
+	_authoritativeNumbers: { [string]: number },
+	_resultCountKey: string?,
 	_connections: { RBXScriptConnection },
 	_snapshot: Snapshot?,
 	_lastPlacementSecond: number?,
@@ -50,6 +71,15 @@ type InternalController = Controller & {
 local RoundUIController = {}
 local ControllerMethods = {}
 ControllerMethods.__index = ControllerMethods
+
+local PANEL_ENTRANCE_OFFSET = 16
+local SHIPMENT_COUNT_MIN_DURATION = 0.25
+local SHIPMENT_COUNT_MAX_DURATION = 0.40
+local SESSION_COUNT_MIN_DURATION = 0.55
+local SESSION_COUNT_MAX_DURATION = 0.80
+local RESULT_COUNT_DURATION = 0.30
+local SHIPMENT_FULL_DURATION_DIFFERENCE = 100
+local SESSION_FULL_DURATION_DIFFERENCE = 250
 
 local function requireGui(parent: Instance, name: string): GuiObject
 	local child = parent:WaitForChild(name, 10)
@@ -83,19 +113,198 @@ local function scaledSize(size: UDim2, scale: number): UDim2
 	return UDim2.new(size.X.Scale * scale, math.round(size.X.Offset * scale), size.Y.Scale * scale, math.round(size.Y.Offset * scale))
 end
 
-local function setPanelVisible(self: InternalController, panel: GuiObject, visible: boolean, entranceDuration: number?)
+local function stopPanelMotion(state: PanelMotionState)
+	local completionConnection = state.CompletionConnection
+	if completionConnection ~= nil then
+		completionConnection:Disconnect()
+		state.CompletionConnection = nil
+	end
+	local tween = state.Tween
+	if tween ~= nil then
+		tween:Cancel()
+		state.Tween = nil
+	end
+end
+
+local function setPanelVisible(self: InternalController, panel: GuiObject, visible: boolean)
 	local originalPosition = self._originalPositions[panel]
+	local state = self._panelMotion[panel]
+	if state.TargetVisible == visible then
+		return
+	end
+
+	state.TargetVisible = visible
+	state.Epoch += 1
+	local epoch = state.Epoch
+	stopPanelMotion(state)
+
+	local targetPosition: UDim2
+	local duration: number
 	if visible then
 		panel.Visible = true
-		panel.Position = offsetPosition(originalPosition, 16)
-		TweenService:Create(
-			panel,
-			TweenInfo.new(entranceDuration or PresentationTokens.Timing.Panel, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-			{ Position = originalPosition }
-		):Play()
+		panel.Position = offsetPosition(originalPosition, PANEL_ENTRANCE_OFFSET)
+		targetPosition = originalPosition
+		duration = PresentationTokens.Timing.Panel
 	else
-		panel.Visible = false
+		if not panel.Visible then
+			panel.Position = originalPosition
+			return
+		end
+		targetPosition = offsetPosition(originalPosition, PANEL_ENTRANCE_OFFSET)
+		duration = PresentationTokens.Timing.Quick
+	end
+
+	local tween = TweenService:Create(
+		panel,
+		TweenInfo.new(duration, Enum.EasingStyle.Quart, if visible then Enum.EasingDirection.Out else Enum.EasingDirection.In),
+		{ Position = targetPosition }
+	)
+	state.Tween = tween
+	state.CompletionConnection = tween.Completed:Once(function(playbackState)
+		if self._destroyed or state.Epoch ~= epoch or state.TargetVisible ~= visible then
+			return
+		end
+		state.Tween = nil
+		state.CompletionConnection = nil
+		if playbackState ~= Enum.PlaybackState.Completed then
+			return
+		end
 		panel.Position = originalPosition
+		if not visible then
+			panel.Visible = false
+		end
+	end)
+	tween:Play()
+end
+
+local function countDuration(minimum: number, maximum: number, difference: number, fullDurationDifference: number): number
+	local alpha = math.clamp(math.abs(difference) / fullDurationDifference, 0, 1)
+	return minimum + (maximum - minimum) * alpha
+end
+
+local function renderCountValue(self: InternalController, key: string, value: number)
+	local rounded = math.round(value)
+	if key == "ShipmentValue" then
+		self._labels.ShipmentValue.Text = string.format("%d TAPE", rounded)
+	elseif key == "SessionBank" then
+		self._labels.SessionBank.Text = string.format("BANK %d TAPE", rounded)
+		local snapshot = self._snapshot
+		if snapshot ~= nil and snapshot.StationId == "station_01" and snapshot.State == "Results" then
+			self._labels.SessionTotal.Text = string.format("SESSION %d TAPE", rounded)
+		end
+	elseif key == "ResultValue" then
+		local snapshot = self._snapshot
+		if snapshot ~= nil
+			and snapshot.StationId == "station_01"
+			and snapshot.State == "Results"
+			and snapshot.ResultLostValue == 0
+		then
+			self._labels.ResultValue.Text = string.format("+%d TAPE", rounded)
+		end
+	end
+end
+
+local function setDisplayedNumber(self: InternalController, key: string, value: number)
+	self._displayedNumbers[key] = value
+	renderCountValue(self, key, value)
+end
+
+local function cancelCountAnimation(self: InternalController, key: string)
+	self._countEpochs[key] = (self._countEpochs[key] or 0) + 1
+	self._countAnimations[key] = nil
+end
+
+local function setCountTarget(
+	self: InternalController,
+	key: string,
+	target: number,
+	animateIncrease: boolean,
+	forceExact: boolean,
+	minimumDuration: number,
+	maximumDuration: number,
+	fullDurationDifference: number
+)
+	local previousTarget = self._authoritativeNumbers[key]
+	if previousTarget == nil then
+		self._authoritativeNumbers[key] = target
+		cancelCountAnimation(self, key)
+		setDisplayedNumber(self, key, target)
+		return
+	end
+
+	if target == previousTarget then
+		if forceExact then
+			cancelCountAnimation(self, key)
+			setDisplayedNumber(self, key, target)
+		else
+			renderCountValue(self, key, self._displayedNumbers[key] or target)
+		end
+		return
+	end
+
+	self._authoritativeNumbers[key] = target
+	local displayed = self._displayedNumbers[key] or previousTarget
+	if animateIncrease and target > previousTarget and target > displayed then
+		cancelCountAnimation(self, key)
+		local epoch = self._countEpochs[key]
+		self._countAnimations[key] = {
+			From = displayed,
+			Target = target,
+			StartedAt = os.clock(),
+			Duration = countDuration(minimumDuration, maximumDuration, target - displayed, fullDurationDifference),
+			Epoch = epoch,
+		}
+	else
+		cancelCountAnimation(self, key)
+		setDisplayedNumber(self, key, target)
+	end
+end
+
+local function beginResultCount(self: InternalController, snapshot: Snapshot)
+	local resultKey = string.format("%d:%d", snapshot.RoundId, snapshot.ResultValue)
+	if self._resultCountKey == resultKey then
+		renderCountValue(self, "ResultValue", self._displayedNumbers.ResultValue or snapshot.ResultValue)
+		return
+	end
+
+	self._resultCountKey = resultKey
+	cancelCountAnimation(self, "ResultValue")
+	self._authoritativeNumbers.ResultValue = 0
+	setDisplayedNumber(self, "ResultValue", 0)
+	setCountTarget(
+		self,
+		"ResultValue",
+		snapshot.ResultValue,
+		true,
+		false,
+		RESULT_COUNT_DURATION,
+		RESULT_COUNT_DURATION,
+		math.max(1, snapshot.ResultValue)
+	)
+end
+
+local function clearResultCount(self: InternalController, authoritativeValue: number)
+	self._resultCountKey = nil
+	self._authoritativeNumbers.ResultValue = authoritativeValue
+	cancelCountAnimation(self, "ResultValue")
+	self._displayedNumbers.ResultValue = authoritativeValue
+end
+
+local function updateCountAnimations(self: InternalController)
+	local now = os.clock()
+	for key, animation in pairs(self._countAnimations) do
+		if self._countEpochs[key] ~= animation.Epoch then
+			self._countAnimations[key] = nil
+			continue
+		end
+
+		local alpha = math.clamp((now - animation.StartedAt) / animation.Duration, 0, 1)
+		local eased = 1 - (1 - alpha) ^ 3
+		setDisplayedNumber(self, key, animation.From + (animation.Target - animation.From) * eased)
+		if alpha >= 1 then
+			self._countAnimations[key] = nil
+			setDisplayedNumber(self, key, animation.Target)
+		end
 	end
 end
 
@@ -169,9 +378,17 @@ function RoundUIController.new(gui: ScreenGui, resolveItemName: (itemId: string)
 		DebugServerResponse = requireLabel(developmentDebug, "ServerResponse"),
 	}
 
+	local managedPanels: { GuiObject } = { currentItemCard, shipmentCard, placementControls, decisionPanel, resultsPanel }
 	local originalPositions: { [GuiObject]: UDim2 } = {}
-	for _, panel in ipairs({ currentItemCard, shipmentCard, placementControls, decisionPanel, resultsPanel }) do
+	local panelMotion: { [GuiObject]: PanelMotionState } = {}
+	for _, panel in ipairs(managedPanels) do
 		originalPositions[panel] = panel.Position
+		panelMotion[panel] = {
+			TargetVisible = panel.Visible,
+			Epoch = 0,
+			Tween = nil,
+			CompletionConnection = nil,
+		}
 	end
 	local originalButtonSizes: { [TextButton]: UDim2 } = {}
 	for _, button in pairs(buttons) do
@@ -191,6 +408,12 @@ function RoundUIController.new(gui: ScreenGui, resolveItemName: (itemId: string)
 		_buttons = buttons,
 		_originalPositions = originalPositions,
 		_originalButtonSizes = originalButtonSizes,
+		_panelMotion = panelMotion,
+		_countAnimations = {},
+		_countEpochs = {},
+		_displayedNumbers = {},
+		_authoritativeNumbers = {},
+		_resultCountKey = nil,
 		_connections = {},
 		_snapshot = nil,
 		_lastPlacementSecond = nil,
@@ -222,6 +445,7 @@ function RoundUIController.new(gui: ScreenGui, resolveItemName: (itemId: string)
 		if self._destroyed then
 			return
 		end
+		updateCountAnimations(self)
 		local snapshot = self._snapshot
 		if snapshot == nil then
 			return
@@ -261,10 +485,37 @@ function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Sna
 	local deciding = state == "Decision" and hasStation
 	local results = state == "Results" and hasStation
 	local spectator = not hasStation
+	local failedResult = snapshot.ResultLostValue > 0
+
+	setCountTarget(
+		self,
+		"ShipmentValue",
+		snapshot.ShipmentValue,
+		deciding,
+		spectator or state == "Preparing" or state == "Failing" or failedResult,
+		SHIPMENT_COUNT_MIN_DURATION,
+		SHIPMENT_COUNT_MAX_DURATION,
+		SHIPMENT_FULL_DURATION_DIFFERENCE
+	)
+	setCountTarget(
+		self,
+		"SessionBank",
+		snapshot.SessionBank,
+		hasStation and (state == "Shipping" or results) and not failedResult,
+		spectator or state == "Preparing" or state == "Failing" or failedResult,
+		SESSION_COUNT_MIN_DURATION,
+		SESSION_COUNT_MAX_DURATION,
+		SESSION_FULL_DURATION_DIFFERENCE
+	)
+	if results and not failedResult and snapshot.ResultValue > 0 then
+		beginResultCount(self, snapshot)
+	else
+		clearResultCount(self, snapshot.ResultValue)
+	end
 
 	setPanelVisible(self, self._currentItemCard, awaiting or state == "PresentingItem")
 	setPanelVisible(self, self._shipmentCard, not results)
-	setPanelVisible(self, self._placementControls, awaiting, PresentationTokens.Timing.Quick)
+	setPanelVisible(self, self._placementControls, awaiting)
 	setPanelVisible(self, self._decisionPanel, deciding)
 	setPanelVisible(self, self._resultsPanel, results or spectator)
 
@@ -276,10 +527,8 @@ function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Sna
 
 	self._labels.ItemName.Text = if snapshot.CurrentItemId ~= nil then self._resolveItemName(snapshot.CurrentItemId) else "WAITING FOR ITEM"
 	self._labels.UnshippedLabel.Text = "UNSHIPPED"
-	self._labels.ShipmentValue.Text = string.format("%d TAPE", snapshot.ShipmentValue)
 	self._labels.ItemCount.Text = string.format("%d / 10 ITEMS", snapshot.ItemCount)
 	self._labels.Multiplier.Text = formatMultiplier(snapshot.CurrentMultiplier)
-	self._labels.SessionBank.Text = string.format("BANK %d TAPE", snapshot.SessionBank)
 	self._labels.NextItemName.Text = if snapshot.NextItemId ~= nil then self._resolveItemName(snapshot.NextItemId) else "BOX FULL"
 	self._labels.NextDifficulty.Text = snapshot.NextDifficulty or ""
 	self._labels.GuaranteedValue.Text = string.format("Guaranteed: %d Tape", snapshot.ShipmentValue)
@@ -312,14 +561,13 @@ function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Sna
 		self._labels.ResultValue.Text = ""
 		self._labels.SessionTotal.Text = ""
 	elseif results then
-		local failed = snapshot.ResultLostValue > 0
-		self._labels.ResultTitle.Text = if failed then "TOO MUCH!" else "SHIPMENT COMPLETE"
-		self._labels.ResultTitle.TextColor3 = if failed then PresentationTokens.Color.Red else PresentationTokens.Color.Green
+		self._labels.ResultTitle.Text = if failedResult then "TOO MUCH!" else "SHIPMENT COMPLETE"
+		self._labels.ResultTitle.TextColor3 = if failedResult then PresentationTokens.Color.Red else PresentationTokens.Color.Green
 		self._labels.ResultReason.Text = formatReason(snapshot.ResultReason)
-		self._labels.ResultValue.Text = if failed
-			then string.format("LOST %d TAPE", snapshot.ResultLostValue)
-			else string.format("+%d TAPE", snapshot.ResultValue)
-		self._labels.SessionTotal.Text = string.format("SESSION %d TAPE", snapshot.SessionBank)
+		if failedResult then
+			self._labels.ResultValue.Text = string.format("LOST %d TAPE", snapshot.ResultLostValue)
+			self._labels.SessionTotal.Text = string.format("SESSION %d TAPE", snapshot.SessionBank)
+		end
 	end
 	self._statusBanner.Visible = self._statusBanner.Text ~= ""
 
@@ -389,6 +637,14 @@ function ControllerMethods.Destroy(self: InternalController)
 		return
 	end
 	self._destroyed = true
+	for _, state in pairs(self._panelMotion) do
+		state.Epoch += 1
+		stopPanelMotion(state)
+	end
+	for key in pairs(self._countAnimations) do
+		cancelCountAnimation(self, key)
+	end
+	table.clear(self._countAnimations)
 	for _, connection in ipairs(self._connections) do
 		connection:Disconnect()
 	end
