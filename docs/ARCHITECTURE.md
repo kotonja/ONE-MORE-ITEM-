@@ -1,4 +1,4 @@
-# Phase 01 architecture
+# Project architecture
 
 ## Coordinates and shapes
 
@@ -62,3 +62,21 @@ World-space physics is not authoritative because floating-point contacts and rep
 Folder paths are ordered parent-first with a stable code-unit comparison. Every generated `ensureFolder` operation precedes every `writeScript` operation. Correct existing instances are reused or updated; missing instances are created; and a missing parent or wrong-class conflict fails visibly without deleting content. New `Script` instances remain disabled while Source and parenting are prepared and are restored to their manifest-enabled state only after a successful write. `ModuleScript` instances have no enabled state.
 
 Running the complete generated list repeatedly is idempotent. Generated blueprint and Command Bar JSON are byte-deterministic, ignored artifacts; `src/`, `studio/phase01.manifest.json`, and the tools remain authoritative. This workflow is Edit-mode authoring only and never creates the permanent hierarchy at runtime.
+
+## Phase 02 permanent-instance authoring
+
+Phase 02 extends the dependency-free manifest workflow across `Workspace`, `StarterGui`, `ReplicatedStorage`, `ServerScriptService`, and `StarterPlayer`. Its typed schema covers booleans, numbers, strings, enum items, colors, vectors, dimensions, and transforms. Parent instances are emitted before children, correct instances are reused, managed properties and attributes are updated, and wrong-class conflicts fail without deletion. `StarterPlayer.StarterPlayerScripts` is a declared built-in parent rather than a replaceable folder.
+
+Permanent station geometry, HUD surfaces, `RemoteEvent` instances, and the development cell template are therefore present in Edit mode. Runtime code is structurally unable to substitute a map or `ScreenGui` builder; it may create only temporary ghosts, proxy item cells, placed-item visuals, viewport contents, highlights, and short-lived presentation effects.
+
+## Phase 02 authority and round loop
+
+`StationService` discovers authored stations and enforces exclusive ownership. `RoundService` owns the seven-state round machine, round/version identity, deadlines, current/preview items, occupancy, shipment totals, session bank, and stale-callback guards. `PlacementService` validates the complete placement request against the Phase 01 integer solver before applying once. `SequenceService` deterministically filters impossible candidates and preserves offer fairness. `WorldItemService` renders accepted cells from the authored development template, and `RequestRateLimiter` protects the four client request surfaces.
+
+The client receives copied presentation snapshots and predicts only ghost validity, input response, camera, UI, and motion. It never chooses the next item, commits occupancy, grants Tape, or decides timeout/shipping outcomes.
+
+## Phase 02 client presentation
+
+The client bootstrap composes focused controllers for round snapshots, camera, character controls, desktop input, ghost placement, HUD state, viewport previews, and physical-world motion. Controllers bind existing authored paths and clean their temporary children/connections on state changes. The stable camera and grid-to-world transform derive from authored anchors and Phase 01 integer coordinates rather than physical contacts.
+
+The full hierarchy, network contracts, timings, development items, and test flow are documented in `docs/PHASE02_VERTICAL_SLICE.md`.
