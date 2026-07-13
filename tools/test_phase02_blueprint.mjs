@@ -468,6 +468,7 @@ try {
 
     for (const step of blueprint.steps.filter((entry) => entry.type === "writeScript")) {
       assert.equal(step.overwrite, true, `Script reapply must be explicit: ${step.path}`);
+      assert.doesNotMatch(step.source, /\r/, `Generated Studio source must use canonical LF newlines: ${step.path}`);
       assert.equal(step.expectedSourceHash, expectedSourceHash(step.source), `Script overwrite hash must protect divergence: ${step.path}`);
     }
   });

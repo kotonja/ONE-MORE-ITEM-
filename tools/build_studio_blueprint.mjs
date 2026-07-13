@@ -141,7 +141,7 @@ function loadAndValidateManifest() {
       className: entry.className,
       enabled: entry.className === "Script" ? entry.enabled !== false : undefined,
       sourceFile: entry.sourceFile.replaceAll("\\", "/"),
-      source: fs.readFileSync(realSourcePath, "utf8").replace(/^\uFEFF/, ""),
+      source: fs.readFileSync(realSourcePath, "utf8").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n"),
     });
   }
 

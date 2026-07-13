@@ -356,7 +356,7 @@ function loadAndValidateManifest(manifestPath) {
       className: entry.className,
       enabled: entry.className === "ModuleScript" ? undefined : entry.enabled !== false,
       sourceFile: entry.sourceFile.replaceAll("\\", "/"),
-      source: fs.readFileSync(realSourcePath, "utf8").replace(/^\uFEFF/, ""),
+      source: fs.readFileSync(realSourcePath, "utf8").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n"),
     });
     managedPaths.add(entry.path);
     guaranteedClasses.set(entry.path, entry.className);
