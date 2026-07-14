@@ -2,6 +2,8 @@
 
 Phase 02 proves the complete active packing loop at one authored station. It is a controlled desktop vertical slice, not the launch arena.
 
+Phase 03 preserves this authority and round loop while extending the same authored UI/station manifest for safe-area layouts, touch, gamepad, adaptive prompts, and responsive camera targets. See `docs/PHASE03_CROSS_PLATFORM.md` for the additive cross-platform contract and its independent acceptance status.
+
 ## Permanent world hierarchy
 
 The permanent world is authored in Edit mode from `studio/phase02.manifest.json`; gameplay code never builds it.

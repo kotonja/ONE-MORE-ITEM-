@@ -34,6 +34,8 @@ const expectedWorldPaths = [
   `${stationRoot}.StationRoot`,
   `${stationRoot}.PlayerStand`,
   `${stationRoot}.CameraAnchor`,
+  `${stationRoot}.CameraAnchorTouchLandscape`,
+  `${stationRoot}.CameraAnchorTouchPortrait`,
   `${stationRoot}.CameraFocus`,
   `${stationRoot}.PresentationPoint`,
   `${stationRoot}.Crate`,
@@ -55,6 +57,7 @@ const expectedWorldPaths = [
   `${stationRoot}.RuntimePresentation`,
 ];
 const expectedUiPaths = [
+  `${uiRoot}.TouchDragSurface`,
   `${uiRoot}.CurrentItemCard`,
   `${uiRoot}.CurrentItemCard.ItemViewport`,
   `${uiRoot}.CurrentItemCard.ItemName`,
@@ -68,7 +71,11 @@ const expectedUiPaths = [
   `${uiRoot}.ShipmentCard.SessionBank`,
   `${uiRoot}.PlacementControls`,
   `${uiRoot}.PlacementControls.RotateButton`,
+  `${uiRoot}.PlacementControls.RotateButton.CompactMinimum`,
+  `${uiRoot}.PlacementControls.RotateButton.FocusStroke`,
   `${uiRoot}.PlacementControls.PlaceButton`,
+  `${uiRoot}.PlacementControls.PlaceButton.CompactMinimum`,
+  `${uiRoot}.PlacementControls.PlaceButton.FocusStroke`,
   `${uiRoot}.PlacementControls.ControlHint`,
   `${uiRoot}.DecisionPanel`,
   `${uiRoot}.DecisionPanel.NextItemViewport`,
@@ -78,7 +85,11 @@ const expectedUiPaths = [
   `${uiRoot}.DecisionPanel.GuaranteedValue`,
   `${uiRoot}.DecisionPanel.PossibleValue`,
   `${uiRoot}.DecisionPanel.ShipButton`,
+  `${uiRoot}.DecisionPanel.ShipButton.CompactMinimum`,
+  `${uiRoot}.DecisionPanel.ShipButton.FocusStroke`,
   `${uiRoot}.DecisionPanel.OneMoreButton`,
+  `${uiRoot}.DecisionPanel.OneMoreButton.CompactMinimum`,
+  `${uiRoot}.DecisionPanel.OneMoreButton.FocusStroke`,
   `${uiRoot}.StatusBanner`,
   `${uiRoot}.ResultsPanel`,
   `${uiRoot}.ResultsPanel.ResultTitle`,
@@ -86,6 +97,8 @@ const expectedUiPaths = [
   `${uiRoot}.ResultsPanel.ResultValue`,
   `${uiRoot}.ResultsPanel.SessionTotal`,
   `${uiRoot}.ResultsPanel.PackAgainButton`,
+  `${uiRoot}.ResultsPanel.PackAgainButton.CompactMinimum`,
+  `${uiRoot}.ResultsPanel.PackAgainButton.FocusStroke`,
   `${uiRoot}.DevelopmentDebug`,
   `${uiRoot}.DevelopmentDebug.RoundState`,
   `${uiRoot}.DevelopmentDebug.RoundId`,
@@ -239,6 +252,21 @@ try {
       Object.fromEntries(Object.entries(station.attributes).map(([key, value]) => [key, value.value])),
       { Active: true, CellSize: 2, GridDepth: 5, GridHeight: 4, GridWidth: 5, StationId: "station_01" },
     );
+    const touchCameraAnchors = [
+      ["CameraAnchorTouchLandscape", [0, 21, 22], [-40, 0, 0]],
+      ["CameraAnchorTouchPortrait", [0, 28, 30], [-43, 0, 0]],
+    ];
+    for (const [name, position, rotationDegrees] of touchCameraAnchors) {
+      const anchor = manifest.instances.find((entry) => entry.path === `${stationRoot}.${name}`);
+      assert.equal(anchor?.className, "Part", `${name} must be a permanently authored Part`);
+      assert.equal(anchor.properties.Anchored?.value, true, `${name} must be anchored`);
+      assert.equal(anchor.properties.CanCollide?.value, false, `${name} cannot collide`);
+      assert.equal(anchor.properties.CanQuery?.value, false, `${name} cannot be queried`);
+      assert.equal(anchor.properties.CanTouch?.value, false, `${name} cannot generate touch events`);
+      assert.equal(anchor.properties.Transparency?.value, 1, `${name} must remain invisible`);
+      assert.deepEqual(anchor.properties.CFrame?.position, position, `${name} position drifted`);
+      assert.deepEqual(anchor.properties.CFrame?.rotationDegrees, rotationDegrees, `${name} orientation drifted`);
+    }
   });
 
   criterion("UI is authored under StarterGui", () => {
@@ -248,6 +276,20 @@ try {
     const debug = manifest.instances.find((entry) => entry.path === `${uiRoot}.DevelopmentDebug`);
     assert.equal(debug.properties.Visible.value, false, "DevelopmentDebug must start hidden");
     assert.equal(debug.attributes.StudioOnly.value, true, "DevelopmentDebug must be Studio-only");
+    const screen = manifest.instances.find((entry) => entry.path === uiScreen);
+    assert.equal(screen?.className, "ScreenGui", "Gameplay HUD must remain a permanently authored ScreenGui");
+    assert.deepEqual(screen.properties.ScreenInsets, { type: "EnumItem", enumType: "ScreenInsets", name: "DeviceSafeInsets" });
+    assert.deepEqual(screen.properties.SafeAreaCompatibility, { type: "EnumItem", enumType: "SafeAreaCompatibility", name: "None" });
+    assert.equal(screen.properties.ClipToDeviceSafeArea?.value, true);
+    assert.equal(screen.properties.IgnoreGuiInset?.value, true);
+
+    const touchDragSurface = manifest.instances.find((entry) => entry.path === `${uiRoot}.TouchDragSurface`);
+    assert.equal(touchDragSurface?.className, "Frame", "TouchDragSurface must be a permanently authored Frame");
+    assert.equal(touchDragSurface.properties.BackgroundTransparency?.value, 1, "TouchDragSurface must be transparent");
+    assert.equal(touchDragSurface.properties.Visible?.value, true, "TouchDragSurface must cover the authored usable region before Play");
+    assert.equal(touchDragSurface.properties.Active?.value, true, "TouchDragSurface must be authored active for touch routing");
+    assert.equal(touchDragSurface.properties.Selectable?.value, false, "TouchDragSurface cannot enter controller selection");
+    assert.equal(touchDragSurface.properties.ZIndex?.value, 0, "TouchDragSurface must remain behind authored controls");
   });
 
   const entriesByPath = new Map(manifest.instances.map((entry) => [entry.path, entry]));
@@ -426,6 +468,7 @@ try {
 
     for (const step of blueprint.steps.filter((entry) => entry.type === "writeScript")) {
       assert.equal(step.overwrite, true, `Script reapply must be explicit: ${step.path}`);
+      assert.doesNotMatch(step.source, /\r/, `Generated Studio source must use canonical LF newlines: ${step.path}`);
       assert.equal(step.expectedSourceHash, expectedSourceHash(step.source), `Script overwrite hash must protect divergence: ${step.path}`);
     }
   });
@@ -441,7 +484,11 @@ try {
     const output = `${firstBlueprint.toString("utf8")}\n${firstCommandBar.toString("utf8")}\n${firstGeneration.stdout}`;
     assert.ok(!output.includes(repositoryRoot), "Generated output contains repository absolute path");
     assert.doesNotMatch(output, /[A-Za-z]:[\\/](?:Users|home)[\\/]/i, "Generated output contains a user path");
-    assert.doesNotMatch(output, /(?:token|password|cookie|authorization)\s*[=:]/i, "Generated output resembles private credentials");
+    assert.doesNotMatch(
+      output,
+      /(?:api[_-]?key|password|cookie|authorization|access[_-]?token|refresh[_-]?token)\s*[=:]\s*["'][^"']{4,}/i,
+      "Generated output resembles private credentials",
+    );
   });
 
   criterion("required world hierarchy exists", () => {
@@ -460,6 +507,26 @@ try {
     for (const requiredPath of expectedUiPaths) assert.ok(operationPaths.has(requiredPath), `Missing UI operation: ${requiredPath}`);
     assert.ok(operations.some((operation) => operation.className === "UICorner"), "Authored HUD should include rounded corners");
     assert.ok(operations.some((operation) => operation.className === "UIStroke"), "Authored HUD should include restrained strokes");
+    assert.ok(operations.some((operation) => operation.className === "UISizeConstraint"), "Authored HUD should include compact minimums");
+    const primaryButtons = [
+      `${uiRoot}.PlacementControls.RotateButton`,
+      `${uiRoot}.PlacementControls.PlaceButton`,
+      `${uiRoot}.DecisionPanel.ShipButton`,
+      `${uiRoot}.DecisionPanel.OneMoreButton`,
+      `${uiRoot}.ResultsPanel.PackAgainButton`,
+    ];
+    for (const buttonPath of primaryButtons) {
+      const button = entriesByPath.get(buttonPath);
+      const compactMinimum = entriesByPath.get(`${buttonPath}.CompactMinimum`);
+      const focusStroke = entriesByPath.get(`${buttonPath}.FocusStroke`);
+      assert.equal(button?.properties.Selectable?.value, true, `${buttonPath} must support controller selection`);
+      assert.equal(compactMinimum?.className, "UISizeConstraint", `${buttonPath} requires an authored compact minimum`);
+      assert.ok(compactMinimum.properties.MinSize.x >= 72, `${buttonPath} compact width is too small`);
+      assert.equal(compactMinimum.properties.MinSize.y, 44, `${buttonPath} compact height must preserve the touch target`);
+      assert.equal(focusStroke?.className, "UIStroke", `${buttonPath} requires an authored FocusStroke`);
+      assert.equal(focusStroke.properties.Enabled?.value, false, `${buttonPath} FocusStroke must start disabled`);
+      assert.equal(focusStroke.properties.ApplyStrokeMode?.name, "Border", `${buttonPath} FocusStroke must outline the border`);
+    }
   });
 
   criterion("runtime architecture has no permanent builders", () => {

@@ -1285,6 +1285,7 @@ local function makePlacementCallbacks(log: PlacementCallbackLog): PlacementContr
 		Rejected = function()
 			log.RejectedCount += 1
 		end,
+		PendingChanged = function(_pending: boolean) end,
 		Observability = function(_valid: boolean?, _x: number?, _y: number?, _z: number?) end,
 	}
 end

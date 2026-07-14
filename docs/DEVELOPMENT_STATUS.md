@@ -1,153 +1,142 @@
 # Development status
 
-- **Current phase:** Phase 02 — Playable Station Vertical Slice final visual-truth and motion-correction pass complete; implementation, cloud persistence, cold-reopen parity, Play Solo, runtime cleanup, multiplayer isolation, and documentation-record CI verified; PR #2 is ready for final review after the exact status-only head check reported at handoff
-- **Current branch:** `codex/phase-02-playable-station`
-- **Draft PR:** https://github.com/kotonja/ONE-MORE-ITEM-/pull/2 — remains draft and unmerged
-- **Main base SHA:** `88cb4534c0cda4511f521eb01207eab1d630f4fc`
-- **Latest verified implementation SHA before documentation closeout:** `cd4cf83b01081ccc99e4306a15524d23f0025a65` (`fix: avoid delayed UI replication warning`)
-- **Latest verified documentation-record SHA:** `c86523c4c01beb1fa13550ded23c42b736a6a11b` (`docs: record Phase 02 visual correction results`)
-- **Documentation-head note:** A commit cannot contain its own SHA; the final documentation commit and branch-head equality must be reported from live Git/GitHub state after this file is committed.
-- **Phase 03:** Not started and out of scope for this branch
+## Current phase and Git state
 
-## Final review findings
+- **Phase result:** Complete — implementation accepted.
+- **Current phase:** Phase 03 closeout; PR #3 awaiting final merge review.
+- **Current branch:** `codex/phase-03-cross-platform-input`.
+- **Draft pull request:** [PR #3 — Phase 03: Cross-Platform Interaction and Responsive UI](https://github.com/kotonja/ONE-MORE-ITEM-/pull/3), open, draft, based on `main`, and unmerged.
+- **Protected base:** `main` and `origin/main` remain at the Phase 02 merge SHA `73b3428c5ff0068f1e57f89d2150ffb8dccfdf20`.
+- **Previous implementation SHA:** `f04a507eb7cae76a34573cf7d8ba6aaf8b4d7b68` (`fix: harden phase 03 gamepad confirmation`).
+- **Acceptance-policy starting head:** `768a525a3be2271cb666560c14c4aa33eaee9ebb`.
+- **Acceptance-policy documentation SHA:** Will be reported after commit; this document does not predict its own SHA.
+- **Pre-release QA tracking:** [Issue #4 — Pre-release cross-platform and multiplayer integration QA](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4), open. Its unpassed controller, hybrid, multiplayer-soak, and physical-device checks are not Phase 03 implementation blockers.
+- **Known Phase 03 production blockers:** Zero.
+- **Phase 04:** Not started.
 
-The correction audit found twelve gaps between the approved Phase 02 specification and the initial implementation:
+## Completed Phase 03 implementation
 
-1. `DecisionPanel` stored a permanent `+260` Y offset and could render below the viewport.
-2. The Node smoke had no reusable authored-GUI bounds contract.
-3. The server created `Preparing` but advanced before emitting it, making restart presentation unreachable.
-4. Pack Again did not receive the full lid-rise, neutral-color, grid-sweep, and runtime-cleanup presentation.
-5. The authored `PresentationPoint` was not used for incoming-item motion.
-6. Failure lacked the promised burst of the current ghost and already placed unshipped contents.
-7. Rotation tokens existed but ordinary ghost movement replaced the promised turn and settle.
-8. Accepted placement had no event-order-safe authoritative `0.10s` completion.
-9. Shipment, bank, and result Tape values jumped instead of counting to authoritative totals.
-10. The client store could accept an older round when that snapshot carried a higher version.
-11. Mouse-to-grid alignment required real viewport and GUI-inset verification.
-12. Panel motion could restart on repeated snapshots, hide immediately on exit, or let a stale exit hide a reopened panel.
+- `studio/phase02.manifest.json` remains the sole canonical owner for the permanent vertical-slice and Phase 03 additions despite its historical filename.
+- The authored ScreenGui uses `DeviceSafeInsets`, `ClipToDeviceSafeArea = true`, `SafeAreaCompatibility.None`, and `IgnoreGuiInset = true`.
+- Permanent content adds `TouchDragSurface`, five `FocusStroke` objects, five `CompactMinimum` constraints, and touch-landscape/portrait camera anchors.
+- Authored constraint baselines are `72 × 44` for Rotate/Place/Ship/One More and `120 × 44` for Pack Again. Runtime compact layouts enforce approximately `72 × 64` and `120 × 64` action geometry.
+- Strict client modules separate preferred-input state, pure responsive layout, authored-UI application, single-touch tracking, deterministic gamepad routing/repeat, adaptive prompts, and input coordination.
+- `UserInputService.PreferredInput` selects `KeyboardMouse`, `Touch`, or `Gamepad` presentation without restarting or mutating the authoritative round.
+- Safe usable viewport geometry independently selects `Wide`, `CompactLandscape`, or `Portrait`.
+- Gamepad repeat uses a `0.55` deadzone, immediate first step, `0.28s` initial delay, and `0.12s` interval. Decision defaults to Ship; One More requires deliberate selection and confirmation. Button B has no risky action.
+- Manual testing reproduced a Decision/Results Button A ownership defect twice. The focused correction leaves placement confirmation owned by `ContextActionService`, routes Decision and Results confirmation through the exact selected authored button, and synchronizes `SelectedGamepadAction` with `GuiService.SelectedObject`.
+- Responsive camera selection uses the approved desktop anchor, the authored compact-touch anchor, or the authored portrait anchor and retargets without replaying arrival.
+- Assigned character controls use a reversible PlayerModule lease plus high-priority fallback sinks and restore the exact prior Humanoid `AutoRotate` value.
+- The network surface remains the six Phase 02 remotes. Pointer, touch, stick, D-pad, rotation, mode, layout, focus, camera, and ghost state remain local.
+- No haptics, new gameplay remotes, runtime permanent UI/world builder, external package, or Phase 04 system was added.
 
-## Exact corrections implemented
+## CI modernization
 
-- `DecisionPanel` is authored at `UDim2.new(0.5, 0, 0.96, 0)` with `AnchorPoint = Vector2.new(0.5, 1)`, `Size = UDim2.new(0.5, 0, 0.30, 0)`, zero Y offset, and `Visible=false`. `RoundUIController` owns the temporary 16-pixel offset, `0.30s` entrance, `0.20s` exit, target-visibility tracking, and transition epochs.
-- `StartRound` emits authoritative `Preparing`; the server schedules guarded `0.12s` initial or `0.72s` restart preparation before `PresentingItem`, then schedules the existing `0.45s` presentation before `AwaitingPlacement`. Every delayed transition retains player, round, version, and expected-state guards.
-- The client clones the script-free development cell template into `RuntimePresentation`, centers it at `PresentationPoint`, travels for `0.35s`, settles for `0.06s`, holds for `0.04s`, and hands off to the normal placement ghost. Epoch cleanup removes stale presentation models on every relevant transition and destruction.
-- Failure captures the active ghost and placed unshipped proxies before cleanup, locally suppresses the authoritative copies, performs a `0.20s` failed lid attempt and `0.14s` pause, then moves/fades deterministic `FailureBurst` copies for `0.64s`. Reset or destruction removes debris and restores suppressed parts.
-- Pack Again now uses the replicated restart `Preparing` window: Results exits, controls stay hidden, the lid returns to its authored color while rising for `0.35s`, the tiles perform one cyan sweep, runtime effects clear, and the presentation point returns to baseline.
-- Rotation lifts the ghost `0.12` studs, turns for `0.18s` with at most four degrees of overshoot, and settles for `0.08s` at exact `GridWorldTransform` positions. Accepted placement snaps for `0.10s`; rejection retains its `0.12s` nudge.
-- Pending placement visuals are keyed by round and client sequence. Response-first and snapshot-first acceptance complete once, release input correctly, and preserve delayed correlation; `Failing` never counts as acceptance.
-- Shipment counts over `0.25–0.40s`, Session Bank over `0.55–0.80s`, and Result value over `0.30s`. Counts only target server values, and newer snapshots cancel or retarget old counts.
-- The client store rejects lower round IDs and same-round versions less than or equal to the stored version, accepts a higher round whose version restarts, and preserves deep-copy isolation.
-- `GetMouseLocation` is paired with `ViewportPointToRay`, avoiding a second GUI-inset subtraction while leaving keyboard placement unchanged.
-- Late clients now use a warning-free event-driven authored-child wait: the helper checks `PlayerGui:FindFirstChild`, waits on `ChildAdded` without a deadline, and retains the required `ScreenGui` class check. `ClientBootstrap` no longer calls the warning-producing `PlayerGui:WaitForChild` for the permanent gameplay UI. The Node architecture contract requires this event-driven path and rejects warning-producing or finite variants.
+- **Workflow/job name:** `Phase 01–03 Node Validation`.
+- **Action versions:** `actions/checkout@v7` and `actions/setup-node@v6`.
+- **Runtime:** Node 24.
+- **Permissions/configuration:** `contents: read`, `package-manager-cache: false`, no install step, no package manifest requirement, and no third-party dependency.
+- **Triggers:** Pull requests targeting `main`; pushes to `main`; pushes to `codex/**`.
+- **Commands:** Phase 01, Phase 02, and Phase 03 dependency-free Node validations run in order.
+- Implementation-head push run `29288248053` and PR run `29288250378` passed at `8bc43880c48164547e6bd0e63a634f683304d078` before the documentation/checkout-major correction.
+- Documentation/CI record head `1c3675f36ed0a078baad526831746e50a5438a31` passed [branch-push run 29295662133](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29295662133) ([job 86968466310](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29295662133/job/86968466310)) and [draft-PR run 29295664112](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29295664112) ([job 86968472279](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29295664112/job/86968472279)). Every setup, checkout, Node, Phase 01, Phase 02, Phase 03, post, and completion step succeeded; both check annotation lists were empty.
+- Corrected implementation head `f04a507eb7cae76a34573cf7d8ba6aaf8b4d7b68` passed [branch-push run 29335824552](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29335824552) ([job 87094675031](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29335824552/job/87094675031)) and [draft-PR run 29335826478](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29335826478) ([job 87094681186](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29335826478/job/87094681186)). All three Node steps and every setup/post/completion step succeeded.
+- A commit cannot contain its own post-commit result. The completion report records the exact latest status-only head, local/remote/PR-head equality, and both exact-head workflow results from live GitHub state.
 
-## Permanent instance, synchronization, and source parity
+## Local Node 24 validation
 
-- **Phase 02 managed instances:** 122 permanent instances.
-- **Phase 02 script operations:** 26 scripts.
-- **Permanent remotes:** 6 `RemoteEvent` instances.
-- **Final cold-reopen managed-path audit:** 157/157 paths passed with zero missing, duplicate, wrong-class, or conflicting instances.
-- **Final cold-reopen Luau source parity:** 36/36 canonical Phase 01 and Phase 02 sources matched Studio by SHA-256.
-- **Warning-fix live source:** `ClientBootstrap` matched `sha256:2327d05560ce4b55e2eecdb45d3a27417e4f37dcb2b0c0a3000112a2c4ed6f02` after the no-resync cold reopen.
-- **Reopened DecisionPanel:** `AnchorPoint = (0.5, 1)`, `Position = (0.5, 0, 0.96, 0)`, `Size = (0.5, 0, 0.3, 0)`, and `Visible = false`.
-- **Authoring result:** The corrected Phase 02 blueprint synchronized twice with `Created=0 Updated=148 Skipped=0 Failed=0 Warnings=0 Backups=26`, proving idempotent folder-first reuse without duplicate paths or wrong-class conflicts.
-- **Authored-content boundary:** Permanent UI remains under `StarterGui`; permanent station/world content remains under `Workspace`; networking and the development template remain authored under `ReplicatedStorage`; no gameplay runtime builder was introduced.
-- **Post-correction cloud-reopen parity:** Passed with the exact path, class, conflict, duplicate, property, and source results above.
+```text
+[StudioSyncSmoke] PASS checks=16 folders=7 scripts=10 deterministic=true
+[Phase02StudioSyncSmoke] PASS criteria=24 instances=135 scripts=34 remotes=6 deterministic=true phase01=true
+[Phase03LayoutMatrix] PASS viewports=13 insetProfiles=5 cases=65 desktopCompatible=true safeContainment=true
+[Phase03CrossPlatformSmoke] PASS criteria=31 viewports=13 insetProfiles=5 layoutCases=65 remotes=6 deterministic=true phase01=true phase02=true
+```
 
-## Automated tests
+The Phase 03 gate verifies sole-manifest ownership, permanent authored content, safe-area properties, input architecture, responsive geometry, camera selection, unchanged remotes, no haptics/runtime permanent builders, and the exact CI contract.
 
-### Phase 01 foundation
+## Studio synchronization and no-resync parity
 
-- **Suites:** 15
-- **Tests:** 69
-- **Passed:** 69
-- **Failed:** 0
-- **Fuzz:** 1,000 cases, seed `24012026`
-- **Final cold-reopen result:** `[ONE_MORE_ITEM][FoundationTests] RESULT suites=15 tests=69 passed=69 failed=0 duration=0.399727s fuzzCases=1000 fuzzSeed=24012026`
-- **Exact pass line:** `[ONE_MORE_ITEM][FoundationTests] PASS: all 69 tests passed`
-- **Final cold-reopen diagnostics:** Fresh actionable Output warnings and errors were both zero.
+- Phase 01 and the extended vertical-slice blueprints were applied in canonical order twice.
+- Receipts: Phase 01 `Created=0 Updated=0 Skipped=17`; Phase 02 `Created=0 Updated=169 Skipped=0`; both repetitions completed with zero failures or warnings.
+- Before save, the combined audit passed `180/180` managed paths with zero missing, wrong-class, duplicate, or unexpected paths.
+- Exact canonical source parity passed `44/44`; all source classes matched.
+- The exact approved remote surface remained six RemoteEvents.
+- After full close and direct cloud reopen, the same `180/180` hierarchy, `44/44` sources, six remotes, properties, anchors, and built-in `StarterPlayerScripts` container passed again.
+- The post-reopen command audit contained reads/diagnostics only and zero mutating synchronization commands.
 
-### Phase 02 vertical slice
+## Fresh automated Studio tests
 
-- **Suites:** 11
-- **Tests:** 94
-- **Passed:** 94
-- **Failed:** 0
-- **Seed:** `24022026`
-- **Final cold-reopen result:** `[ONE_MORE_ITEM][Phase02Tests] RESULT suites=11 tests=94 passed=94 failed=0 duration=7.024051s seed=24022026`
-- **Exact pass line:** `[ONE_MORE_ITEM][Phase02Tests] PASS: all 94 tests passed`
-- **Suite distribution:** Round math 16, Sequence fairness 8, Placement security 15, Round state 19, Client round store 5, Serialization 3, World transform 5, Station assignment 4, Rate limiting 4, Client motion cleanup 12, Runtime cleanup 3.
-- **Added coverage:** The correction pass added 23 tests across authoritative Preparing and timer guards, monotonic round storage, copied snapshots, presentation replacement and cleanup, failure suppression/restoration, ten reset cycles, response-first and snapshot-first accepted placement, rejection recovery, and Failing non-acceptance.
-- **Final cold-reopen diagnostics:** Fresh actionable Output warnings and errors were both zero.
+```text
+[ONE_MORE_ITEM][FoundationTests] RESULT suites=15 tests=69 passed=69 failed=0 duration=0.356362s fuzzCases=1000 fuzzSeed=24012026
+[ONE_MORE_ITEM][FoundationTests] PASS: all 69 tests passed
+[ONE_MORE_ITEM][Phase02Tests] RESULT suites=11 tests=94 passed=94 failed=0 duration=6.942747s seed=24022026
+[ONE_MORE_ITEM][Phase02Tests] PASS: all 94 tests passed
+[ONE_MORE_ITEM][Phase03Tests] RESULT suites=8 tests=65 passed=65 failed=0 duration=0.005859s seed=13072026
+[ONE_MORE_ITEM][Phase03Tests] PASS: all 65 tests passed
+```
 
-### Node synchronization smoke
+Phase 03 distribution: input mode store 6; responsive classification 5; responsive geometry 9; touch tracking 7; gamepad repeat/action routing 17; prompts 4; camera targeting 5; control cleanup/remote discipline 12.
 
-- **Phase 01:** `[StudioSyncSmoke] PASS checks=16 folders=7 scripts=10 deterministic=true`
-- **Phase 02:** `[Phase02StudioSyncSmoke] PASS criteria=24 instances=122 scripts=26 remotes=6 deterministic=true phase01=true`
-- Phase 02 increased naturally from 18 to 24 criteria by adding authored-layout, decision-action containment, top-card overlap, terminal-failure, and authoritative terminal-shipping contracts. The authored-client architecture criterion requires the event-driven `ScreenGui` wait and rejects `PlayerGui:WaitForChild`, warning-producing indefinite waits, and finite clone deadlines. Both dependency-free commands passed again after `cd4cf83`, and Phase 01 remains part of the generalized workflow.
+## Responsive and permanent-property proof
 
-## Viewport layout verification
+- The static layout matrix covers 13 required desktop, phone, and tablet viewports across five representative safe-inset profiles, for 65 safe-containment cases.
+- Exact Studio property audit after reopen:
+  - ScreenGui: `DeviceSafeInsets`, `ClipToDeviceSafeArea=true`, `SafeAreaCompatibility.None`, `IgnoreGuiInset=true`.
+  - Touch drag surface remained authored and full-root.
+  - Rotate, Place, Ship, One More, and Pack Again remained selectable with authored disabled/transparent `Thickness=3` Border focus strokes.
+  - Authored minimums remained `72 × 44` for four actions and `120 × 44` for Pack Again.
+  - Both responsive camera anchors remained exact, anchored, invisible, non-colliding, non-queryable, non-touching, and script-free.
 
-The authored screen-space calculation passed for all required static sizes:
+## Historical manual Play evidence
 
-| Viewport | DecisionPanel bounds | ShipButton bounds | OneMoreButton bounds |
-| --- | --- | --- | --- |
-| `1920×1080` | `(480, 712.8)–(1440, 1036.8)` | `(768, 910.44)–(1056, 991.44)` | `(1094.4, 910.44)–(1401.6, 991.44)` |
-| `1366×768` | `(341.5, 506.88)–(1024.5, 737.28)` | `(546.4, 647.42)–(751.3, 705.02)` | `(778.62, 647.42)–(997.18, 705.02)` |
-| `2560×1440` | `(640, 950.4)–(1920, 1382.4)` | `(1024, 1213.92)–(1408, 1321.92)` | `(1459.2, 1213.92)–(1868.8, 1321.92)` |
-| `1100×700` | `(275, 462)–(825, 672)` | `(440, 590.1)–(605, 642.6)` | `(627, 590.1)–(803, 642.6)` |
+All manual evidence below was recorded before this documentation-only policy closeout in Roblox Studio `0.729.0.7290838`. Desktop and automated suites used Play; touch and orientation used Play with Device Emulator; gamepad and hybrid checks used Play with Controller Emulator; two-player checks used Local Server with two players; cloud persistence used Edit mode after a direct cloud reopen. Incomplete observations remain historical evidence and are not rewritten as passed.
 
-At every static size, both decision buttons are contained, have positive usable dimensions, and do not overlap `CurrentItemCard` or `ShipmentCard`; `PlacementControls`, `ResultsPanel`, and both top cards remain inside the viewport.
+| Gate | Result |
+| --- | --- |
+| Desktop round | **Passed.** Verified timeout failure, Pack Again, keyboard placement, deliberate One More, completed shipment, `+15 TAPE`, `SESSION 15 TAPE`, Results, and another Pack Again. |
+| Touch six-profile matrix | **Accepted.** iPhone 7 portrait `373×666`, iPhone 16 portrait `392×758`, iPhone 7 landscape `665×374`, iPhone 13 landscape `749×368`, iPad 6 portrait `767×1022`, and iPad 6 landscape `1022×767` passed safe-area, camera, default-control, center/corner mapping, drag/release, multi-rotation Chair, Place, both Ship and One More, failure, Results, Pack Again, and cleanup checks. Physical simultaneous multi-touch: Deferred to later physical-device QA. |
+| Touch coordinate mapping | **Passed in all six profiles.** Center `2,2`; rear-left `0,0`; rear-right `4,0`; front-left `0,4`; front-right `4,4`. Release returned `ActivePlacementTouch=false` and never placed. |
+| Orientation | **Passed for one phone and one tablet.** RoundId, StateVersion, RoundState, item, count, bank, and logical ghost position were preserved; coordinate mapping remained correct; camera retargeted; `LayoutTweens` returned to zero. |
+| Earlier focused gamepad evidence | **Limited historical evidence; not a complete pass.** Prior acceptance checks recorded prompts, bindings, portions of D-pad/stick/placement/focus/One More/Pack Again behavior, and a pre-correction inert Button B observation. Those focused observations do not replace the extended controller-only session tracked in issue #4. |
+| Full controller flow | **Deferred pre-release QA; not passed.** The final Generic Gamepad trace proved connection, exactly three bindings, safe Results/Pack Again focus, one restart, disconnect cleanup, reconnect with three rather than six bindings, and mode exit. It did not complete A-J: all-direction D-pad proof, held-stick deadzone/repeat/direction/diagonal timing, Button X and outside-state negatives, exact placement/Ship/One More/Button B request traces, or Decision-state reconnect remain open in issue #4. |
+| Hybrid switch | **Deferred pre-release QA; not passed.** Individual Gamepad, Touch, and KeyboardMouse transitions were observed with cleanup, but Studio automation did not complete one uninterrupted keyboard → gamepad → touch → keyboard gameplay round with the required state/reward/request trace. |
+| Two-player owner/spectator | **Deferred pre-release QA; not passed.** Earlier Local Server evidence covers portions of identity, camera/reward isolation, respawn, release, spectator continuity, and later acquisition. The expanded owner/spectator action matrix was not completed in this pass. |
+| Ten mixed-input rounds | **Deferred pre-release QA; not passed.** Exploratory rounds and timeouts did not satisfy the prescribed ten-round distribution, baseline/final metrics, or post-soak duplicate-handler checks. |
+| Physical phone | **Not tested.** Studio device emulation was used. |
+| Physical controller | **Not tested.** Studio controller emulation was used. |
 
-## Studio Play Solo visual verification
-
-- Real Play was exercised at `1920×1080`, `1366×768`, and narrow desktop `1100×700`. The complete Decision panel and both Ship and One More actions remained visible at every required live size.
-- At `1920×1080`, a successful placement reached Decision with readable Ship and One More actions; decision timeout shipped safely and displayed `+15 TAPE` with `SESSION 15 TAPE`.
-- At `1366×768`, the visual center mapped to logical `(2, 2)`. Rear-left, rear-right, front-left, and front-right mapped to `(0, 0)`, `(4, 0)`, `(0, 4)`, and `(4, 4)` respectively, proving that the top bar/GUI inset did not shift the ray. Successful placement, One More, manual Ship, decision timeout, placement timeout, and Pack Again were exercised during the correction run.
-- At exact `1100×700`, a valid item was placed and the entire Decision panel remained visible with both actions usable. One More advanced to the next item/round; a later placement-timeout failure displayed `TOO MUCH` and `LOST 15 TAPE`; a later manual Ship displayed `PLAYER SHIPPED`, `+9 TAPE`, and `SESSION 30 TAPE`.
-- Final post-reopen flows covered placement-timeout failure, Pack Again reset, decision-timeout Ship for `+15 TAPE / SESSION 15 TAPE`, One More followed by manual Ship for `+57 TAPE / SESSION 72 TAPE`, and packed-content failure for `LOST 15 TAPE / SESSION 72 TAPE`.
-- A final 60 FPS focused capture confirmed the reset-to-placement sequence, the temporary PresentationPoint item handoff, a multi-frame rotation of an irregular One More ghost, the accepted Parcel transition into Decision, and Shipment Tape counting through intermediate values before reaching the exact authoritative total.
-- Final cleanup returned `RuntimePresentation=0` and `PlacedItems=0`; the ten-cycle automated motion test also returned to baseline.
-- Final post-reopen Studio Output passed Foundation 69/69 and Phase 02 94/94 with fresh actionable warnings `0` and errors `0`. Helper/plugin request-limit chatter is not treated as a game-code pass or failure.
-
-## Two-client multiplayer
-
-- **Final warning-fix result:** Passed after `cd4cf83`; both clients logged `READY` through the warning-free event-driven authored-UI startup path.
-- Pack Again started owner round 2 and advanced it through `Preparing → PresentingItem → AwaitingPlacement`.
-- The spectator remained visibly `SPECTATING` with `0 TAPE`, `BANK 0 TAPE`, and disabled Pack Again, proving action, restart, and reward isolation.
-- Fresh bridge diagnostics returned `errors=0`, `matching=0`, and `latestActionable=null`; five plugin loops each reported `errors=0`.
-- Studio ended normally with only the main Edit window remaining.
-
-## GitHub Actions
-
-- **Workflow:** `Phase 01 and Phase 02 Node Validation`
-- **Commands:** `node tools/test_studio_blueprint.mjs` and `node tools/test_phase02_blueprint.mjs`
-- **Triggers:** Pull requests targeting `main`, pushes to `main`, and pushes to `codex/**`.
-- **Permissions/dependencies:** `contents: read`, no dependency installation, and no npm package requirement.
-- **Warning-fix implementation-head result:** Commit `cd4cf83b01081ccc99e4306a15524d23f0025a65` passed both the [branch-push run](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29272062349) ([job](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29272062349/job/86891938174)) and [draft-PR run](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29272066325) ([job](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29272066325/job/86891950607)); checkout, Node setup, Phase 01 smoke, Phase 02 smoke, and completion steps were green.
-- **Documentation-record head result:** Commit `c86523c4c01beb1fa13550ded23c42b736a6a11b` passed both the [branch-push run](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29277371368) ([job](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29277371368/job/86909708796)) and [draft-PR run](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29277374496) ([job](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29277374496/job/86909719607)); all eight steps completed successfully with no failures, cancellations, or skips.
-- **Exact final status-only head:** This document cannot contain its own commit SHA. The completion report records that SHA, both exact-head workflow URLs, and local/remote/PR-head equality after the final status-only commit passes.
+The final attempt did not edit Controller Emulator mappings. The emulator panel was closed after the trace, and the transient acceptance probe was removed from Edit mode before the final suites.
 
 ## Cloud persistence
 
-- **Original private place:** `PlaceId 134193642444044`, `GameId 10493030248`.
-- The earlier Phase 02 baseline proved that the original place could be saved, fully closed, reopened directly from Roblox, and verified. That earlier result does not prove persistence of the current correction commits.
-- **External recovery copy:** Passed outside Git. `ONE_MORE_ITEM_phase02_final_warningfix_20260713.rbxl` was downloaded and verified at 2026-07-13 14:03:57 Eastern with a size of 159,447 bytes; no machine-specific path is recorded.
-- **Normal save of warning-free corrected content:** Passed at 2026-07-13 14:02:14 Eastern. Studio Output reported `Saved new changes in "ONE MORE ITEM!" to Roblox.`
-- **Clean close and cold reopen:** Passed without source resynchronization. Studio closed cleanly and the place reopened directly from Roblox cloud.
-- **Reopened identity:** Passed at `PlaceId 134193642444044`, `GameId 10493030248`. Studio's internal place label is `Place2`; that display label does not override the authoritative IDs.
-- **Full final post-reopen audit:** Passed 157/157 managed paths, 36/36 source hashes, zero missing/duplicate/wrong-class/conflicting instances, exact `DecisionPanel` properties, and exact `ClientBootstrap` hash as recorded above.
-- **Post-reopen tests and flows:** Passed Foundation 69/69, Phase 02 94/94, every required failure/reset/decision-timeout/One More/manual-Ship flow, and zero-child runtime cleanup.
+- An external recovery `.rbxl` copy was created outside Git and verified at 181,185 bytes.
+- Studio reported `Saved new changes in "ONE MORE ITEM!" to Roblox.` for the original private place (`PlaceId 134193642444044`, `GameId 10493030248`).
+- Every Studio process was closed. One clean Studio process reopened the place directly from Roblox without source synchronization.
+- Because Studio-managed sources changed, both canonical synchronization paths were run twice before save. The no-resync hierarchy/source/remote audit then passed `180/180` paths, `44/44` sources, exactly six canonical remotes, and zero duplicate paths.
+- The final direct-cloud reopen connected normally on the helper/plugin route in Edit mode with the authoritative PlaceId/GameId. No post-reopen synchronization was run.
+- This documentation and GitHub-metadata closeout reused the verified cloud-persistence proof. It did not open Studio, synchronize content, save the place, or change any Studio-managed source, property, or permanent instance.
 
-## Known issues and remaining gates
+A historical reconnect accepted Team Create transport but never received a join snapshot and returned `RCC-277`. The final corrected save/reopen succeeded normally, so RCC-277 is not a current persistence blocker. No divergent Studio-only script was created.
 
-- Roblox Studio may emit unrelated plugin/bridge request-limit noise; only fresh game-owned failures are gating.
-- The transient cloud-save internal-server error from the first save attempt was recovered without losing the corrected content; the normal retry, recovery copy, clean close, and no-resync cloud reopen all passed.
-- No Phase 02 game, persistence, parity, cleanup, multiplayer, or documentation-record blocker remains. PR #2 is ready for final review when the exact status-only head check recorded in the completion report is green.
+## Output and diagnostics
+
+- The final clean Play run passed all three Studio suites and produced zero fresh game-owned warnings/errors.
+- The final post-probe baseline at 2026-07-14 15:31 UTC returned zero fresh actionable Output errors or warnings. The transient probe was absent from the Edit hierarchy before this run.
+- The post-correction two-client startup logged `[ONE_MORE_ITEM][Station] user=-2 is spectator reason=NO_STATION` as `MessageOutput`, not a warning. The only observed errors/warnings were unrelated Studio plugin-icon or bridge-rate noise.
+
+## Known issues and deferred pre-release QA
+
+- [Issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) tracks all extended pre-release integration QA. None of its deferred items is claimed as passed, and none is a Phase 03 implementation blocker.
+- The deterministic single-active-touch and simultaneous second-touch rejection contract is accepted for Phase 03. Physical simultaneous multi-touch remains deferred and unpassed.
+- The full physical-style controller session, uninterrupted hybrid round, expanded two-player action matrix, and ten-round mixed-input cleanup/duplicate-handler soak remain unpassed.
+- Physical phone and physical controller testing were not performed; Studio emulation supplied the accepted Phase 03 evidence.
+- No known Phase 03 production blocker remains.
+- Exact status-only-head equality and checks are a handoff-time Git/GitHub observation rather than a remaining Phase 03 product gate; the completion report records them from live state.
 
 ## Deferred by design
 
-The full eight-player arena, seven additional stations, mobile/controller input, camera orbit, final models/animations, audio/music/final VFX, final shipping and dispatch systems, social/leaderboard features, DataStores and permanent economy, progression/collection/challenges/missions, cosmetics/store/monetization, analytics, quests, trading, pets, rebirths, multiple worlds, co-op, tutorial screens, and final launch map remain unstarted. Phase 03 work has not begun.
+Seven additional stations, the full launch arena/dispatch presentation, final models/assets/audio/VFX, haptics, persistent Tape/DataStores, progression, collection, challenges, missions, cosmetics, store/monetization, analytics, social systems, trading, pets, rebirths, multiple worlds, co-op, camera orbit, and every Phase 04 system remain deferred.
 
-## Exact next step
+## Exact next phase recommendation
 
-Review draft PR #2 while keeping it draft and unmerged. Phase 03 is the next separate implementation phase; do not begin it on this branch or as part of this task.
+After the acceptance documentation commit passes exact-head CI, PR #3 is ready for final review. Keep it draft and unmerged until that review; do not merge it as part of this closeout. Phase 04 has not started and must not begin without later explicit authorization.

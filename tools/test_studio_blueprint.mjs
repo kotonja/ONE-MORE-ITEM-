@@ -78,7 +78,12 @@ try {
     const paths = operations.map((operation) => operation.path);
     assert.equal(new Set(paths).size, paths.length, "Managed paths must be unique");
   });
-  check(() => assert.equal(scriptOperations.length, manifest.scripts.length, "Script count must match manifest"));
+  check(() => {
+    assert.equal(scriptOperations.length, manifest.scripts.length, "Script count must match manifest");
+    for (const operation of scriptOperations) {
+      assert.doesNotMatch(operation.command, /\\r/, `Generated Studio source must use canonical LF newlines: ${operation.path}`);
+    }
+  });
   check(() => assert.equal(folderOperations.length, manifest.folders.length, "Folder count must match manifest"));
   check(() => {
     for (const operation of operations) {

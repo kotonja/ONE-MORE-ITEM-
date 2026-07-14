@@ -24,3 +24,11 @@ Phase 01 contains only the mathematical grid foundation, its development shapes,
 ## Phase 02 controlled vertical slice
 
 Phase 02 adds exactly one authored packing station and the minimum permanent HUD, networking, desktop controls, server-authoritative round loop, session-only Tape, and temporary blockout presentation needed to prove the core promise. It does not expand into the eight-player launch arena, persistent progression/economy, mobile/gamepad support, final assets, audio, monetization, or later-phase systems.
+
+## Phase 03 cross-platform interaction
+
+Phase 03 keeps the same one-station round and adapts only its local interaction and presentation for keyboard/mouse, touch phones and tablets, gamepads, and hybrid devices. Responsive classes follow viewport geometry, while `PreferredInput` controls local routing, prompts, and safe focus. Authored safe-area UI and responsive camera anchors preserve the crate as the focal point without creating permanent content at runtime.
+
+Touch drag, gamepad cell movement, rotation, layout, prompts, focus, and camera state remain local prediction. Place, decision, and restart continue through the existing server-authoritative requests; Phase 03 adds no gameplay remote and does not weaken station ownership, grid validation, timing, or Tape authority.
+
+The eight-player arena, progression, persistent Tape, final assets, social systems, monetization, and all Phase 04 systems remain deferred. Phase 04 must not begin until the complete Phase 03 emulator, gamepad, hybrid, multiplayer, cleanup, cloud-reopen, parity, and final-head CI gates pass and Phase 03 is reviewed.

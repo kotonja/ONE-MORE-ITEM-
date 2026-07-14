@@ -76,7 +76,7 @@ end
 local function assignPlayer(player: Player)
 	local assignment = stationService:AssignPlayer(player)
 	if not assignment.Assigned then
-		warn(string.format("[ONE_MORE_ITEM][Station] user=%d is spectator reason=%s", player.UserId, assignment.Reason))
+		print(string.format("[ONE_MORE_ITEM][Station] user=%d is spectator reason=%s", player.UserId, assignment.Reason))
 	end
 end
 

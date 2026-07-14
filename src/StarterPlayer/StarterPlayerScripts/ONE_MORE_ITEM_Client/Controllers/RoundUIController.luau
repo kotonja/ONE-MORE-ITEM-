@@ -32,8 +32,12 @@ export type Buttons = {
 	PackAgain: TextButton,
 }
 
+export type PanelPositions = { [GuiObject]: UDim2 }
+export type ButtonSizes = { [TextButton]: UDim2 }
+
 export type Controller = {
 	GetButtons: (self: Controller) -> Buttons,
+	SetResponsiveTargets: (self: Controller, panelPositions: PanelPositions, buttonSizes: ButtonSizes) -> (),
 	ApplySnapshot: (self: Controller, snapshot: Snapshot) -> (),
 	SetFitState: (self: Controller, valid: boolean?, x: number?, y: number?, z: number?) -> (),
 	SetServerResponse: (self: Controller, message: string) -> (),
@@ -54,6 +58,8 @@ type InternalController = Controller & {
 	_buttons: Buttons,
 	_originalPositions: { [GuiObject]: UDim2 },
 	_originalButtonSizes: { [TextButton]: UDim2 },
+	_buttonTweens: { [TextButton]: Tween },
+	_buttonEpochs: { [TextButton]: number },
 	_panelMotion: { [GuiObject]: PanelMotionState },
 	_countAnimations: { [string]: CountAnimation },
 	_countEpochs: { [string]: number },
@@ -114,6 +120,42 @@ end
 
 local function scaledSize(size: UDim2, scale: number): UDim2
 	return UDim2.new(size.X.Scale * scale, math.round(size.X.Offset * scale), size.Y.Scale * scale, math.round(size.Y.Offset * scale))
+end
+
+local function stopButtonMotion(self: InternalController, button: TextButton)
+	self._buttonEpochs[button] = (self._buttonEpochs[button] or 0) + 1
+	local tween = self._buttonTweens[button]
+	if tween ~= nil then
+		self._buttonTweens[button] = nil
+		tween:Cancel()
+	end
+end
+
+local function tweenButtonSize(
+	self: InternalController,
+	button: TextButton,
+	targetSize: UDim2,
+	duration: number,
+	onCompleted: (() -> ())?
+)
+	stopButtonMotion(self, button)
+	local epoch = self._buttonEpochs[button]
+	local tween = TweenService:Create(
+		button,
+		TweenInfo.new(duration, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+		{ Size = targetSize }
+	)
+	self._buttonTweens[button] = tween
+	tween.Completed:Once(function(playbackState: Enum.PlaybackState)
+		if self._destroyed or self._buttonEpochs[button] ~= epoch or self._buttonTweens[button] ~= tween then
+			return
+		end
+		self._buttonTweens[button] = nil
+		if playbackState == Enum.PlaybackState.Completed and onCompleted ~= nil then
+			onCompleted()
+		end
+	end)
+	tween:Play()
 end
 
 local function stopPanelMotion(state: PanelMotionState)
@@ -419,6 +461,8 @@ function RoundUIController.new(gui: ScreenGui, resolveItemName: (itemId: string)
 		_buttons = buttons,
 		_originalPositions = originalPositions,
 		_originalButtonSizes = originalButtonSizes,
+		_buttonTweens = {},
+		_buttonEpochs = {},
 		_panelMotion = panelMotion,
 		_countAnimations = {},
 		_countEpochs = {},
@@ -440,15 +484,11 @@ function RoundUIController.new(gui: ScreenGui, resolveItemName: (itemId: string)
 	for _, button in pairs(buttons) do
 		table.insert(self._connections, button.MouseEnter:Connect(function()
 			if button.Interactable then
-				TweenService:Create(button, TweenInfo.new(0.11, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-					Size = scaledSize(originalButtonSizes[button], 1.03),
-				}):Play()
+				tweenButtonSize(self, button, scaledSize(originalButtonSizes[button], 1.03), 0.11, nil)
 			end
 		end))
 		table.insert(self._connections, button.MouseLeave:Connect(function()
-			TweenService:Create(button, TweenInfo.new(0.11, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-				Size = originalButtonSizes[button],
-			}):Play()
+			tweenButtonSize(self, button, originalButtonSizes[button], 0.11, nil)
 		end))
 	end
 
@@ -483,6 +523,31 @@ end
 
 function ControllerMethods.GetButtons(self: InternalController): Buttons
 	return self._buttons
+end
+
+function ControllerMethods.SetResponsiveTargets(
+	self: InternalController,
+	panelPositions: PanelPositions,
+	buttonSizes: ButtonSizes
+)
+	if self._destroyed then
+		return
+	end
+	for panel, position in pairs(panelPositions) do
+		local state = self._panelMotion[panel]
+		if state ~= nil then
+			state.Epoch += 1
+			stopPanelMotion(state)
+			panel.Visible = state.TargetVisible
+			self._originalPositions[panel] = position
+		end
+	end
+	for button, size in pairs(buttonSizes) do
+		if self._originalButtonSizes[button] ~= nil then
+			stopButtonMotion(self, button)
+			self._originalButtonSizes[button] = size
+		end
+	end
 end
 
 function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Snapshot)
@@ -630,18 +695,9 @@ function ControllerMethods.PlayButtonPress(self: InternalController, action: str
 		return
 	end
 	local original = self._originalButtonSizes[button]
-	local down = TweenService:Create(button, TweenInfo.new(PresentationTokens.Timing.ButtonDown, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-		Size = scaledSize(original, 0.94),
-	})
-	down:Play()
-	down.Completed:Once(function()
-		if self._destroyed then
-			return
-		end
-		local up = TweenService:Create(button, TweenInfo.new(PresentationTokens.Timing.ButtonReturn, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-			Size = original,
-		})
-		up:Play()
+	tweenButtonSize(self, button, scaledSize(original, 0.94), PresentationTokens.Timing.ButtonDown, function()
+		local latestOriginal = self._originalButtonSizes[button :: TextButton]
+		tweenButtonSize(self, button :: TextButton, latestOriginal, PresentationTokens.Timing.ButtonReturn, nil)
 	end)
 end
 
@@ -653,6 +709,13 @@ function ControllerMethods.Destroy(self: InternalController)
 	for _, state in pairs(self._panelMotion) do
 		state.Epoch += 1
 		stopPanelMotion(state)
+	end
+	local activeButtons: { TextButton } = {}
+	for button in pairs(self._buttonTweens) do
+		table.insert(activeButtons, button)
+	end
+	for _, button in ipairs(activeButtons) do
+		stopButtonMotion(self, button)
 	end
 	for key in pairs(self._countAnimations) do
 		cancelCountAnimation(self, key)

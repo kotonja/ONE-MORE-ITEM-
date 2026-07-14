@@ -55,6 +55,7 @@ export type Callbacks = {
 	PlacementImpact: (position: Vector3, heavy: boolean) -> (),
 	ServerResponse: (reason: string, accepted: boolean) -> (),
 	Rejected: () -> (),
+	PendingChanged: (pending: boolean) -> (),
 	Observability: (valid: boolean?, x: number?, y: number?, z: number?) -> (),
 }
 
@@ -64,6 +65,7 @@ export type Controller = {
 	RotateClockwise: (self: Controller) -> (),
 	UpdateFromPointerRay: (self: Controller, ray: Ray) -> (),
 	RequestPlacement: (self: Controller) -> (),
+	IsPlacementPending: (self: Controller) -> boolean,
 	HandleResponse: (self: Controller, response: PlacementResponse) -> (),
 	Destroy: (self: Controller) -> (),
 }
@@ -105,6 +107,14 @@ local ControllerMethods = {}
 ControllerMethods.__index = ControllerMethods
 
 local MAX_ACCEPTED_CORRELATIONS = 8
+
+local function setPendingPlacement(self: InternalController, pending: PendingPlacement?)
+	if self._pendingPlacement == pending then
+		return
+	end
+	self._pendingPlacement = pending
+	self._callbacks.PendingChanged(pending ~= nil)
+end
 
 local function requirePart(parent: Instance, name: string): BasePart
 	local child = parent:WaitForChild(name, 10)
@@ -589,7 +599,7 @@ local function releaseAcceptedPending(self: InternalController, pending: Pending
 		rememberAcceptedCorrelation(self, pending.RoundId, pending.ClientSequence)
 	end
 	if self._pendingPlacement == pending then
-		self._pendingPlacement = nil
+		setPendingPlacement(self, nil)
 	end
 	local deferredSnapshot = pending.DeferredSnapshot
 	pending.DeferredSnapshot = nil
@@ -732,7 +742,7 @@ function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Sna
 		or previous.CurrentShapeId ~= snapshot.CurrentShapeId
 	if changedItem then
 		setInitialOrigin(self, snapshot)
-		self._pendingPlacement = nil
+		setPendingPlacement(self, nil)
 	end
 
 	if snapshot.State == "PresentingItem" then
@@ -759,7 +769,7 @@ function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Sna
 	end
 
 	if pending ~= nil and not pending.SnapshotAccepted then
-		self._pendingPlacement = nil
+		setPendingPlacement(self, nil)
 	end
 	clearPresentation(self)
 	clearGhost(self)
@@ -827,6 +837,10 @@ function ControllerMethods.UpdateFromPointerRay(self: InternalController, ray: R
 	recalculate(self, false)
 end
 
+function ControllerMethods.IsPlacementPending(self: InternalController): boolean
+	return self._pendingPlacement ~= nil
+end
+
 function ControllerMethods.RequestPlacement(self: InternalController)
 	local snapshot = self._snapshot
 	if self._destroyed
@@ -853,7 +867,7 @@ function ControllerMethods.RequestPlacement(self: InternalController)
 			PresentationTokens.Grid.CellSize
 		)
 		else self._gridOrigin.Position
-	self._pendingPlacement = {
+	local pendingPlacement: PendingPlacement = {
 		RoundId = snapshot.RoundId,
 		ClientSequence = sequence,
 		Cells = copyCells(self._visualCells),
@@ -864,6 +878,7 @@ function ControllerMethods.RequestPlacement(self: InternalController)
 		VisualCompleted = false,
 		DeferredSnapshot = nil,
 	}
+	setPendingPlacement(self, pendingPlacement)
 	cancelTweens(self._ghostTweens)
 	for _, part in ipairs(if self._ghost ~= nil then sortedModelParts(self._ghost) else {}) do
 		local tween = TweenService:Create(
@@ -907,7 +922,7 @@ function ControllerMethods.HandleResponse(self: InternalController, response: Pl
 	if response.Accepted then
 		self._callbacks.ServerResponse("ACCEPTED", true)
 		if pending.VisualCompleted then
-			self._pendingPlacement = nil
+			setPendingPlacement(self, nil)
 		end
 		return
 	end
@@ -917,7 +932,7 @@ function ControllerMethods.HandleResponse(self: InternalController, response: Pl
 		self._callbacks.ServerResponse(response.Reason, false)
 		return
 	end
-	self._pendingPlacement = nil
+	setPendingPlacement(self, nil)
 	self._callbacks.ServerResponse(response.Reason, false)
 	self._callbacks.Rejected()
 	cancelTweens(self._ghostTweens)
@@ -948,7 +963,7 @@ function ControllerMethods.Destroy(self: InternalController)
 	clearPresentation(self)
 	clearGhost(self)
 	self._snapshot = nil
-	self._pendingPlacement = nil
+	setPendingPlacement(self, nil)
 	table.clear(self._acceptedCorrelations)
 	table.clear(self._acceptedCorrelationOrder)
 end
