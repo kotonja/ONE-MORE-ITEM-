@@ -41,8 +41,10 @@ local RoundConfig = {
 	DEVELOPMENT = table.freeze({
 		RUN_PHASE02_TESTS = true,
 		RUN_PHASE03_TESTS = true,
+		RUN_PHASE04_TESTS = true,
 		TEST_SEED = 24022026,
 		PHASE03_TEST_SEED = 13072026,
+		PHASE04_TEST_SEED = 14072026,
 	}),
 }
 

@@ -732,6 +732,7 @@ try {
     const permanentName = /ONE_MORE_ITEM_WORLD|ONE_MORE_ITEM_Gameplay/;
     for (const sourcePath of listLuauFiles(path.join(repositoryRoot, "src"))) {
       const relativeSourcePath = path.relative(repositoryRoot, sourcePath).replaceAll("\\", "/");
+      if (/\/Dev\/Phase\d+TestSuite\.luau$/.test(relativeSourcePath)) continue;
       const source = fs.readFileSync(sourcePath, "utf8");
       assert.doesNotMatch(source, forbiddenGuiConstructor, `Runtime must not construct permanent UI/remotes: ${relativeSourcePath}`);
       assert.ok(!(permanentName.test(source) && /Instance\.new\s*\(/.test(source)), `Runtime source mixes a permanent root with construction: ${relativeSourcePath}`);
@@ -776,7 +777,7 @@ try {
   const scriptCount = operations.filter((operation) => operation.type === "writeScript").length;
   criterion("expanded artifact counts are exact", () => {
     assert.equal(instanceCount, 616, "Eight stations and permanent showcase authoring must produce exactly 616 instances");
-    assert.equal(scriptCount, 34, "Authoring expansion must not add runtime scripts");
+    assert.equal(scriptCount, 45, "Phase 04 canonical source mapping must produce exactly 45 scripts");
   });
   console.log(
     `[Phase02StudioSyncSmoke] PASS criteria=${criterionCount} instances=${instanceCount} scripts=${scriptCount} remotes=${expectedRemotes.length} deterministic=true phase01=true`,

@@ -689,13 +689,14 @@ try {
     assert.match(touchSource, /TouchEnded/);
   });
 
-  criterion("workflow runs the three dependency-free Node gates in order", () => {
+  criterion("workflow runs the four dependency-free Node gates in order", () => {
     const workflow = readText(workflowPath);
     const commands = [...workflow.matchAll(/^\s*run:\s*(.+?)\s*$/gm)].map((match) => match[1]);
     assert.deepEqual(commands, [
       "node tools/test_studio_blueprint.mjs",
       "node tools/test_phase02_blueprint.mjs",
       "node tools/test_phase03_cross_platform.mjs",
+      "node tools/test_phase04_multiplayer_arena.mjs",
     ]);
     assert.match(workflow, /pull_request:[\s\S]*branches:[\s\S]*- main/);
     assert.match(workflow, /push:[\s\S]*branches:[\s\S]*- main[\s\S]*- ['"]codex\/\*\*['"]/);
@@ -709,7 +710,7 @@ try {
     assert.equal((workflow.match(/actions\/setup-node@v6\b/g) ?? []).length, 1, "Workflow must use verified actions/setup-node@v6 exactly once");
     assert.match(workflow, /node-version:\s*['"]?24['"]?\s*$/m);
     assert.match(workflow, /package-manager-cache:\s*false\s*$/m);
-    assert.match(workflow, /name:\s*Phase 01(?:–|â€“)03 Node Validation/);
+    assert.match(workflow, /name:\s*Phase 01(?:–|â€“)04 Node Validation/);
     assert.ok(!fs.existsSync(path.join(repositoryRoot, "package.json")), "Phase 03 Node validation must remain package-free");
     const ownSource = readText(fileURLToPath(import.meta.url));
     const imports = [...ownSource.matchAll(/^import[\s\S]*?from\s+["']([^"']+)["'];?$/gm)].map((match) => match[1]);
