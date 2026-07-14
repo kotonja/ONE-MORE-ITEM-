@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-07-13 — Phase 03 cross-platform implementation, acceptance in progress
+
+- Extended the historical `studio/phase02.manifest.json` as the single vertical-slice source of truth with device-safe ScreenGui properties, an authored transparent `TouchDragSurface`, five authored `FocusStroke` objects, five compact-action `UISizeConstraint` objects, and the touch-landscape and portrait camera anchors.
+- Added focused strict client modules for `PreferredInput` mode state, responsive classification and geometry, authored-UI application, single-touch drag tracking, deterministic gamepad repeat/action routing, adaptive prompts, and coordinating local input without changing the authoritative round.
+- Preserved the Phase 02 keyboard/mouse controls and six-remotes network surface. Touch and gamepad movement/rotation stay local; only Place, Decision, and Restart use their existing requests.
+- Added responsive `Wide`, `CompactLandscape`, and `Portrait` profiles across 13 required viewports and five simulated safe-inset profiles. Geometry uses scale-only `UDim2`, compact primary actions enforce `72×64` or `120×64` minimums, and layout retargets over `0.25s` with Quart Out.
+- Added deterministic gamepad mapping with `0.55` deadzone, immediate first step, `0.28s` initial delay, `0.12s` repeat interval, Ship-safe Decision focus, deliberate One More selection, and no Button B risk action or generated touch controls.
+- Extended camera targeting to authored responsive anchors with `0.25s` retargeting and epoch-safe impulse settlement. Hardened character-control leases so PlayerModule controls and the exact prior Humanoid `AutoRotate` state restore across unassignment, respawn, Humanoid replacement, and destruction.
+- Added eight Phase 03 Studio suites with 63 tests and a dependency-free Phase 03 Node gate. Fresh Studio Output passed Phase 01 `69/69`, Phase 02 `94/94`, and Phase 03 `63/63`; fresh actionable Output warnings/errors were zero.
+- Passed local Node 24 validation at Phase 01 16 checks, Phase 02 24 criteria with 135 manifest instances and 34 scripts, and Phase 03 29 criteria plus all 65 layout/inset cases. Both push and draft-PR GitHub Actions checks passed on implementation head `8bc43880c48164547e6bd0e63a634f683304d078`.
+- Applied the canonical Phase 01 and extended vertical-slice blueprints twice. The pre-save audit passed `180/180` managed paths with zero missing, wrong-class, duplicate, or unexpected paths, and all `44/44` Luau sources matched exactly.
+- Created an external recovery copy outside Git, saved Phase 03 normally to the original private cloud place, closed every Studio process, and reopened directly from Roblox without synchronization. Post-reopen parity passed the same `180/180` paths, `44/44` sources, exact six-remotes surface, responsive properties, and authored anchors; the post-reopen command audit contained zero mutating synchronization calls.
+- Completed a desktop timeout/reset/One More/shipment/Results flow and a `667×375` touch-landscape drag/invalid-feedback/Place/Ship/Results/Pack Again flow. Generic Gamepad prompts and safe Pack Again focus were visible; the full controller-only round remains pending.
+- Updated CI to `actions/checkout@v7`, retained `actions/setup-node@v6` and Node 24, and kept `contents: read`, dependency caching disabled, and no install step.
+- Opened draft PR #3 from `codex/phase-03-cross-platform-input` and left `main` unchanged.
+- A later Roblox reconnect returned `RCC-277` after transport connected without a join snapshot. The earlier cloud persistence proof remains valid. Phase 03 remains incomplete pending five touch-emulator profiles, the full controller-only flow, complete hybrid and two-player checks, ten mixed-input rounds, and final documentation-head CI.
+
 ## 2026-07-13 — Phase 02 final visual-truth and motion corrections
 
 - Corrected the authored `DecisionPanel` target to `UDim2.new(0.5, 0, 0.96, 0)` with `AnchorPoint (0.5, 1)`, zero Y offset, and `Visible=false`; controller-owned 16-pixel entrance and exit motion now uses target-visibility tracking and transition epochs so repeated snapshots or delayed exits cannot restart or hide a reopened panel.

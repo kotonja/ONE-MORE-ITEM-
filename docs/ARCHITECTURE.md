@@ -80,3 +80,39 @@ The client receives copied presentation snapshots and predicts only ghost validi
 The client bootstrap composes focused controllers for round snapshots, camera, character controls, desktop input, ghost placement, HUD state, viewport previews, and physical-world motion. Controllers bind existing authored paths and clean their temporary children/connections on state changes. The stable camera and grid-to-world transform derive from authored anchors and Phase 01 integer coordinates rather than physical contacts.
 
 The full hierarchy, network contracts, timings, development items, and test flow are documented in `docs/PHASE02_VERTICAL_SLICE.md`.
+
+## Phase 03 permanent responsive authoring
+
+The historically named `studio/phase02.manifest.json` remains the sole owner of the permanent vertical-slice paths. Phase 03 extends it with the transparent `TouchDragSurface`, five authored focus strokes, five authored compact-action constraints, and two invisible responsive camera anchors. It does not create a second overlapping manifest.
+
+`ONE_MORE_ITEM_Gameplay` is authored with `ScreenInsets = DeviceSafeInsets`, `ClipToDeviceSafeArea = true`, `SafeAreaCompatibility = None`, and `IgnoreGuiInset = true`. Permanent UI remains present under `StarterGui` before Play. Runtime may resize, reposition, relabel, reveal, and animate those objects, but it cannot create a replacement ScreenGui, permanent controls, or focus outlines.
+
+The touch-landscape and portrait camera anchors are real Parts under `Station_01`. Like the original camera anchor, they are anchored, invisible, non-colliding, non-queryable, non-touching, script-free, and source controlled.
+
+## Phase 03 input architecture
+
+`InputModeStore` maps `UserInputService.PreferredInput` to exactly `KeyboardMouse`, `Touch`, or `Gamepad`. It deduplicates repeated modes and owns listener cleanup. Input mode is local presentation state; it never chooses a permanent device class or mutates authoritative round state.
+
+`InputController` coordinates the focused implementations:
+
+- `ResponsiveLayout` is pure deterministic geometry over viewport size and safe insets.
+- `ResponsiveUIController` applies geometry to authored panels/buttons and retargets layout tweens.
+- `TouchInputController` owns one active placement touch and emits only local pointer rays.
+- `GamepadInputController` owns high-priority action bindings, fixed-clock cell repeat, and safe GUI selection.
+- `InputPromptController` updates authored text and strokes for the active mode.
+
+Keyboard/mouse, touch, and gamepad feed the same local `PlacementController` ghost. Place, Ship/One More, and Pack Again are routed to the existing `PlaceItemRequest`, `DecisionRequest`, and `RestartRequest` families. Pointer rays, touch/stick positions, movement, rotation, input mode, layout, camera, focus, and ghost state never cross the network. The six Phase 02 remotes and all server validation remain unchanged.
+
+## Phase 03 responsive geometry and camera
+
+Layout classification uses the safe usable aspect ratio independently of input: below `1.10` is `Portrait`; below `1.45`, or a usable height no greater than 500 pixels, is `CompactLandscape`; larger landscape viewports are `Wide`. Targets use scale-only `UDim2` values. `Wide` retains the exact approved Phase 02 geometry, while compact and portrait profiles enlarge primary actions and reposition authored panels inside Roblox-reported safe areas.
+
+Initial geometry applies immediately. A viewport change cancels and retargets independent AnchorPoint, Position, and Size tweens over `0.25s` with Quart Out so controller-owned visibility and count transitions are not replaced by competing geometry tweens.
+
+`CameraController` uses `CameraAnchor` for Wide and non-touch compact layouts, `CameraAnchorTouchLandscape` for compact touch, and `CameraAnchorTouchPortrait` for every portrait mode. Initial assignment retains the `0.60s` arrival; later target changes use a `0.25s` retarget. Impulse epochs prevent a placement, shipping, or failure settle from returning to an obsolete responsive target.
+
+## Phase 03 character-control lease
+
+An assigned client leases PlayerModule controls and suppresses movement/jump with high-priority ContextActionService fallbacks. It records whether controls were enabled and the exact prior Humanoid `AutoRotate` value. Unassignment or destruction restores only state changed by the lease. Respawn and late Humanoid replacement reapply suppression while assignment remains active. Spectators retain ordinary controls.
+
+The complete mappings, responsive matrix, safe-area contract, tests, verified evidence, and pending acceptance gates are documented in `docs/PHASE03_CROSS_PLATFORM.md`.
