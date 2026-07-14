@@ -27,6 +27,14 @@ const inputModeStorePath = path.join(clientControllersDirectory, "InputModeStore
 const inputPromptControllerPath = path.join(clientControllersDirectory, "InputPromptController.luau");
 const touchInputControllerPath = path.join(clientControllersDirectory, "TouchInputController.luau");
 const gamepadInputControllerPath = path.join(clientControllersDirectory, "GamepadInputController.luau");
+const inputControllerPath = path.join(clientControllersDirectory, "InputController.luau");
+const serverBootstrapPath = path.join(
+  repositoryRoot,
+  "src",
+  "ServerScriptService",
+  "ONE_MORE_ITEM_Server",
+  "ServerBootstrap.server.luau",
+);
 
 const uiScreen = "StarterGui.ONE_MORE_ITEM_Gameplay";
 const uiRoot = `${uiScreen}.Root`;
@@ -443,6 +451,55 @@ try {
       assert.doesNotMatch(source, /ContextActionService\s*:\s*Set(?:Title|Image|Position)\s*\(/, `${relativePath} configures a generated touch button`);
     }
     assert.ok(bindingCount >= 5, "Expected character sinks and gamepad bindings to be audited");
+  });
+
+  criterion("selected authored buttons exclusively own Decision and Results gamepad confirmation", () => {
+    const gamepadSource = readText(gamepadInputControllerPath);
+    const inputSource = readText(inputControllerPath);
+    assert.match(
+      inputSource,
+      /local\s+GuiService\s*=\s*game:GetService\s*\(\s*["']GuiService["']\s*\)/,
+      "Selected-button routing must acquire GuiService explicitly",
+    );
+    assert.match(
+      gamepadSource,
+      /UsesSelectedButtonActivation[\s\S]*CONFIRM_SHIP[\s\S]*CONFIRM_ONE_MORE[\s\S]*RESTART/,
+      "Decision and Results confirmations must identify the selected-button route",
+    );
+    assert.match(
+      gamepadSource,
+      /UsesSelectedButtonActivation\s*\(\s*action\s*\)[\s\S]*Enum\.ContextActionResult\.Pass/,
+      "CAS must pass selected-button confirmation to native GUI activation",
+    );
+    assert.match(
+      inputSource,
+      /gamepadSelectable\s+and\s+GuiService\.SelectedObject\s*==\s*button/,
+      "Only the selected authored gamepad button may accept native activation",
+    );
+    assert.match(
+      gamepadSource,
+      /GuiService\s*:\s*GetPropertyChangedSignal\s*\(\s*["']SelectedObject["']\s*\)/,
+      "Gamepad observability must follow native selected-button changes",
+    );
+    assert.match(
+      inputSource,
+      /connect\s*\(\s*buttons\.Place\s*,\s*false[\s\S]*connect\s*\(\s*buttons\.Ship\s*,\s*true[\s\S]*connect\s*\(\s*buttons\.OneMore\s*,\s*true[\s\S]*connect\s*\(\s*buttons\.PackAgain\s*,\s*true/,
+      "Placement must remain CAS-owned while Decision and Results use selected authored buttons",
+    );
+  });
+
+  criterion("expected spectator assignment is informational rather than a game warning", () => {
+    const serverBootstrapSource = readText(serverBootstrapPath);
+    assert.match(
+      serverBootstrapSource,
+      /print\s*\(\s*string\.format\s*\(\s*["']\[ONE_MORE_ITEM\]\[Station\] user=%d is spectator reason=%s["']/,
+      "Expected no-station assignment must remain visible as informational Output",
+    );
+    assert.doesNotMatch(
+      serverBootstrapSource,
+      /warn\s*\(\s*string\.format\s*\(\s*["']\[ONE_MORE_ITEM\]\[Station\]/,
+      "Expected spectator assignment must not fail the zero-game-warning acceptance gate",
+    );
   });
 
   criterion("Phase 03 contains no haptic implementation or setting", () => {

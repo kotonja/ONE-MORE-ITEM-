@@ -799,6 +799,21 @@ addSuite("Gamepad repeat", {
 		end,
 	},
 	{
+		Name = "selected Decision and Results buttons own gamepad confirmation",
+		Run = function()
+			expect(GamepadInputController.UsesSelectedButtonActivation("CONFIRM_SHIP"), "Ship must use selected-button activation")
+			expect(GamepadInputController.UsesSelectedButtonActivation("CONFIRM_ONE_MORE"), "One More must use selected-button activation")
+			expect(GamepadInputController.UsesSelectedButtonActivation("RESTART"), "Pack Again must use selected-button activation")
+			expect(not GamepadInputController.UsesSelectedButtonActivation("PLACE"), "Placement must remain CAS-owned")
+			expect(not GamepadInputController.UsesSelectedButtonActivation(nil), "No action must remain CAS-owned")
+			expectEqual(GamepadInputController.ResolveSelectedAction("Decision", true, false, false), "SHIP")
+			expectEqual(GamepadInputController.ResolveSelectedAction("Decision", false, true, false), "ONE_MORE")
+			expectEqual(GamepadInputController.ResolveSelectedAction("Decision", false, false, false), nil)
+			expectEqual(GamepadInputController.ResolveSelectedAction("Results", false, false, true), "RESTART")
+			expectEqual(GamepadInputController.ResolveSelectedAction("Results", true, false, false), nil)
+		end,
+	},
+	{
 		Name = "spectators cannot route owner actions",
 		Run = function()
 			for _, keyCode in ipairs({ Enum.KeyCode.DPadUp, Enum.KeyCode.ButtonX, Enum.KeyCode.ButtonA }) do
@@ -1035,6 +1050,16 @@ addSuite("Control cleanup and remote discipline", {
 			expectEqual(InputController.NetworkRequestForAction("SHIP"), "DecisionRequest")
 			expectEqual(InputController.NetworkRequestForAction("ONE_MORE"), "DecisionRequest")
 			expectEqual(InputController.NetworkRequestForAction("RESTART"), "RestartRequest")
+		end,
+	},
+	{
+		Name = "authored buttons accept only safe gamepad selection activation",
+		Run = function()
+			expect(InputController.ShouldHandleAuthoredButton("KeyboardMouse", true, false), "Assigned keyboard button should activate")
+			expect(InputController.ShouldHandleAuthoredButton("Touch", true, false), "Assigned touch button should activate")
+			expect(InputController.ShouldHandleAuthoredButton("Gamepad", true, true), "Selected gamepad button should activate")
+			expect(not InputController.ShouldHandleAuthoredButton("Gamepad", true, false), "Unselected gamepad button must not activate")
+			expect(not InputController.ShouldHandleAuthoredButton("Gamepad", false, true), "Spectator button must not activate")
 		end,
 	},
 	{

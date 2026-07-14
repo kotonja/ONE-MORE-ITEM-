@@ -1,6 +1,7 @@
 --!strict
 
 local Players = game:GetService("Players")
+local GuiService = game:GetService("GuiService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
@@ -219,37 +220,54 @@ local function handleKeyboardMouse(self: InternalController, input: InputObject,
 	end
 end
 
+function InputController.ShouldHandleAuthoredButton(
+	mode: InputMode,
+	assigned: boolean,
+	selectedGamepadButton: boolean
+): boolean
+	if not assigned then
+		return false
+	end
+	return mode ~= "Gamepad" or selectedGamepadButton
+end
+
 local function bindAuthoredButtons(self: InternalController, buttons: Buttons)
-	local function connect(button: TextButton, callback: () -> ())
+	local function connect(button: TextButton, gamepadSelectable: boolean, callback: () -> ())
 		table.insert(self._connections, button.Activated:Connect(function()
-			if self._destroyed or self._mode == "Gamepad" or not self._assigned then
+			if self._destroyed
+				or not InputController.ShouldHandleAuthoredButton(
+					self._mode,
+					self._assigned,
+					gamepadSelectable and GuiService.SelectedObject == button
+				)
+			then
 				return
 			end
 			callback()
 		end))
 	end
-	connect(buttons.Rotate, function()
+	connect(buttons.Rotate, false, function()
 		if awaitingPlacement(self) then
 			self._callbacks.Rotate()
 		end
 	end)
-	connect(buttons.Place, function()
+	connect(buttons.Place, false, function()
 		if awaitingPlacement(self) then
 			dispatchNetworkAction(self, "PLACE")
 			refreshContexts(self)
 		end
 	end)
-	connect(buttons.Ship, function()
+	connect(buttons.Ship, true, function()
 		if currentState(self) == "Decision" then
 			dispatchNetworkAction(self, "SHIP")
 		end
 	end)
-	connect(buttons.OneMore, function()
+	connect(buttons.OneMore, true, function()
 		if currentState(self) == "Decision" then
 			dispatchNetworkAction(self, "ONE_MORE")
 		end
 	end)
-	connect(buttons.PackAgain, function()
+	connect(buttons.PackAgain, true, function()
 		if currentState(self) == "Results" then
 			dispatchNetworkAction(self, "RESTART")
 		end

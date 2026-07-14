@@ -205,6 +205,28 @@ function GamepadInputController.ResolveSafeSelection(
 	return nil
 end
 
+function GamepadInputController.UsesSelectedButtonActivation(action: ActionCommand?): boolean
+	return action == "CONFIRM_SHIP" or action == "CONFIRM_ONE_MORE" or action == "RESTART"
+end
+
+function GamepadInputController.ResolveSelectedAction(
+	state: string,
+	shipSelected: boolean,
+	oneMoreSelected: boolean,
+	restartSelected: boolean
+): SelectedAction?
+	if state == "Decision" then
+		if oneMoreSelected then
+			return "ONE_MORE"
+		elseif shipSelected then
+			return "SHIP"
+		end
+	elseif state == "Results" and restartSelected then
+		return "RESTART"
+	end
+	return nil
+end
+
 local function isEnabled(self: InternalController): boolean
 	return self._gamepadMode and self._assigned and not self._destroyed
 end
@@ -222,14 +244,33 @@ local function actionButton(self: InternalController, action: SelectedAction): T
 	return self._buttons.PackAgain
 end
 
-local function setSelection(self: InternalController, action: SelectedAction?)
+local function selectedActionFromGui(self: InternalController): SelectedAction?
+	local selected = GuiService.SelectedObject
+	return GamepadInputController.ResolveSelectedAction(
+		self._state,
+		selected == self._buttons.Ship,
+		selected == self._buttons.OneMore,
+		selected == self._buttons.PackAgain
+	)
+end
+
+local function isManagedButton(self: InternalController, selected: Instance?): boolean
+	return selected == self._buttons.Ship or selected == self._buttons.OneMore or selected == self._buttons.PackAgain
+end
+
+local function updateObservedSelection(self: InternalController, action: SelectedAction?)
 	if self._selectedAction == action then
 		return
 	end
 	self._selectedAction = action
+	self._callbacks.SelectionChanged(action)
+	observe(self)
+end
+
+local function setSelection(self: InternalController, action: SelectedAction?)
 	if action == nil then
 		local selected = GuiService.SelectedObject
-		if selected == self._buttons.Ship or selected == self._buttons.OneMore or selected == self._buttons.PackAgain then
+		if isManagedButton(self, selected) then
 			GuiService.SelectedObject = nil
 		end
 	else
@@ -237,12 +278,11 @@ local function setSelection(self: InternalController, action: SelectedAction?)
 		if button.Visible and button.Interactable and button.Selectable then
 			GuiService.SelectedObject = button
 		else
-			self._selectedAction = nil
+			action = nil
 			GuiService.SelectedObject = nil
 		end
 	end
-	self._callbacks.SelectionChanged(self._selectedAction)
-	observe(self)
+	updateObservedSelection(self, action)
 end
 
 local function setSafeDefault(self: InternalController)
@@ -371,7 +411,24 @@ local function handleConfirmAction(
 	if inputState ~= Enum.UserInputState.Begin then
 		return Enum.ContextActionResult.Sink
 	end
-	dispatchButtonAction(self, resolveButtonAction(self, input.KeyCode))
+	if self._state == "Decision" or self._state == "Results" then
+		local selectedAction = selectedActionFromGui(self)
+		if selectedAction == nil then
+			setSafeDefault(self)
+		else
+			updateObservedSelection(self, selectedAction)
+		end
+	end
+	local action = resolveButtonAction(self, input.KeyCode)
+	if GamepadInputController.UsesSelectedButtonActivation(action) then
+		-- Roblox owns ButtonA activation for GuiService.SelectedObject. Passing here
+		-- keeps Decision/Results confirmation on exactly one authored-button route.
+		if self._selectedAction ~= nil and GuiService.SelectedObject == actionButton(self, self._selectedAction) then
+			return Enum.ContextActionResult.Pass
+		end
+		return Enum.ContextActionResult.Sink
+	end
+	dispatchButtonAction(self, action)
 	return Enum.ContextActionResult.Sink
 end
 
@@ -466,6 +523,11 @@ function GamepadInputController.new(buttons: Buttons, callbacks: Callbacks): Con
 	table.insert(self._connections, UserInputService.GamepadConnected:Connect(function()
 		if isEnabled(self) then
 			setSafeDefault(self)
+		end
+	end))
+	table.insert(self._connections, GuiService:GetPropertyChangedSignal("SelectedObject"):Connect(function()
+		if isEnabled(self) then
+			updateObservedSelection(self, selectedActionFromGui(self))
 		end
 	end))
 	return self
