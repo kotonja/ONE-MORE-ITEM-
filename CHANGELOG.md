@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-14 — Phase 03 manual acceptance correction and persistence
+
+- Exercised all six required Studio touch profiles at actual viewports `373×666`, `392×758`, `665×374`, `749×368`, `767×1022`, and `1022×767`; every profile passed safe-area, camera, default-control, center/corner mapping, drag/release, multi-rotation Chair, Place, both Ship and One More, failure, Results, Pack Again, and cleanup checks. The simultaneous-second-touch manual hold remains unproven, so Phase 03 remains partial.
+- Reproduced the controller confirmation defect twice: Results Button A could leave Pack Again unsubmitted, and native One More selection could disagree with `SelectedGamepadAction`.
+- Kept placement confirmation exclusively `ContextActionService`-owned, routed Decision/Results confirmation through the exact selected authored button, synchronized logical and native GUI selection, and added focused deterministic Studio/Node regression contracts.
+- Changed the expected `NO_STATION` spectator diagnostic from warning severity to ordinary Output; a fresh two-client startup retained visible spectator isolation with zero game-owned warnings/errors.
+- Expanded Phase 03 Studio coverage from 63 to 65 tests and the Phase 03 Node gate from 29 to 31 criteria. Fresh Studio Output passed Phase 01 `69/69`, Phase 02 `94/94`, and Phase 03 `65/65`; all three dependency-free Node validations passed.
+- Rebuilt and applied both canonical synchronization paths twice, saved the corrected private cloud place normally, closed every Studio process, reopened directly from cloud without resynchronization, and passed `180/180` managed paths, `44/44` source parity, exactly six canonical remotes, and zero duplicate paths.
+- Kept PR #3 draft and unmerged, left `main` unchanged, did not begin Phase 04, and recorded the still-open controller, hybrid, two-player owner-gameplay, and ten-round soak gates honestly.
+
 ## 2026-07-13 — Phase 03 cross-platform implementation, acceptance in progress
 
 - Extended the historical `studio/phase02.manifest.json` as the single vertical-slice source of truth with device-safe ScreenGui properties, an authored transparent `TouchDragSurface`, five authored `FocusStroke` objects, five compact-action `UISizeConstraint` objects, and the touch-landscape and portrait camera anchors.

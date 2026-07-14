@@ -2,7 +2,7 @@
 
 Phase 03 adapts the existing single-station, server-authoritative packing round for keyboard/mouse, touch, gamepad, and hybrid input. It does not change the round authority model, add gameplay remotes, or begin the eight-station launch arena.
 
-The implementation is present on `codex/phase-03-cross-platform-input`. Static validation, all three Studio test suites, canonical synchronization, exact source parity, desktop completion, one small-landscape touch completion, and the Phase 03 cloud save/close/direct-reopen gate are verified. The remaining touch-device matrix, complete controller-only flow, hybrid and two-player runs, and ten-round cleanup gate remain pending; Phase 03 is therefore still partial and PR #3 must remain draft and unmerged.
+The implementation is present on `codex/phase-03-cross-platform-input`. Static validation, all three Studio test suites, canonical synchronization, exact source parity, six touch profiles, phone/tablet orientation changes, focused gamepad confirmation paths, and the core two-player lifecycle have been exercised. The simultaneous second-touch check, uninterrupted controller-only and hybrid rounds, complete gamepad negative/reconnect matrix, remaining two-player owner gameplay, and ten-round cleanup gate remain pending; Phase 03 is therefore still partial and PR #3 must remain draft and unmerged.
 
 ## Permanent authored content
 
@@ -33,7 +33,7 @@ Responsive layout reads Roblox-provided `DeviceSafeInsets` and `CoreUISafeInsets
 
 Mouse and touch coordinates use `Camera:ViewportPointToRay` directly with `UserInputService` positions. No second GUI-inset subtraction is applied.
 
-The authored property contract and 65-case simulated safe-inset matrix pass. Visual notch, rounded-corner, top-bar, and orientation behavior in Studio device emulation remains an acceptance gate.
+The authored property contract and 65-case simulated safe-inset matrix pass. Six real Studio device-emulator profiles also kept the core panels, actions, Roblox top bar, crate interaction area, and responsive cameras contained.
 
 ## Input modes
 
@@ -85,7 +85,20 @@ Touch placement uses the authored `TouchDragSurface`:
 
 The controller does not use swipe grid movement, pinch, two-finger rotation, or generated `ContextActionService` touch buttons. Touch movement and rotation remain local and do not send remotes.
 
-The automated touch tracker contracts pass. A real `667 × 375` small-landscape device-emulator run verified drag tracking, invalid-placement feedback, a valid placement, Ship, Results, Pack Again, and visibly contained UI. The remaining portrait/tablet profiles, the full center/corner coordinate matrix, and orientation-change mapping remain pending.
+The automated touch tracker contracts pass. The final emulator matrix recorded:
+
+| Category | Studio profile | Actual viewport | Layout class | Mapping result |
+| --- | --- | --- | --- | --- |
+| Small phone portrait | iPhone 7 | `373×666` | `Portrait` | center `2,2`; corners `0,0`, `4,0`, `0,4`, `4,4` |
+| Tall phone portrait | iPhone 16 | `392×758` | `Portrait` | center `2,2`; corners `0,0`, `4,0`, `0,4`, `4,4` |
+| Small phone landscape | iPhone 7 | `665×374` | `CompactLandscape` | center `2,2`; corners `0,0`, `4,0`, `0,4`, `4,4` |
+| Large phone landscape | iPhone 13 | `749×368` | `CompactLandscape` | center `2,2`; corners `0,0`, `4,0`, `0,4`, `4,4` |
+| Tablet portrait | iPad 6 | `767×1022` | `Portrait` | center `2,2`; corners `0,0`, `4,0`, `0,4`, `4,4` |
+| Tablet landscape | iPad 6 | `1022×767` | `CompactLandscape` | center `2,2`; corners `0,0`, `4,0`, `0,4`, `4,4` |
+
+Every profile used `PreferredInput=Touch` and passed the safe-area, camera-priority, assigned default-control, coordinate, drag/release, multi-rotation Chair, Place, both Ship and One More, failure, Results, Pack Again, and cleanup checks. Release returned `ActivePlacementTouch=false` and never placed. The available automation could not hold a simultaneous second touch, so that one manual subgate remains open and no profile is overstated as fully passed.
+
+Orientation changed during `AwaitingPlacement` on a phone at round 14/state version 2 and on a tablet at round 4/state version 2. Both transitions preserved RoundId, StateVersion, RoundState, current item, ItemCount, SessionBank, and logical ghost position; post-change mapping remained correct, the camera retargeted without replaying arrival, and `LayoutTweens` returned to zero.
 
 ## Gamepad mapping and safe focus
 
@@ -112,7 +125,9 @@ Stick repeat is deterministic:
 - A poll emits at most one cell even after a late frame.
 - Release, direction change, state change, pending placement, disconnect, and destruction reset or gate repeat state as appropriate.
 
-The pure gamepad routing, safe-default, and fixed-clock repeat tests pass. Studio's Generic Gamepad emulator visibly produced the expected placement prompts and safe Results-state Pack Again focus. A complete controller-only round, held-stick/D-pad observation, deliberate One More confirmation, and disconnect/reconnect remain pending. Temporary emulator mappings used during diagnosis were restored to their defaults.
+The pure gamepad routing, safe-default, and fixed-clock repeat tests pass. Manual Generic Gamepad testing proved three bindings, expected prompts, exact one-cell D-pad steps, deadzone rejection, an immediate valid stick step, release cleanup, exactly-one Button A placement, selected Ship/One More/Pack Again focus, a default-Ship Button A transition, deliberate One More confirmation, and one Pack Again restart. The exact one-request/bank-once Ship trace was not separately recorded. A pre-correction Button B press sent no request and changed no round/state value, but that specific check was not repeated after the selection correction and therefore remains partial. Testing also reproduced two related confirmation defects: selected Results Button A did not restart, and native One More selection could disagree with `SelectedGamepadAction`.
+
+The correction keeps placement Button A owned by `ContextActionService`, passes Decision/Results Button A to the exact selected authored button, rejects non-selected gamepad button activation, and synchronizes the logical action with `GuiService.SelectedObject`. Focused deterministic tests cover selected-action resolution and authored-button routing. A complete uninterrupted controller-only round, held repeat delay/interval, stick direction-change/diagonal/tie behavior, multi-rotation Button X, all outside-state negatives, the exact Ship request/bank trace, post-correction Button B, Decision disconnect/reconnect, and Gamepad mode-exit cleanup remain pending. Temporary emulator mappings were restored to their defaults.
 
 ## Dynamic prompts and focus defaults
 
@@ -137,7 +152,7 @@ Camera target selection is:
 
 Initial station assignment retains the approved `0.60s` arrival. A responsive target change cancels the active camera tween and retargets over `0.25s` with Quart Out without replaying arrival. The camera remains Scriptable and looks at `CameraFocus`. Placement, shipping, and failure impulses are epoch-guarded so an obsolete impulse cannot settle over a newer orientation target.
 
-Static selection/retarget/impulse tests and authored-anchor parity pass. Real portrait/landscape camera composition in every required state remains pending.
+Static selection/retarget/impulse tests and authored-anchor parity pass. All six profile cameras and the phone/tablet orientation retargets also passed; the ten-round obsolete-tween cleanup check remains pending.
 
 ## Character-control behavior
 
@@ -145,7 +160,7 @@ While the local player owns Station 01, `CharacterController` leases the existin
 
 Unassignment or destruction removes the fallback bindings and restores only controls changed by this controller. Respawn reapplies the lease while assigned, including a late Humanoid, and restores the previous AutoRotate value when the tracked Humanoid changes. Spectators are not modified. The controller does not destroy `TouchGui` or permanently modify CoreGui.
 
-The deterministic lease, respawn, late-Humanoid, restoration, spectator, and destroy tests pass. Real assigned respawn and touch-control visual-conflict checks remain pending.
+The deterministic lease, respawn, late-Humanoid, restoration, spectator, and destroy tests pass. Assigned-owner respawn recovered station assignment, camera, active input, and movement suppression; exact PlayerStand placement/default-mobile-control behavior and previous-owner restoration after station release remain incomplete.
 
 ## Network discipline
 
@@ -178,49 +193,52 @@ Verified local Node 24 results:
 [StudioSyncSmoke] PASS checks=16 folders=7 scripts=10 deterministic=true
 [Phase02StudioSyncSmoke] PASS criteria=24 instances=135 scripts=34 remotes=6 deterministic=true phase01=true
 [Phase03LayoutMatrix] PASS viewports=13 insetProfiles=5 cases=65 desktopCompatible=true safeContainment=true
-[Phase03CrossPlatformSmoke] PASS criteria=29 viewports=13 insetProfiles=5 layoutCases=65 remotes=6 deterministic=true phase01=true phase02=true
+[Phase03CrossPlatformSmoke] PASS criteria=31 viewports=13 insetProfiles=5 layoutCases=65 remotes=6 deterministic=true phase01=true phase02=true
 ```
 
 Verified fresh Studio Output:
 
 ```text
-[ONE_MORE_ITEM][FoundationTests] RESULT suites=15 tests=69 passed=69 failed=0 duration=0.368965s fuzzCases=1000 fuzzSeed=24012026
+[ONE_MORE_ITEM][FoundationTests] RESULT suites=15 tests=69 passed=69 failed=0 duration=0.414568s fuzzCases=1000 fuzzSeed=24012026
 [ONE_MORE_ITEM][FoundationTests] PASS: all 69 tests passed
-[ONE_MORE_ITEM][Phase02Tests] RESULT suites=11 tests=94 passed=94 failed=0 duration=7.276670s seed=24022026
+[ONE_MORE_ITEM][Phase02Tests] RESULT suites=11 tests=94 passed=94 failed=0 duration=4.961201s seed=24022026
 [ONE_MORE_ITEM][Phase02Tests] PASS: all 94 tests passed
-[ONE_MORE_ITEM][Phase03Tests] RESULT suites=8 tests=63 passed=63 failed=0 duration=0.006260s seed=13072026
-[ONE_MORE_ITEM][Phase03Tests] PASS: all 63 tests passed
+[ONE_MORE_ITEM][Phase03Tests] RESULT suites=8 tests=65 passed=65 failed=0 duration=0.006936s seed=13072026
+[ONE_MORE_ITEM][Phase03Tests] PASS: all 65 tests passed
 ```
 
-The Phase 03 distribution is Input mode store 6, responsive classification 5, responsive geometry 9, touch tracking 7, gamepad repeat/action routing 16, prompts 4, camera targeting 5, and control cleanup/remote discipline 11.
+The Phase 03 distribution is Input mode store 6, responsive classification 5, responsive geometry 9, touch tracking 7, gamepad repeat/action routing 17, prompts 4, camera targeting 5, and control cleanup/remote discipline 12.
 
-Both canonical blueprints were applied twice with zero failures or warnings. The combined managed audit observed all `180/180` expected paths with zero missing, wrong-class, duplicate, or unexpected paths. Exact source parity passed `44/44`. Desktop Play verified timeout failure, Pack Again, placement, deliberate One More, a completed shipment, Results, and another Pack Again. The touch-emulator run verified a complete one-item shipment and Pack Again. Fresh Output contained no actionable game-owned warning or error.
+Both canonical blueprints were applied twice with zero failures or warnings after the source correction. The combined managed audit observed all `180/180` expected paths with zero missing, wrong-class, duplicate, or unexpected paths. Exact source parity passed `44/44`, and the six approved remotes were exact. Fresh clean Play passed all three suites with no game-owned warning/error. A final two-client startup emitted the expected `NO_STATION` spectator condition as ordinary Output, not a warning.
 
 ## Emulator and physical-device evidence
 
-- **Studio device emulator:** One `667 × 375` small-landscape run passed drag, invalid feedback, valid Place, Ship, Results, Pack Again, and visible containment. The other required touch profiles remain pending.
-- **Studio controller emulator:** Generic Gamepad prompts and safe Pack Again focus passed visibly. Full controller-only action activation, round completion, held repeat, and reconnect behavior remain pending.
-- **Physical device:** Not tested. No physical-phone or physical-controller result is claimed.
+- **Evidence environment:** Roblox Studio `0.729.0.7290838`. Desktop and automated suites used Play; touch/orientation used Play with Device Emulator; gamepad/hybrid used Play with Controller Emulator; two-player used Local Server with two players; persistence used Edit mode after direct cloud reopen.
+- **Studio device emulator:** All six required categories were exercised at `373×666`, `392×758`, `665×374`, `749×368`, `767×1022`, and `1022×767`. All recorded visual/state checks passed except the unavailable simultaneous-second-touch manual hold.
+- **Studio controller emulator:** Generic Gamepad proved prompts, one-cell D-pad movement, deadzone/immediate-step behavior, exactly-one placement, deliberate One More, and Pack Again after the focused source correction. Button B's no-request observation predates that correction. The uninterrupted round, held timing, full Button X matrix, post-correction Button B rerun, and Decision reconnect remain pending.
+- **Physical phone:** Not tested. Studio device emulation was used.
+- **Physical controller:** Not tested. Studio controller emulation was used.
 
 ## Cloud persistence evidence
 
 - An external recovery `.rbxl` copy was created outside the repository and verified at 181,185 bytes.
 - Studio reported `Saved new changes in "ONE MORE ITEM!" to Roblox.` for the original private place.
 - Every Studio process was closed. One clean Studio process then reopened the place directly from Roblox without running either synchronization path.
-- The no-resynchronization reopen audit passed `180/180` unique managed paths, zero missing/wrong-class/unexpected/duplicate paths, `44/44` exact canonical sources, and the exact six-remotes surface.
+- Because Studio-managed sources changed during acceptance, both canonical synchronization paths were rebuilt and applied twice before saving. The no-resynchronization reopen audit passed `180/180` unique managed paths, zero missing/wrong-class/unexpected/duplicate paths, `44/44` exact canonical sources, and the exact six-remotes surface.
 - The post-reopen command audit contained reads and diagnostics only; it contained zero mutating synchronization commands.
 - The safe-area properties, touch surface, focus strokes, size constraints, responsive anchors, and earlier permanent content remained present after reopen.
 
-A later cloud reconnect attempt failed with Studio `RCC-277` after transport connected but no join snapshot arrived. That Roblox infrastructure failure interrupted additional emulator coverage; it does not invalidate the earlier successful save, full close, direct reopen, or no-resynchronization parity proof.
+A historical cloud reconnect attempt failed with Studio `RCC-277` after transport connected but no join snapshot arrived. The final corrected place later saved and reopened normally from cloud; RCC-277 was not a current persistence blocker and did not invalidate either proof.
 
 ## Known limitations and remaining acceptance gates
 
-- Five required touch profiles, the complete center/corner coordinate matrix, and orientation-change mapping remain pending.
-- Full gamepad placement/confirmation, held repeat, deliberate One More, controller-only Pack Again activation, and disconnect/reconnect remain pending; prompts and safe focus are proven.
-- Mid-round hybrid switching, assigned respawn, two-player spectator isolation, and ten mixed-input rounds remain pending.
-- The final pass observed a gamepad-to-keyboard prompt switch, but the complete keyboard → gamepad → touch hybrid flow remains pending.
-- A later reconnect was blocked by `RCC-277`; the earlier Phase 03 cloud persistence gate is passed and preserved.
-- GitHub Actions passed on implementation head `8bc43880c48164547e6bd0e63a634f683304d078` and documentation/CI record head `1c3675f36ed0a078baad526831746e50a5438a31`. The exact latest status-only head and its post-commit checks are reported from live GitHub state in the completion report because a commit cannot contain its own post-commit result.
+- Manual simultaneous-second-touch rejection remains unproven even though the deterministic tracker contract passes.
+- The uninterrupted controller-only round, held repeat timing, stick direction-change/diagonal/tie behavior, multi-rotation Button X, complete outside-state negative matrix, exact Ship request/bank trace, post-correction Button B rerun, Decision disconnect/reconnect, and Gamepad mode-exit cleanup remain pending.
+- The complete keyboard → gamepad → touch → keyboard hybrid round remains pending; exercised mode changes preserved authoritative state.
+- Two-player owner/spectator assignment, camera/reward isolation, spectator controls, respawn, release, and later acquisition were observed, but spectator action-denial, owner move/place/bank with different simultaneous input modes, and previous-owner control restoration remain incomplete.
+- Ten mixed-input rounds and the final duplicate-handler single-action checks remain pending.
+- Corrected implementation head `f04a507eb7cae76a34573cf7d8ba6aaf8b4d7b68` passed branch-push run `29335824552` and draft-PR run `29335826478`; both `Phase 01–03 Node Validation` jobs passed every step.
+- The exact latest documentation head and its post-commit checks are reported from live GitHub state in the completion report because a commit cannot contain its own post-commit result.
 
 ## Deferred systems
 
