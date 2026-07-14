@@ -2,17 +2,17 @@
 
 ## Current phase and Git state
 
-- **Phase result:** Complete — implementation accepted.
-- **Current phase:** Phase 03 closeout; PR #3 awaiting final merge review.
-- **Current branch:** `codex/phase-03-cross-platform-input`.
-- **Draft pull request:** [PR #3 — Phase 03: Cross-Platform Interaction and Responsive UI](https://github.com/kotonja/ONE-MORE-ITEM-/pull/3), open, draft, based on `main`, and unmerged.
-- **Protected base:** `main` and `origin/main` remain at the Phase 02 merge SHA `73b3428c5ff0068f1e57f89d2150ffb8dccfdf20`.
+- **Phase result:** Phase 04 active — implementation and acceptance are not yet complete.
+- **Current phase:** Phase 04 — Eight-Station Multiplayer Arena and Shared Shipment Showcase.
+- **Current branch:** `codex/phase-04-multiplayer-arena`.
+- **Previous pull request:** [PR #3 — Phase 03: Cross-Platform Interaction and Responsive UI](https://github.com/kotonja/ONE-MORE-ITEM-/pull/3), squash-merged into `main`.
+- **Protected base:** `main` and `origin/main` are at the Phase 03 merge SHA `014ff3964eb63f22f8527894067cddb1b4f98070`.
 - **Previous implementation SHA:** `f04a507eb7cae76a34573cf7d8ba6aaf8b4d7b68` (`fix: harden phase 03 gamepad confirmation`).
 - **Acceptance-policy starting head:** `768a525a3be2271cb666560c14c4aa33eaee9ebb`.
 - **Acceptance-policy documentation SHA:** Will be reported after commit; this document does not predict its own SHA.
 - **Pre-release QA tracking:** [Issue #4 — Pre-release cross-platform and multiplayer integration QA](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4), open. Its unpassed controller, hybrid, multiplayer-soak, and physical-device checks are not Phase 03 implementation blockers.
 - **Known Phase 03 production blockers:** Zero.
-- **Phase 04:** Not started.
+- **Phase 04:** Started; no Phase 04 acceptance claim has been made.
 
 ## Completed Phase 03 implementation
 
@@ -135,8 +135,8 @@ A historical reconnect accepted Team Create transport but never received a join 
 
 ## Deferred by design
 
-Seven additional stations, the full launch arena/dispatch presentation, final models/assets/audio/VFX, haptics, persistent Tape/DataStores, progression, collection, challenges, missions, cosmetics, store/monetization, analytics, social systems, trading, pets, rebirths, multiple worlds, co-op, camera orbit, and every Phase 04 system remain deferred.
+Final models/assets/audio/VFX, haptics, persistent Tape/DataStores, progression, collection, challenges, missions, cosmetics, store/monetization, analytics, social systems, trading, pets, rebirths, multiple worlds, co-op, camera orbit, and every Phase 05 system remain deferred.
 
 ## Exact next phase recommendation
 
-After the acceptance documentation commit passes exact-head CI, PR #3 is ready for final review. Keep it draft and unmerged until that review; do not merge it as part of this closeout. Phase 04 has not started and must not begin without later explicit authorization.
+Implement and verify Phase 04 on `codex/phase-04-multiplayer-arena`, keep its pull request draft and unmerged, preserve issue #4 as open pre-release QA, and do not begin Phase 05.
