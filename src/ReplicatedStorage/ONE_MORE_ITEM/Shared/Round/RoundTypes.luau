@@ -20,6 +20,18 @@ export type LastClientSequences = {
 	Restart: number,
 }
 
+export type PlacedItemPresentation = {
+	ItemId: string,
+	ShapeId: string,
+	QuarterTurns: number,
+	OriginX: number,
+	OriginY: number,
+	OriginZ: number,
+	ColorR: number,
+	ColorG: number,
+	ColorB: number,
+}
+
 export type RoundRecord = {
 	PlayerUserId: number,
 	RoundId: number,
@@ -30,6 +42,7 @@ export type RoundRecord = {
 	PreviewedNextItemId: string?,
 	PreviewDifficulty: string?,
 	Grid: Grid,
+	PlacedItems: { PlacedItemPresentation },
 	ItemCount: number,
 	BaseValueSum: number,
 	ShipmentValue: number,
