@@ -2,7 +2,17 @@
 
 Phase 03 adapts the existing single-station, server-authoritative packing round for keyboard/mouse, touch, gamepad, and hybrid input. It does not change the round authority model, add gameplay remotes, or begin the eight-station launch arena.
 
-The implementation is present on `codex/phase-03-cross-platform-input`. Static validation, all three Studio test suites, canonical synchronization, exact source parity, six touch profiles, phone/tablet orientation changes, focused gamepad confirmation paths, and earlier two-player lifecycle checks have been exercised. The six-profile touch matrix is accepted under the revised policy. The complete controller-only A-J session, uninterrupted keyboard/mouse → gamepad → touch → keyboard round, fresh two-player regression, and prescribed ten-round mixed-input soak remain pending; Phase 03 is therefore still partial and PR #3 must remain draft and unmerged.
+The implementation is present on `codex/phase-03-cross-platform-input` and is accepted. PR #3 remains draft and unmerged pending final merge review; Phase 04 has not started.
+
+## Acceptance disposition
+
+**Phase 03 implementation acceptance: Complete.**
+
+The production code, permanent authored content, responsive safe-area matrix, automated Phase 01–03 suites, cloud persistence and source parity, and completed six-profile touch/orientation matrix passed. The deterministic simultaneous second-touch rejection contract is accepted for Phase 03. No known production defect remains.
+
+The full physical-style controller session, uninterrupted KeyboardMouse → Gamepad → Touch → KeyboardMouse round, expanded two-player action matrix, ten-round mixed-input soak, physical phone, physical simultaneous multi-touch, and physical controller checks remain unpassed and are tracked in [pre-release QA issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4). They are intentionally deferred until the complete multiplayer game and later launch-critical systems exist, and they are not Phase 03 implementation blockers. Physical simultaneous multi-touch remains deferred; a physical phone and physical controller were not tested.
+
+The incomplete manual observations below are retained as historical evidence. This acceptance decision does not rewrite any attempted manual gate as passed.
 
 ## Permanent authored content
 
@@ -96,7 +106,7 @@ The automated touch tracker contracts pass. The final emulator matrix recorded:
 | Tablet portrait | iPad 6 | `767×1022` | `Portrait` | center `2,2`; corners `0,0`, `4,0`, `0,4`, `4,4` |
 | Tablet landscape | iPad 6 | `1022×767` | `CompactLandscape` | center `2,2`; corners `0,0`, `4,0`, `0,4`, `4,4` |
 
-Every profile used `PreferredInput=Touch` and passed the safe-area, camera-priority, assigned default-control, coordinate, drag/release, multi-rotation Chair, Place, both Ship and One More, failure, Results, Pack Again, and cleanup checks. Release returned `ActivePlacementTouch=false` and never placed. The six-profile matrix is accepted under the revised Phase 03 policy, and simultaneous second-touch manual emulation is waived as a merge blocker.
+Every profile used `PreferredInput=Touch` and passed the safe-area, camera-priority, assigned default-control, coordinate, drag/release, multi-rotation Chair, Place, both Ship and One More, failure, Results, Pack Again, and cleanup checks. Release returned `ActivePlacementTouch=false` and never placed. The six-profile matrix and deterministic simultaneous second-touch rejection contract are accepted for Phase 03. Physical simultaneous multi-touch was not proven by this emulator matrix.
 
 Physical simultaneous multi-touch: Deferred to later physical-device QA
 
@@ -127,9 +137,9 @@ Stick repeat is deterministic:
 - A poll emits at most one cell even after a late frame.
 - Release, direction change, state change, pending placement, disconnect, and destruction reset or gate repeat state as appropriate.
 
-The pure gamepad routing, safe-default, and fixed-clock repeat tests pass. Earlier manual Generic Gamepad checks recorded portions of D-pad, deadzone, placement, selection, One More, and Pack Again behavior, and reproduced the two confirmation defects corrected at `f04a507`. In the final live pass, Studio Controller Emulator confirmed Gamepad connection/reconnection, exactly three bindings rather than duplicated bindings, safe Results/Pack Again focus, one restart, and cleanup on exit to a non-Gamepad mode. Those observations do not constitute the complete controller-only A-J gate.
+The pure gamepad routing, safe-default, and fixed-clock repeat tests pass. Earlier manual Generic Gamepad checks recorded portions of D-pad, deadzone, placement, selection, One More, and Pack Again behavior, and reproduced the two confirmation defects corrected at `f04a507`. In the final live pass, Studio Controller Emulator confirmed Gamepad connection/reconnection, exactly three bindings rather than duplicated bindings, safe Results/Pack Again focus, one restart, and cleanup on exit to a non-Gamepad mode. Those observations do not constitute a complete controller-only A-J session; that unpassed session is tracked as pre-release QA in issue #4.
 
-The correction keeps placement Button A owned by `ContextActionService`, passes Decision/Results Button A to the exact selected authored button, rejects non-selected gamepad button activation, and synchronizes the logical action with `GuiService.SelectedObject`. Focused deterministic tests cover selected-action resolution and authored-button routing. A complete uninterrupted controller-only A-J session, all-direction D-pad proof, held repeat delay/interval, stick direction-change/diagonal/tie behavior, multi-rotation Button X, all outside-state negatives, exact placement/Ship/One More/Button B request traces, and Decision-state disconnect/reconnect remain pending. No production source correction was required in the final pass; the transient acceptance probe was removed, and no manifest property, permanent instance, synchronization, or Studio save changed.
+The correction keeps placement Button A owned by `ContextActionService`, passes Decision/Results Button A to the exact selected authored button, rejects non-selected gamepad button activation, and synchronizes the logical action with `GuiService.SelectedObject`. Focused deterministic tests cover selected-action resolution and authored-button routing. A complete uninterrupted controller-only A-J session, all-direction D-pad proof, held repeat delay/interval, stick direction-change/diagonal/tie behavior, multi-rotation Button X, all outside-state negatives, exact placement/Ship/One More/Button B request traces, and Decision-state disconnect/reconnect remain unpassed and are tracked in issue #4. No production source correction was required in the final pass; the transient acceptance probe was removed, and no manifest property, permanent instance, synchronization, or Studio save changed.
 
 ## Dynamic prompts and focus defaults
 
@@ -154,7 +164,7 @@ Camera target selection is:
 
 Initial station assignment retains the approved `0.60s` arrival. A responsive target change cancels the active camera tween and retargets over `0.25s` with Quart Out without replaying arrival. The camera remains Scriptable and looks at `CameraFocus`. Placement, shipping, and failure impulses are epoch-guarded so an obsolete impulse cannot settle over a newer orientation target.
 
-Static selection/retarget/impulse tests and authored-anchor parity pass. All six profile cameras and the phone/tablet orientation retargets also passed; the ten-round obsolete-tween cleanup check remains pending.
+Static selection/retarget/impulse tests and authored-anchor parity pass. All six profile cameras and the phone/tablet orientation retargets also passed; the unpassed ten-round obsolete-tween cleanup check is tracked as pre-release QA in issue #4.
 
 ## Character-control behavior
 
@@ -162,7 +172,7 @@ While the local player owns Station 01, `CharacterController` leases the existin
 
 Unassignment or destruction removes the fallback bindings and restores only controls changed by this controller. Respawn reapplies the lease while assigned, including a late Humanoid, and restores the previous AutoRotate value when the tracked Humanoid changes. Spectators are not modified. The controller does not destroy `TouchGui` or permanently modify CoreGui.
 
-The deterministic lease, respawn, late-Humanoid, restoration, spectator, and destroy tests pass. Assigned-owner respawn recovered station assignment, camera, active input, and movement suppression; exact PlayerStand placement/default-mobile-control behavior and previous-owner restoration after station release remain incomplete.
+The deterministic lease, respawn, late-Humanoid, restoration, spectator, and destroy tests pass. Assigned-owner respawn recovered station assignment, camera, active input, and movement suppression; exact PlayerStand placement/default-mobile-control behavior and previous-owner restoration after station release remain incomplete and are tracked in the expanded pre-release multiplayer QA.
 
 ## Network discipline
 
@@ -187,7 +197,7 @@ Repository validation:
 4. Build and apply the Phase 01 and extended Phase 02 blueprints in that order, twice.
 5. Verify managed paths, classes, duplicates, properties, and exact source parity before Play.
 6. Run all three Studio development suites and inspect fresh Output.
-7. Complete the required desktop, touch-emulator, gamepad, hybrid, two-player, ten-round cleanup, and cloud close/reopen checks.
+7. Review the preserved manual evidence below. Extended controller, hybrid, two-player, ten-round cleanup, and physical-device checks are tracked as pre-release QA in issue #4 rather than Phase 03 implementation blockers.
 
 Verified local Node 24 results:
 
@@ -217,8 +227,8 @@ Both canonical blueprints were applied twice with zero failures or warnings afte
 
 - **Evidence environment:** Roblox Studio `0.729.0.7290838`. Desktop and automated suites used Play; touch/orientation used Play with Device Emulator; gamepad and mode-switch observations used Play with Controller Emulator; earlier two-player checks used Local Server; persistence used Edit mode after a direct cloud reopen.
 - **Studio device emulator:** All six required categories were exercised at `373×666`, `392×758`, `665×374`, `749×368`, `767×1022`, and `1022×767`; the completed matrix is accepted under the revised policy.
-- **Studio controller emulator:** The final Generic Gamepad trace confirmed connection/reconnection, exactly three bindings, safe Results restart, and mode-exit cleanup. The complete controller-only A-J gate and uninterrupted hybrid round remain pending.
-- **Fresh two-player final session:** Not completed. Earlier evidence does not satisfy this requested fresh gate.
+- **Studio controller emulator:** The final Generic Gamepad trace confirmed connection/reconnection, exactly three bindings, safe Results restart, and mode-exit cleanup. The complete controller-only A-J session and uninterrupted hybrid round were not passed and are deferred to issue #4.
+- **Fresh two-player final session:** Not completed. Earlier evidence does not satisfy the expanded pre-release action matrix tracked in issue #4.
 - **Physical phone:** Not tested. Studio device emulation was used.
 - **Physical controller:** Not tested. Studio controller emulation was used.
 
@@ -234,13 +244,16 @@ Both canonical blueprints were applied twice with zero failures or warnings afte
 
 A historical cloud reconnect attempt failed with Studio `RCC-277` after transport connected but no join snapshot arrived. The final corrected place later saved and reopened normally from cloud; RCC-277 was not a current persistence blocker and did not invalidate either proof.
 
-## Known limitations and remaining acceptance gates
+## Known limitations and deferred pre-release QA
 
-- Physical simultaneous multi-touch: Deferred to later physical-device QA.
-- The complete controller-only A-J session remains pending; emulator connection/reconnection, three bindings, safe restart, and mode-exit cleanup were confirmed but do not constitute a full pass.
-- The uninterrupted keyboard → gamepad → touch → keyboard round remains pending.
-- The requested fresh two-player owner/spectator regression remains pending; earlier observations do not satisfy this fresh gate.
-- The prescribed ten-round mixed-input soak and final duplicate-handler checks remain pending.
+- [Issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) is the single open tracker for the deferred checks below. They remain unpassed and are not Phase 03 implementation blockers.
+- Physical simultaneous multi-touch is deferred to later physical-device QA.
+- The complete controller-only A-J session remains unpassed; emulator connection/reconnection, three bindings, safe restart, and mode-exit cleanup were confirmed but do not constitute a full pass.
+- The uninterrupted keyboard → gamepad → touch → keyboard round remains unpassed.
+- The expanded two-player owner/spectator action matrix remains unpassed; earlier observations do not satisfy it.
+- The prescribed ten-round mixed-input soak and final duplicate-handler checks remain unpassed.
+- Physical phone and physical controller testing were not performed.
+- No known Phase 03 production defect remains.
 - Corrected implementation head `f04a507eb7cae76a34573cf7d8ba6aaf8b4d7b68` passed branch-push run `29335824552` and draft-PR run `29335826478`; both `Phase 01–03 Node Validation` jobs passed every step.
 - The exact latest documentation head and its post-commit checks are reported from live GitHub state in the completion report because a commit cannot contain its own post-commit result.
 
