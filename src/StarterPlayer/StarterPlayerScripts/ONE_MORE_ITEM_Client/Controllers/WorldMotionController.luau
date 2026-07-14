@@ -30,6 +30,8 @@ type InternalController = Controller & {
 	_buttonColors: { [BasePart]: Color3 },
 	_buttonMaterials: { [BasePart]: Enum.Material },
 	_buttonSizes: { [BasePart]: Vector3 },
+	_buttonTweens: { [BasePart]: Tween },
+	_buttonTweenEpochs: { [BasePart]: number },
 	_tiles: { [string]: BasePart },
 	_tileColors: { [BasePart]: Color3 },
 	_tileMaterials: { [BasePart]: Enum.Material },
@@ -89,6 +91,15 @@ local function cancelLidTween(self: InternalController)
 	if self._lidTween ~= nil then
 		self._lidTween:Cancel()
 		self._lidTween = nil
+	end
+end
+
+local function cancelButtonTween(self: InternalController, button: BasePart)
+	self._buttonTweenEpochs[button] = (self._buttonTweenEpochs[button] or 0) + 1
+	local tween = self._buttonTweens[button]
+	self._buttonTweens[button] = nil
+	if tween ~= nil then
+		tween:Cancel()
 	end
 end
 
@@ -306,6 +317,8 @@ function WorldMotionController.new(station: Model): Controller
 		_buttonColors = buttonColors,
 		_buttonMaterials = buttonMaterials,
 		_buttonSizes = buttonSizes,
+		_buttonTweens = {},
+		_buttonTweenEpochs = {},
 		_tiles = tiles,
 		_tileColors = tileColors,
 		_tileMaterials = tileMaterials,
@@ -403,21 +416,34 @@ function ControllerMethods.PressButton(self: InternalController, action: string)
 	end
 	local original = self._buttonFrames[button]
 	local originalSize = self._buttonSizes[button]
+	cancelButtonTween(self, button)
+	local epoch = self._buttonTweenEpochs[button]
 	local down = TweenService:Create(
 		button,
 		TweenInfo.new(PresentationTokens.Timing.ButtonDown, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
 		{ CFrame = original * CFrame.new(0, -0.12, 0), Size = Vector3.new(originalSize.X, originalSize.Y * 0.94, originalSize.Z) }
 	)
+	self._buttonTweens[button] = down
 	down:Play()
 	down.Completed:Once(function()
-		if self._destroyed then
+		if self._destroyed
+			or self._buttonTweenEpochs[button] ~= epoch
+			or self._buttonTweens[button] ~= down
+		then
 			return
 		end
-		TweenService:Create(
+		local returning = TweenService:Create(
 			button,
 			TweenInfo.new(PresentationTokens.Timing.ButtonReturn, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
 			{ CFrame = original, Size = originalSize }
-		):Play()
+		)
+		self._buttonTweens[button] = returning
+		returning.Completed:Once(function()
+			if self._buttonTweenEpochs[button] == epoch and self._buttonTweens[button] == returning then
+				self._buttonTweens[button] = nil
+			end
+		end)
+		returning:Play()
 	end)
 end
 
@@ -501,11 +527,14 @@ function ControllerMethods.Destroy(self: InternalController)
 	self._lid.CFrame = self._lidOpen
 	self._lid.Color = self._lidColor
 	for _, button in pairs(self._buttons) do
+		cancelButtonTween(self, button)
 		button.CFrame = self._buttonFrames[button]
 		button.Color = self._buttonColors[button]
 		button.Material = self._buttonMaterials[button]
 		button.Size = self._buttonSizes[button]
 	end
+	table.clear(self._buttonTweens)
+	table.clear(self._buttonTweenEpochs)
 end
 
 return table.freeze(WorldMotionController)
