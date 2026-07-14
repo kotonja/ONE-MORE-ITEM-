@@ -48,7 +48,6 @@ type ShowcaseServiceImpl = Service & {
 	_connection: RBXScriptConnection?,
 	_heartbeatAccumulator: number,
 	_autoConnect: boolean,
-	_overflowWarned: boolean,
 	_overflowCount: number,
 	_destroyed: boolean,
 }
@@ -318,7 +317,6 @@ function ShowcaseService.Create(
 		_connection = nil,
 		_heartbeatAccumulator = 0,
 		_autoConnect = resolvedOptions.AutoConnect ~= false,
-		_overflowWarned = false,
 		_overflowCount = 0,
 		_destroyed = false,
 	}, ShowcaseService) :: ShowcaseServiceImpl
@@ -344,10 +342,6 @@ function ShowcaseService.Submit(self: ShowcaseServiceImpl, record: ShipmentRecor
 	fillActive(self)
 	if #self._pending >= MAX_PENDING then
 		self._overflowCount += 1
-		if not self._overflowWarned then
-			self._overflowWarned = true
-			warn("[ONE_MORE_ITEM][Showcase] visual queue full; newest cosmetic shipment discarded")
-		end
 		updateObservability(self)
 		return false, "QUEUE_FULL"
 	end
