@@ -911,7 +911,8 @@ addSuite("Station assignment and waiting queue", {
 			local character = Instance.new("Model")
 			local part = Instance.new("Part")
 			part.Parent = character
-			(player :: any):_FireCharacterAdded(character)
+			local testPlayer = player :: any
+			testPlayer:_FireCharacterAdded(character)
 			local station = service:GetStationById("station_01")
 			expect(station ~= nil, "Station record expected")
 			expectVectorNear(part.Position, (station :: any).PlayerStand.Position, 0.00001)
