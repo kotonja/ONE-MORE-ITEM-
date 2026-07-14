@@ -648,7 +648,7 @@ try {
 
   criterion("workflow uses the verified Node 24 action runtime plan", () => {
     const workflow = readText(workflowPath);
-    assert.equal((workflow.match(/actions\/checkout@v6\b/g) ?? []).length, 1, "Workflow must use verified actions/checkout@v6 exactly once");
+    assert.equal((workflow.match(/actions\/checkout@v7\b/g) ?? []).length, 1, "Workflow must use verified actions/checkout@v7 exactly once");
     assert.equal((workflow.match(/actions\/setup-node@v6\b/g) ?? []).length, 1, "Workflow must use verified actions/setup-node@v6 exactly once");
     assert.match(workflow, /node-version:\s*['"]?24['"]?\s*$/m);
     assert.match(workflow, /package-manager-cache:\s*false\s*$/m);
