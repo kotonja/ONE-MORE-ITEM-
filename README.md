@@ -15,23 +15,23 @@ Phase 02 is complete and merged through PR #2 at `73b3428c5ff0068f1e57f89d2150ff
 - `main` is protected by workflow: work happens on `codex/*` feature branches and is reviewed through pull requests.
 - Phase 02 was merged through PR #2 at `73b3428c5ff0068f1e57f89d2150ffb8dccfdf20`.
 - Phase 03 was squash-merged through PR #3 at `014ff3964eb63f22f8527894067cddb1b4f98070`.
-- Phase 04 uses `codex/phase-04-multiplayer-arena`; it remains unaccepted until its implementation, deterministic gates, live Studio checks, cloud persistence recovery, and review are complete.
+- Phase 04 uses `codex/phase-04-multiplayer-arena`; its implementation and deterministic gates are in place, including the one-shot showcase-overflow diagnostic, but the phase remains unaccepted until the remaining manual cross-platform, live stress, direct-cloud-reopen, and exact-head review gates are complete.
 - Pull before editing, never force-push, and keep every meaningful Studio/code change committed and pushed.
 - `docs/DEVELOPMENT_STATUS.md` is updated on every task.
-- GitHub Actions uses Node 24 with `actions/checkout@v7` and `actions/setup-node@v6` and runs all three dependency-free validations on pull requests targeting `main` and pushes to `main` or `codex/**`.
+- GitHub Actions uses Node 24 with `actions/checkout@v7` and `actions/setup-node@v6` and runs all four dependency-free validations on pull requests targeting `main` and pushes to `main` or `codex/**`.
 
 ## Studio source workflow
 
 The repository is the only source of truth for scripts and permanent managed instances:
 
-1. Edit canonical sources under `src/`. `studio/phase01.manifest.json` owns the foundation hierarchy, while the historically named `studio/phase02.manifest.json` remains the single canonical manifest for the authored vertical slice and Phase 03 responsive additions.
+1. Edit canonical sources under `src/`. `studio/phase01.manifest.json` owns the foundation hierarchy, while the historically named `studio/phase02.manifest.json` remains the single canonical manifest for the authored vertical slice, Phase 03 responsive additions, and Phase 04 arena.
 2. In Roblox Studio Edit mode, begin from any place state, including a clean Baseplate. Do not manually create the managed folders.
 3. Run `node tools/build_studio_blueprint.mjs` and `node tools/build_phase02_blueprint.mjs` from the repository root.
-4. Run `node tools/test_studio_blueprint.mjs`, `node tools/test_phase02_blueprint.mjs`, and `node tools/test_phase03_cross_platform.mjs`; stop if any validation fails.
+4. Run `node tools/test_studio_blueprint.mjs`, `node tools/test_phase02_blueprint.mjs`, `node tools/test_phase03_cross_platform.mjs`, and `node tools/test_phase04_multiplayer_arena.mjs`; stop if any validation fails.
 5. Apply the generated Phase 01 operations first and the extended vertical-slice operations second, preserving generated order.
 6. Confirm parent-first creation, exact managed properties and sources, zero wrong-class paths or duplicates, and then run the Studio suites and required Play tests.
 
-Phase 02 adds `studio/phase02.manifest.json`, `tools/build_phase02_blueprint.mjs`, and `tools/test_phase02_blueprint.mjs`. Phase 03 deliberately extends that manifest and test path instead of creating an overlapping owner. Its generated Edit-mode operations author permanent `Workspace`, `StarterGui`, `ReplicatedStorage`, `ServerScriptService`, and `StarterPlayerScripts` content with typed properties and attributes. Runtime gameplay code only binds those instances and creates explicitly temporary proxies.
+Phase 02 adds `studio/phase02.manifest.json`, `tools/build_phase02_blueprint.mjs`, and `tools/test_phase02_blueprint.mjs`. Phases 03 and 04 deliberately extend that manifest and test path instead of creating an overlapping owner. The Phase 04 authoring tool deterministically expands one Station_01 descriptor into eight explicit final station paths at 45-degree ring intervals. Generated Edit-mode operations author permanent `Workspace`, `StarterGui`, `ReplicatedStorage`, `ServerScriptService`, and `StarterPlayerScripts` content with typed properties and attributes. Runtime gameplay code only binds those instances and creates explicitly temporary gameplay or showcase proxies.
 
 Correct folders and scripts are reused or updated, and missing instances are created. A wrong-class instance at a managed path raises a clear error and is never silently destroyed. Repeating the complete operation list is idempotent and creates no duplicates.
 
@@ -45,7 +45,7 @@ The same build step also emits `.codex-cache/phase01-blueprint.json` for validat
 
 The runner exits immediately outside Roblox Studio and fails visibly with `error()` if any test fails.
 
-Phase 02 adds a separate Studio suite for round math, fair sequencing, state transitions, placement security, station ownership, serialization, world transforms, and runtime cleanup. Phase 03 adds an eight-suite deterministic Studio gate for preferred-input state, responsive layout geometry, touch tracking, gamepad repeat and routing, prompts, camera targets, character-control cleanup, and remote discipline. See `docs/PHASE02_VERTICAL_SLICE.md` and `docs/PHASE03_CROSS_PLATFORM.md` for the complete procedures and verified evidence.
+Phase 02 adds a separate Studio suite for round math, fair sequencing, state transitions, placement security, station ownership, serialization, world transforms, and runtime cleanup. Phase 03 adds an eight-suite deterministic Studio gate for preferred-input state, responsive layout geometry, touch tracking, gamepad repeat and routing, prompts, camera targets, character-control cleanup, and remote discipline. Phase 04 adds a 13-suite deterministic Studio gate for the eight-station registry, allocation and waiting, client rebinding, rotated transforms, concurrent isolation, immutable shipment records, bounded FIFO showcase behavior, shared displays, respawn, and cleanup. See `docs/PHASE02_VERTICAL_SLICE.md`, `docs/PHASE03_CROSS_PLATFORM.md`, and `docs/PHASE04_MULTIPLAYER_ARENA.md` for the complete contracts and evidence.
 
 ## Phase 01 persistence status
 
@@ -58,3 +58,9 @@ Permanent UI must be authored as real instances under `StarterGui`, and permanen
 ## Phase 03 cross-platform contract
 
 Phase 03 retains the same server round and six authored remotes. `UserInputService.PreferredInput` selects only local `KeyboardMouse`, `Touch`, or `Gamepad` presentation. Viewport geometry independently selects `Wide`, `CompactLandscape`, or `Portrait`; authored UI is constrained to Roblox-reported safe areas, and authored camera anchors keep the crate framed. Touch drag and gamepad grid movement update only the local ghost, while Place, Decision, and Pack Again continue through the existing server-authoritative requests.
+
+## Phase 04 multiplayer arena contract
+
+Phase 04 authors eight complete station Models in Edit mode on a 38-stud ring, all facing the center, plus the center dispatch, 16-node showcase loop, arena announcement, server-best board, owner/risk displays, and script-free showcase crate template. `StationService` validates and allocates the authored stations in deterministic index order; a FIFO waiting queue receives released stations. `StationContextController` binds one allowlisted station from each authoritative snapshot and tears down the old camera, character, placement, motion, pointer, touch, and gamepad state when assignment changes.
+
+Every player round, occupancy grid, placed-item container, timer, sequence, Tape bank, and result remains station scoped and server authoritative. A successful shipment is copied into an immutable, deduplicated `ShipmentRecord`; the shared showcase accepts records in stable receipt order, displays at most three simultaneously, queues at most sixteen, moves through one shared 30 Hz loop, and returns its runtime folder to zero children after drain. Persistent Tape and all Phase 05 systems remain out of scope.
