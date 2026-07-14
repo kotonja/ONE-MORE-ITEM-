@@ -348,6 +348,7 @@ local function newClientHarness(): ClientHarness
 	local template = Instance.new("Part")
 	local log = {
 		ActivatedStations = {},
+		ActivatedCameraFrames = {},
 		DeactivateCount = 0,
 		Impulses = {},
 		AssignedStates = {},
@@ -371,6 +372,8 @@ local function newClientHarness(): ClientHarness
 	local camera = {
 		Activate = function(_self: any, station: Model)
 			table.insert(log.ActivatedStations, station.Name)
+			local anchor = requireChild(station, "CameraAnchor", "BasePart") :: BasePart
+			table.insert(log.ActivatedCameraFrames, anchor.CFrame)
 		end,
 		Deactivate = function(_self: any)
 			log.DeactivateCount += 1
@@ -503,15 +506,22 @@ local function authoredShowcaseParts(): (Model, BasePart, Instance)
 	return template, entry, pathNodes
 end
 
-local function newShowcaseHarness(autoConnect: boolean?): ShowcaseHarness
+local function newShowcaseHarness(
+	autoConnect: boolean?,
+	warningSink: ((message: string) -> ())?
+): ShowcaseHarness
 	local authoredTemplate, authoredEntry, authoredPath = authoredShowcaseParts()
 	local template = authoredTemplate:Clone()
 	local entry = authoredEntry:Clone() :: BasePart
 	local pathNodes = authoredPath:Clone()
 	local runtime = Instance.new("Folder")
 	runtime.Name = "Runtime"
+	local resolvedWarningSink = warningSink or function(_message: string)
+		-- Expected overflow cases stay out of Studio Output unless the test supplies a recorder.
+	end
 	local service = ShowcaseService.Create(template, entry, pathNodes, runtime, {
 		AutoConnect = autoConnect == true,
+		WarningSink = resolvedWarningSink,
 	})
 	local harness: ShowcaseHarness = {
 		Service = service,
@@ -688,6 +698,28 @@ addSuite("Authored station registry", {
 			local root = cloneStationsRoot()
 			stationModel(root, 8):SetAttribute("StationIndex", 7)
 			expectError(function() StationService.Create(root) end, "StationIndex")
+			root:Destroy()
+		end,
+	},
+	{
+		Name = "missing GridOrigin fails visibly",
+		Run = function()
+			local root = cloneStationsRoot()
+			local crate = requireChild(stationModel(root, 4), "Crate", "Folder")
+			requireChild(crate, "GridOrigin", "BasePart"):Destroy()
+			expectError(function() StationService.Create(root) end, "GridOrigin")
+			expectEqual(crate:FindFirstChild("GridTiles") ~= nil, true, "Validation must not damage sibling content")
+			root:Destroy()
+		end,
+	},
+	{
+		Name = "missing PlayerStand fails visibly",
+		Run = function()
+			local root = cloneStationsRoot()
+			local station = stationModel(root, 6)
+			requireChild(station, "PlayerStand", "BasePart"):Destroy()
+			expectError(function() StationService.Create(root) end, "PlayerStand")
+			expectEqual(station:FindFirstChild("StationRoot") ~= nil, true, "Validation must not damage sibling content")
 			root:Destroy()
 		end,
 	},
@@ -1019,6 +1051,77 @@ addSuite("Client station binding lifecycle", {
 		end,
 	},
 	{
+		Name = "Station 01 and Station 05 rebind distinct grid and camera transforms",
+		Run = function()
+			local harness = newClientHarness()
+			harness.Controller:ApplySnapshot(clientSnapshot("station_01", 1, 1))
+			local firstPlacement = harness.Log.PlacementCreates[1]
+			local firstGrid = stationGridOrigin(firstPlacement.Station)
+			local firstAnchor = requireChild(firstPlacement.Station, "CameraAnchor", "BasePart") :: BasePart
+
+			harness.Controller:ApplySnapshot(clientSnapshot("station_05", 2, 1))
+			local fifthPlacement = harness.Log.PlacementCreates[2]
+			local fifthGrid = stationGridOrigin(fifthPlacement.Station)
+			local fifthAnchor = requireChild(fifthPlacement.Station, "CameraAnchor", "BasePart") :: BasePart
+
+			expect(firstGrid.CFrame.LookVector:Dot(fifthGrid.CFrame.LookVector) < -0.999,
+				"Opposite station grids must use opposite local transforms")
+			local firstHorizontalLook = Vector3.new(
+				firstAnchor.CFrame.LookVector.X,
+				0,
+				firstAnchor.CFrame.LookVector.Z
+			).Unit
+			local fifthHorizontalLook = Vector3.new(
+				fifthAnchor.CFrame.LookVector.X,
+				0,
+				fifthAnchor.CFrame.LookVector.Z
+			).Unit
+			expect(firstHorizontalLook:Dot(fifthHorizontalLook) < -0.999,
+				"Opposite station cameras must face opposite horizontal directions")
+			expectNear(firstAnchor.CFrame.LookVector.Y, fifthAnchor.CFrame.LookVector.Y, 0.00001,
+				"Opposite station cameras must preserve the same downward pitch")
+			expectVectorNear(harness.Log.ActivatedCameraFrames[1].Position, firstAnchor.Position, 0.00001)
+			expectVectorNear(harness.Log.ActivatedCameraFrames[2].Position, fifthAnchor.Position, 0.00001)
+			expectEqual(table.concat(harness.Log.ActivatedStations, ","), "Station_01,Station_05")
+			expect(firstPlacement.Destroyed, "Station 01 placement context must be destroyed on rebind")
+			expect(not fifthPlacement.Destroyed, "Station 05 placement context must remain current")
+			harness:Destroy()
+		end,
+	},
+	{
+		Name = "one persistent input instance routes across station reassignment",
+		Run = function()
+			local harness = newClientHarness()
+			local inputInstanceCount = 0
+			local function createPersistentInput(): any
+				inputInstanceCount += 1
+				return table.freeze({
+					Move = function(deltaX: number, deltaZ: number)
+						harness.Controller:Move(deltaX, deltaZ)
+					end,
+					Rotate = function()
+						harness.Controller:RotateClockwise()
+					end,
+				})
+			end
+
+			local input = createPersistentInput()
+			local inputIdentity = input
+			harness.Controller:ApplySnapshot(clientSnapshot("station_01", 1, 1))
+			input.Move(1, 0)
+			harness.Controller:ApplySnapshot(clientSnapshot("station_05", 2, 1))
+			input.Move(0, 1)
+			input.Rotate()
+
+			expectEqual(input, inputIdentity, "Reassignment must preserve the input router identity")
+			expectEqual(inputInstanceCount, 1, "Exactly one input instance may serve all station bindings")
+			expectEqual(#harness.Log.PlacementCreates, 2)
+			expectEqual(harness.Log.PlacementMoves, 2)
+			expectEqual(harness.Log.PlacementRotates, 1)
+			harness:Destroy()
+		end,
+	},
+	{
 		Name = "stale callbacks cannot affect new station",
 		Run = function()
 			local harness = newClientHarness()
@@ -1242,6 +1345,144 @@ addSuite("Eight-session round isolation", {
 		end,
 	},
 	{
+		Name = "one-player restart resets only its owning round",
+		Run = function()
+			local harness = newEightRoundHarness()
+			local originalRounds: { any } = {}
+			for index, player in ipairs(harness.Players) do
+				originalRounds[index] = harness.Service:StartRound(player)
+			end
+			originalRounds[2].SessionBank = 77
+
+			local firstPlayer = harness.Players[1]
+			harness.Service:_enterFailure(firstPlayer, "TEST_RESTART")
+			local finished = harness.Service:GetRound(firstPlayer)
+			expect(harness.Service:HandleCapturedTimer(
+				firstPlayer,
+				finished.RoundId,
+				finished.StateVersion,
+				"Failing"
+			), "Failure presentation must reach Results")
+			local accepted, reason = harness.Service:HandleRestart(firstPlayer, {
+				RoundId = finished.RoundId,
+				StateVersion = finished.StateVersion,
+				ClientSequence = 1,
+			})
+
+			expect(accepted, "Owning player restart must be accepted")
+			expectEqual(reason, "RESTARTED")
+			expectEqual(harness.Service:GetRound(firstPlayer).RoundId, 2)
+			expectEqual(harness.Service:GetRound(firstPlayer).State, "Preparing")
+			expectEqual(harness.Clears[firstPlayer], 1)
+			for index = 2, 8 do
+				local player = harness.Players[index]
+				expectEqual(harness.Service:GetRound(player), originalRounds[index], "Neighbor round identity must persist")
+				expectEqual(harness.Service:GetRound(player).State, "Preparing")
+				expectEqual(harness.Clears[player], nil)
+			end
+			expectEqual(harness.Service:GetRound(harness.Players[2]).SessionBank, 77)
+		end,
+	},
+	{
+		Name = "same-frame two shipments remain independent",
+		Run = function()
+			local harness = newEightRoundHarness()
+			for _, player in ipairs(harness.Players) do harness.Service:StartRound(player) end
+			local first = harness.Service:GetRound(harness.Players[1])
+			first.PlacedItems = { placedItem("parcel", 0) }
+			first.ItemCount = 1
+			first.BaseValueSum = 15
+			first.ShipmentValue = 25
+			local fourth = harness.Service:GetRound(harness.Players[4])
+			fourth.PlacedItems = { placedItem("parcel", 0), placedItem("long_package", 1) }
+			fourth.ItemCount = 2
+			fourth.BaseValueSum = 45
+			fourth.ShipmentValue = 70
+
+			harness.Service:_enterShipping(harness.Players[1], "SAME_FRAME_A")
+			harness.Service:_enterShipping(harness.Players[4], "SAME_FRAME_B")
+
+			expectEqual(#harness.ShipmentEvents, 2)
+			expectEqual(harness.ShipmentEvents[1].PlayerUserId, harness.Players[1].UserId)
+			expectEqual(harness.ShipmentEvents[1].StationId, "station_01")
+			expectEqual(harness.ShipmentEvents[1].ShipmentValue, 25)
+			expectEqual(harness.ShipmentEvents[2].PlayerUserId, harness.Players[4].UserId)
+			expectEqual(harness.ShipmentEvents[2].StationId, "station_04")
+			expectEqual(harness.ShipmentEvents[2].ShipmentValue, 70)
+			expectEqual(harness.ShipmentEvents[1].CreatedAt, harness.ShipmentEvents[2].CreatedAt,
+				"Same-frame records must share the deterministic clock")
+			expectEqual(first.SessionBank, 25)
+			expectEqual(fourth.SessionBank, 70)
+			for index, player in ipairs(harness.Players) do
+				if index ~= 1 and index ~= 4 then
+					expectEqual(harness.Service:GetRound(player).State, "Preparing")
+					expectEqual(harness.Service:GetRound(player).SessionBank, 0)
+				end
+			end
+		end,
+	},
+	{
+		Name = "same-frame two failures remain independent",
+		Run = function()
+			local harness = newEightRoundHarness()
+			for _, player in ipairs(harness.Players) do harness.Service:StartRound(player) end
+			local third = harness.Service:GetRound(harness.Players[3])
+			third.ItemCount = 7
+			third.ShipmentValue = 700
+			third.SessionBank = 40
+			local sixth = harness.Service:GetRound(harness.Players[6])
+			sixth.ItemCount = 8
+			sixth.ShipmentValue = 900
+			sixth.SessionBank = 55
+
+			harness.Service:_enterFailure(harness.Players[3], "SAME_FRAME_A")
+			harness.Service:_enterFailure(harness.Players[6], "SAME_FRAME_B")
+
+			expectEqual(#harness.FailureEvents, 2)
+			expectEqual(harness.FailureEvents[1].PlayerUserId, harness.Players[3].UserId)
+			expectEqual(harness.FailureEvents[1].LostValue, 700)
+			expectEqual(harness.FailureEvents[2].PlayerUserId, harness.Players[6].UserId)
+			expectEqual(harness.FailureEvents[2].LostValue, 900)
+			expectEqual(third.State, "Failing")
+			expectEqual(third.SessionBank, 40)
+			expectEqual(sixth.State, "Failing")
+			expectEqual(sixth.SessionBank, 55)
+			for index, player in ipairs(harness.Players) do
+				if index ~= 3 and index ~= 6 then
+					expectEqual(harness.Service:GetRound(player).State, "Preparing")
+					expectEqual(harness.Service:GetRound(player).ShipmentValue, 0)
+				end
+			end
+		end,
+	},
+	{
+		Name = "stale timer is rejected while neighboring rounds persist",
+		Run = function()
+			local harness = newEightRoundHarness()
+			for _, player in ipairs(harness.Players) do harness.Service:StartRound(player) end
+			local firstPlayer = harness.Players[1]
+			local staleRound = harness.Service:GetRound(firstPlayer)
+			local neighborRounds: { any } = {}
+			for index = 2, 8 do neighborRounds[index] = harness.Service:GetRound(harness.Players[index]) end
+			local replacement = harness.Service:StartRound(firstPlayer)
+			expectEqual(replacement.RoundId, staleRound.RoundId + 1)
+
+			expect(not harness.Service:HandleCapturedTimer(
+				firstPlayer,
+				staleRound.RoundId,
+				staleRound.StateVersion,
+				staleRound.State
+			), "Superseded round callback must be rejected")
+			expectEqual(harness.Service:GetRound(firstPlayer), replacement)
+			expectEqual(replacement.State, "Preparing")
+			for index = 2, 8 do
+				local neighbor = harness.Service:GetRound(harness.Players[index])
+				expectEqual(neighbor, neighborRounds[index], "Neighbor round identity must persist")
+				expectEqual(neighbor.State, "Preparing")
+			end
+		end,
+	},
+	{
 		Name = "player removal clears only its round and world content",
 		Run = function()
 			local harness = newEightRoundHarness()
@@ -1331,6 +1572,43 @@ addSuite("World-item station isolation", {
 		end,
 	},
 	{
+		Name = "promoted owner receives clean PlacedItems after release",
+		Run = function()
+			local root = cloneStationsRoot()
+			local stations = StationService.Create(root)
+			local assigned: { Player } = {}
+			for index = 1, 8 do
+				assigned[index] = fakePlayer(index)
+				stations:AssignPlayer(assigned[index])
+			end
+			local waiting = fakePlayer(9)
+			expect(stations:AssignPlayer(waiting).Waiting, "Ninth player must wait")
+			local template = Instance.new("Part")
+			local world = WorldItemService.Create(template, stations)
+			world:SpawnAcceptedPlacement(assigned[1], "parcel", placementAt(0, 0, 0))
+			expectEqual(#stations:GetStationById("station_01").PlacedItems:GetChildren(), 1)
+
+			stations:SetCallbacks({
+				OnReleased = function(_player: Player, station: any)
+					world:ClearStation(station.Id)
+				end,
+			})
+			local released = stations:ReleasePlayer(assigned[1])
+			expectEqual(released.PromotedPlayer, waiting)
+			expectEqual(stations:GetStationId(waiting), "station_01")
+			expectEqual(world:GetStationRuntimeModelCount("station_01"), 0)
+			expectEqual(#stations:GetStationById("station_01").PlacedItems:GetChildren(), 0,
+				"Promoted owner must inherit an empty authored runtime folder")
+
+			expect(world:SpawnAcceptedPlacement(waiting, "parcel", placementAt(1, 0, 0)) ~= nil,
+				"Promoted owner must be able to create a fresh first proxy")
+			expectEqual(world:GetStationRuntimeModelCount("station_01"), 1)
+			expectEqual(#stations:GetStationById("station_01").PlacedItems:GetChildren(), 1)
+			world:ClearPlayer(waiting)
+			stations:Destroy(); template:Destroy(); root:Destroy()
+		end,
+	},
+	{
 		Name = "unassigned player cannot create world item",
 		Run = function()
 			local root = cloneStationsRoot()
@@ -1376,6 +1654,49 @@ addSuite("Immutable shipment records", {
 		end,
 	},
 	{
+		Name = "server values and every placed-item field copy exactly",
+		Run = function()
+			local firstItem = placedItem("long_package", 1)
+			firstItem.OriginX = 4
+			firstItem.OriginY = 2
+			firstItem.OriginZ = 3
+			local secondItem = placedItem("parcel", 0)
+			secondItem.OriginX = 1
+			secondItem.OriginY = 0
+			secondItem.OriginZ = 2
+			local sourceItems = { firstItem, secondItem }
+			local round = roundRecord(72, 9, "station_07", sourceItems)
+			round.BaseValueSum = 321
+			round.ShipmentValue = 654
+			local service = ShipmentRecordService.Create(function(): number return 987.25 end)
+			local record, reason = service:Capture(fakePlayer(72, "  Exact   Player  "), round)
+
+			expectEqual(reason, "CAPTURED")
+			expectEqual(record.ShipmentId, "72:9")
+			expectEqual(record.PlayerUserId, 72)
+			expectEqual(record.PlayerDisplayName, "Exact Player")
+			expectEqual(record.StationId, "station_07")
+			expectEqual(record.RoundId, 9)
+			expectEqual(record.ItemCount, 2)
+			expectEqual(record.BaseValueSum, 321)
+			expectEqual(record.ShipmentValue, 654)
+			expectEqual(record.Multiplier, RoundConfig.MULTIPLIERS[2])
+			expectEqual(record.CreatedAt, 987.25)
+			expect(not record.PerfectShipment, "Two items cannot be a perfect shipment")
+			expectEqual(#record.PlacedItems, #sourceItems)
+			for index, source in ipairs(sourceItems) do
+				local copied = record.PlacedItems[index]
+				for _, field in ipairs({
+					"ItemId", "ShapeId", "QuarterTurns",
+					"OriginX", "OriginY", "OriginZ",
+					"ColorR", "ColorG", "ColorB",
+				}) do
+					expectEqual(copied[field], source[field], string.format("Placed item %d field %s", index, field))
+				end
+			end
+		end,
+	},
+	{
 		Name = "record and placed-item graph are immutable",
 		Run = function()
 			local service = ShipmentRecordService.Create(function(): number return 1 end)
@@ -1398,6 +1719,67 @@ addSuite("Immutable shipment records", {
 			table.clear(sourceItems)
 			expectEqual(record.PlacedItems[1].OriginX, 0)
 			expectEqual(#record.PlacedItems, 1)
+		end,
+	},
+	{
+		Name = "record contains no Player reference and survives actual round restart",
+		Run = function()
+			local harness = newEightRoundHarness()
+			local player = harness.Players[1]
+			local round = harness.Service:StartRound(player)
+			local sourceItem = placedItem("long_package", 1)
+			sourceItem.OriginX = 3
+			sourceItem.OriginY = 1
+			sourceItem.OriginZ = 4
+			round.PlacedItems = { sourceItem }
+			round.ItemCount = 1
+			round.BaseValueSum = 35
+			round.ShipmentValue = 50
+			harness.Service:_enterShipping(player, "DETACHED_RECORD")
+			expectEqual(#harness.ShipmentEvents, 1)
+			local record = harness.ShipmentEvents[1]
+
+			expect(harness.Service:HandleCapturedTimer(
+				player,
+				round.RoundId,
+				round.StateVersion,
+				"Shipping"
+			), "Shipping presentation must reach Results")
+			local restarted, reason = harness.Service:HandleRestart(player, {
+				RoundId = round.RoundId,
+				StateVersion = round.StateVersion,
+				ClientSequence = 1,
+			})
+			expect(restarted, "Round restart expected")
+			expectEqual(reason, "RESTARTED")
+			table.clear(round.PlacedItems)
+			round.ItemCount = 0
+			round.BaseValueSum = 0
+			round.ShipmentValue = 0
+
+			local seen: { [any]: boolean } = {}
+			local function expectNoPlayerReference(value: any)
+				expect(value ~= player, "ShipmentRecord must not retain a Player reference")
+				if type(value) ~= "table" or seen[value] then
+					return
+				end
+				seen[value] = true
+				for key, nested in pairs(value) do
+					expectNoPlayerReference(key)
+					expectNoPlayerReference(nested)
+				end
+			end
+			expectNoPlayerReference(record)
+			expectEqual(harness.Service:GetRound(player).RoundId, 2)
+			expectEqual(record.ShipmentId, string.format("%d:1", player.UserId))
+			expectEqual(record.StationId, "station_01")
+			expectEqual(record.ItemCount, 1)
+			expectEqual(record.BaseValueSum, 35)
+			expectEqual(record.ShipmentValue, 50)
+			expectEqual(#record.PlacedItems, 1)
+			expectEqual(record.PlacedItems[1].OriginX, 3)
+			expectEqual(record.PlacedItems[1].OriginY, 1)
+			expectEqual(record.PlacedItems[1].OriginZ, 4)
 		end,
 	},
 	{
@@ -1582,6 +1964,36 @@ addSuite("Shared showcase queue and rendering", {
 			expectEqual(overflowRecord.ShipmentValue, 9999, "Gameplay record must remain unchanged")
 			expectEqual(harness.Service:GetSeenCount(), capacity + 1)
 			expectEqual(harness.Runtime:GetAttribute("OverflowCount"), 1)
+			harness:Destroy()
+		end,
+	},
+	{
+		Name = "repeated overflow rejects emit exactly one concise warning",
+		Run = function()
+			local warnings: { string } = {}
+			local harness = newShowcaseHarness(false, function(message: string)
+				table.insert(warnings, message)
+			end)
+			local capacity = ShowcaseService.MAX_ACTIVE + ShowcaseService.MAX_PENDING
+			expect(harness.Service:Submit(shipmentRecord(1)), "First active submit expected")
+			expect(harness.Service:Submit(shipmentRecord(2)), "Second pending submit expected")
+			harness.Service:Step(ShowcaseService.LAUNCH_SPACING)
+			expect(harness.Service:Submit(shipmentRecord(3)), "Third pending submit expected")
+			harness.Service:Step(ShowcaseService.LAUNCH_SPACING)
+			for index = 4, capacity do
+				expect(harness.Service:Submit(shipmentRecord(index)), "Within-capacity submit expected")
+			end
+
+			for index = capacity + 1, capacity + 3 do
+				local accepted, reason = harness.Service:Submit(shipmentRecord(index))
+				expect(not accepted, "Every over-capacity cosmetic request must be rejected")
+				expectEqual(reason, "QUEUE_FULL")
+			end
+			expectEqual(#warnings, 1, "Overflow warning must be one-shot")
+			expectEqual(warnings[1],
+				"[ONE_MORE_ITEM][Showcase] visual queue full; newest cosmetic shipment discarded")
+			expectEqual(harness.Runtime:GetAttribute("OverflowCount"), 3)
+			expectEqual(harness.Service:GetSeenCount(), capacity + 3)
 			harness:Destroy()
 		end,
 	},
@@ -1801,6 +2213,32 @@ addSuite("Server-best board", {
 		end,
 	},
 	{
+		Name = "best shipment persists after its player leaves",
+		Run = function()
+			local root = cloneStationsRoot()
+			local stations = StationService.Create(root)
+			local departing = fakePlayer(81, "Arena Champion")
+			stations:AssignPlayer(departing)
+			local source = roundRecord(81, 4, "station_01", { placedItem(), placedItem() })
+			source.BaseValueSum = 80
+			source.ShipmentValue = 125
+			local captureService = ShipmentRecordService.Create(function(): number return 200 end)
+			local record = captureService:Capture(departing, source)
+			local display = newBestDisplay()
+			local service = ServerBestService.Create(display)
+			local unique, best = service:Consider(record)
+			expect(unique and best, "Departing player's shipment must first become best")
+
+			expect(stations:ReleasePlayer(departing).Released, "Player release expected")
+			expectEqual(stations:GetStationId(departing), nil)
+			expectEqual(service:GetBest(), record, "Player lifetime must not erase immutable best record")
+			expectEqual((requireChild(display, "PlayerName", "TextLabel") :: TextLabel).Text, "Arena Champion")
+			expectEqual((requireChild(display, "ShipmentValue", "TextLabel") :: TextLabel).Text, "125 TAPE")
+			expectEqual(service:GetSeenCount(), 1)
+			stations:Destroy(); display:Destroy(); root:Destroy()
+		end,
+	},
+	{
 		Name = "reset clears best and board attributes",
 		Run = function()
 			local display = newBestDisplay(); local service = ServerBestService.Create(display)
@@ -1861,6 +2299,22 @@ addSuite("Station owner and risk displays", {
 				expectEqual(stationLabel(model, "RoundStatus").Text, "PACKING 5 ITEMS")
 				expectEqual(stationLabel(model, "RiskValue").Text, "")
 				expect(not light.Enabled, "Low-risk light must be off")
+			end)
+		end,
+	},
+	{
+		Name = "ordinary shipping state is explicit and neutral",
+		Run = function()
+			withDisplayService(function(displays: any, _stations: any, root: Instance)
+				displays:ApplyRoundState(roundStateEvent("station_04", "Shipping", 4, 125))
+				local model = stationModel(root, 4)
+				local _, light = stationIndicator(model)
+				expectEqual(stationLabel(model, "RoundStatus").Text, "SHIPPING")
+				expectEqual(stationLabel(model, "RiskValue").Text, "")
+				expectEqual(model:GetAttribute("RoundDisplayState"), "SHIPPING")
+				expectEqual(model:GetAttribute("DisplayedItemCount"), 4)
+				expectEqual(model:GetAttribute("DisplayedRiskValue"), 125)
+				expect(not light.Enabled, "Ordinary shipment must not light a high-risk indicator")
 			end)
 		end,
 	},

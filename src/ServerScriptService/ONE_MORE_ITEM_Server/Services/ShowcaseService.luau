@@ -23,6 +23,7 @@ type ActiveShowcase = QueueEntry & {
 
 export type Options = {
 	AutoConnect: boolean?,
+	WarningSink: ((message: string) -> ())?,
 }
 
 export type Service = {
@@ -48,6 +49,8 @@ type ShowcaseServiceImpl = Service & {
 	_connection: RBXScriptConnection?,
 	_heartbeatAccumulator: number,
 	_autoConnect: boolean,
+	_warningSink: (message: string) -> (),
+	_overflowWarned: boolean,
 	_overflowCount: number,
 	_destroyed: boolean,
 }
@@ -304,6 +307,9 @@ function ShowcaseService.Create(
 		error("ShowcaseLoop.Runtime must be empty before server startup", 2)
 	end
 	local resolvedOptions = options or {}
+	local warningSink = resolvedOptions.WarningSink or function(message: string)
+		warn(message)
+	end
 	local self: ShowcaseServiceImpl = setmetatable({
 		_template = template,
 		_entryFrame = showcaseEntry.CFrame,
@@ -317,6 +323,8 @@ function ShowcaseService.Create(
 		_connection = nil,
 		_heartbeatAccumulator = 0,
 		_autoConnect = resolvedOptions.AutoConnect ~= false,
+		_warningSink = warningSink,
+		_overflowWarned = false,
 		_overflowCount = 0,
 		_destroyed = false,
 	}, ShowcaseService) :: ShowcaseServiceImpl
@@ -342,6 +350,10 @@ function ShowcaseService.Submit(self: ShowcaseServiceImpl, record: ShipmentRecor
 	fillActive(self)
 	if #self._pending >= MAX_PENDING then
 		self._overflowCount += 1
+		if not self._overflowWarned then
+			self._overflowWarned = true
+			self._warningSink("[ONE_MORE_ITEM][Showcase] visual queue full; newest cosmetic shipment discarded")
+		end
 		updateObservability(self)
 		return false, "QUEUE_FULL"
 	end
