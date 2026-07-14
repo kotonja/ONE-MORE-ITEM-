@@ -1,8 +1,16 @@
 # Changelog
 
+## 2026-07-14 — Phase 03 final non-waived acceptance attempt
+
+- Accepted the completed six-profile touch/orientation matrix under the updated policy and removed simultaneous second-touch emulation as a Phase 03 blocker. Physical simultaneous multi-touch is deferred to later physical-device QA; neither a physical phone nor a physical controller was tested.
+- Used Studio Controller Emulator with Generic Gamepad. The final trace proved Gamepad mode, exactly three bound actions, safe Results/Pack Again focus, one restart, disconnect cleanup, reconnect with three rather than six bindings, and exit to keyboard/mouse. The complete controller-only A-J trace, uninterrupted hybrid round, fresh two-player regression, and prescribed ten-round soak remain incomplete, so Phase 03 stays partial.
+- Removed the transient `Phase03AcceptanceProbe` from Edit mode and made no production Luau, manifest, permanent-instance, authored UI, authored world, or remote changes. No Studio synchronization or save was performed for this documentation-only pass.
+- Reused the existing successful private-cloud proof (`180/180` managed paths, `44/44` exact sources, six canonical remotes, zero duplicate or wrong-class paths) because no Studio-managed content changed.
+- Fresh post-probe Studio Output passed Foundation `69/69`, Phase 02 `94/94`, and Phase 03 `65/65`, followed by zero fresh actionable Output errors or warnings. PR #3 remains draft and unmerged, `main` remains unchanged, and Phase 04 was not started.
+
 ## 2026-07-14 — Phase 03 manual acceptance correction and persistence
 
-- Exercised all six required Studio touch profiles at actual viewports `373×666`, `392×758`, `665×374`, `749×368`, `767×1022`, and `1022×767`; every profile passed safe-area, camera, default-control, center/corner mapping, drag/release, multi-rotation Chair, Place, both Ship and One More, failure, Results, Pack Again, and cleanup checks. The simultaneous-second-touch manual hold remains unproven, so Phase 03 remains partial.
+- Exercised all six required Studio touch profiles at actual viewports `373×666`, `392×758`, `665×374`, `749×368`, `767×1022`, and `1022×767`; every profile passed safe-area, camera, default-control, center/corner mapping, drag/release, multi-rotation Chair, Place, both Ship and One More, failure, Results, Pack Again, and cleanup checks. The later acceptance-policy update waived simultaneous second-touch emulation as a merge blocker.
 - Reproduced the controller confirmation defect twice: Results Button A could leave Pack Again unsubmitted, and native One More selection could disagree with `SelectedGamepadAction`.
 - Kept placement confirmation exclusively `ContextActionService`-owned, routed Decision/Results confirmation through the exact selected authored button, synchronized logical and native GUI selection, and added focused deterministic Studio/Node regression contracts.
 - Changed the expected `NO_STATION` spectator diagnostic from warning severity to ordinary Output; a fresh two-client startup retained visible spectator isolation with zero game-owned warnings/errors.

@@ -2,7 +2,7 @@
 
 Phase 03 adapts the existing single-station, server-authoritative packing round for keyboard/mouse, touch, gamepad, and hybrid input. It does not change the round authority model, add gameplay remotes, or begin the eight-station launch arena.
 
-The implementation is present on `codex/phase-03-cross-platform-input`. Static validation, all three Studio test suites, canonical synchronization, exact source parity, six touch profiles, phone/tablet orientation changes, focused gamepad confirmation paths, and the core two-player lifecycle have been exercised. The simultaneous second-touch check, uninterrupted controller-only and hybrid rounds, complete gamepad negative/reconnect matrix, remaining two-player owner gameplay, and ten-round cleanup gate remain pending; Phase 03 is therefore still partial and PR #3 must remain draft and unmerged.
+The implementation is present on `codex/phase-03-cross-platform-input`. Static validation, all three Studio test suites, canonical synchronization, exact source parity, six touch profiles, phone/tablet orientation changes, focused gamepad confirmation paths, and earlier two-player lifecycle checks have been exercised. The six-profile touch matrix is accepted under the revised policy. The complete controller-only A-J session, uninterrupted keyboard/mouse → gamepad → touch → keyboard round, fresh two-player regression, and prescribed ten-round mixed-input soak remain pending; Phase 03 is therefore still partial and PR #3 must remain draft and unmerged.
 
 ## Permanent authored content
 
@@ -96,7 +96,9 @@ The automated touch tracker contracts pass. The final emulator matrix recorded:
 | Tablet portrait | iPad 6 | `767×1022` | `Portrait` | center `2,2`; corners `0,0`, `4,0`, `0,4`, `4,4` |
 | Tablet landscape | iPad 6 | `1022×767` | `CompactLandscape` | center `2,2`; corners `0,0`, `4,0`, `0,4`, `4,4` |
 
-Every profile used `PreferredInput=Touch` and passed the safe-area, camera-priority, assigned default-control, coordinate, drag/release, multi-rotation Chair, Place, both Ship and One More, failure, Results, Pack Again, and cleanup checks. Release returned `ActivePlacementTouch=false` and never placed. The available automation could not hold a simultaneous second touch, so that one manual subgate remains open and no profile is overstated as fully passed.
+Every profile used `PreferredInput=Touch` and passed the safe-area, camera-priority, assigned default-control, coordinate, drag/release, multi-rotation Chair, Place, both Ship and One More, failure, Results, Pack Again, and cleanup checks. Release returned `ActivePlacementTouch=false` and never placed. The six-profile matrix is accepted under the revised Phase 03 policy, and simultaneous second-touch manual emulation is waived as a merge blocker.
+
+Physical simultaneous multi-touch: Deferred to later physical-device QA
 
 Orientation changed during `AwaitingPlacement` on a phone at round 14/state version 2 and on a tablet at round 4/state version 2. Both transitions preserved RoundId, StateVersion, RoundState, current item, ItemCount, SessionBank, and logical ghost position; post-change mapping remained correct, the camera retargeted without replaying arrival, and `LayoutTweens` returned to zero.
 
@@ -125,9 +127,9 @@ Stick repeat is deterministic:
 - A poll emits at most one cell even after a late frame.
 - Release, direction change, state change, pending placement, disconnect, and destruction reset or gate repeat state as appropriate.
 
-The pure gamepad routing, safe-default, and fixed-clock repeat tests pass. Manual Generic Gamepad testing proved three bindings, expected prompts, exact one-cell D-pad steps, deadzone rejection, an immediate valid stick step, release cleanup, exactly-one Button A placement, selected Ship/One More/Pack Again focus, a default-Ship Button A transition, deliberate One More confirmation, and one Pack Again restart. The exact one-request/bank-once Ship trace was not separately recorded. A pre-correction Button B press sent no request and changed no round/state value, but that specific check was not repeated after the selection correction and therefore remains partial. Testing also reproduced two related confirmation defects: selected Results Button A did not restart, and native One More selection could disagree with `SelectedGamepadAction`.
+The pure gamepad routing, safe-default, and fixed-clock repeat tests pass. Earlier manual Generic Gamepad checks recorded portions of D-pad, deadzone, placement, selection, One More, and Pack Again behavior, and reproduced the two confirmation defects corrected at `f04a507`. In the final live pass, Studio Controller Emulator confirmed Gamepad connection/reconnection, exactly three bindings rather than duplicated bindings, safe Results/Pack Again focus, one restart, and cleanup on exit to a non-Gamepad mode. Those observations do not constitute the complete controller-only A-J gate.
 
-The correction keeps placement Button A owned by `ContextActionService`, passes Decision/Results Button A to the exact selected authored button, rejects non-selected gamepad button activation, and synchronizes the logical action with `GuiService.SelectedObject`. Focused deterministic tests cover selected-action resolution and authored-button routing. A complete uninterrupted controller-only round, held repeat delay/interval, stick direction-change/diagonal/tie behavior, multi-rotation Button X, all outside-state negatives, the exact Ship request/bank trace, post-correction Button B, Decision disconnect/reconnect, and Gamepad mode-exit cleanup remain pending. Temporary emulator mappings were restored to their defaults.
+The correction keeps placement Button A owned by `ContextActionService`, passes Decision/Results Button A to the exact selected authored button, rejects non-selected gamepad button activation, and synchronizes the logical action with `GuiService.SelectedObject`. Focused deterministic tests cover selected-action resolution and authored-button routing. A complete uninterrupted controller-only A-J session, all-direction D-pad proof, held repeat delay/interval, stick direction-change/diagonal/tie behavior, multi-rotation Button X, all outside-state negatives, exact placement/Ship/One More/Button B request traces, and Decision-state disconnect/reconnect remain pending. No production source correction was required in the final pass; the transient acceptance probe was removed, and no manifest property, permanent instance, synchronization, or Studio save changed.
 
 ## Dynamic prompts and focus defaults
 
@@ -199,23 +201,24 @@ Verified local Node 24 results:
 Verified fresh Studio Output:
 
 ```text
-[ONE_MORE_ITEM][FoundationTests] RESULT suites=15 tests=69 passed=69 failed=0 duration=0.414568s fuzzCases=1000 fuzzSeed=24012026
+[ONE_MORE_ITEM][FoundationTests] RESULT suites=15 tests=69 passed=69 failed=0 duration=0.356362s fuzzCases=1000 fuzzSeed=24012026
 [ONE_MORE_ITEM][FoundationTests] PASS: all 69 tests passed
-[ONE_MORE_ITEM][Phase02Tests] RESULT suites=11 tests=94 passed=94 failed=0 duration=4.961201s seed=24022026
+[ONE_MORE_ITEM][Phase02Tests] RESULT suites=11 tests=94 passed=94 failed=0 duration=6.942747s seed=24022026
 [ONE_MORE_ITEM][Phase02Tests] PASS: all 94 tests passed
-[ONE_MORE_ITEM][Phase03Tests] RESULT suites=8 tests=65 passed=65 failed=0 duration=0.006936s seed=13072026
+[ONE_MORE_ITEM][Phase03Tests] RESULT suites=8 tests=65 passed=65 failed=0 duration=0.005859s seed=13072026
 [ONE_MORE_ITEM][Phase03Tests] PASS: all 65 tests passed
 ```
 
 The Phase 03 distribution is Input mode store 6, responsive classification 5, responsive geometry 9, touch tracking 7, gamepad repeat/action routing 17, prompts 4, camera targeting 5, and control cleanup/remote discipline 12.
 
-Both canonical blueprints were applied twice with zero failures or warnings after the source correction. The combined managed audit observed all `180/180` expected paths with zero missing, wrong-class, duplicate, or unexpected paths. Exact source parity passed `44/44`, and the six approved remotes were exact. Fresh clean Play passed all three suites with no game-owned warning/error. A final two-client startup emitted the expected `NO_STATION` spectator condition as ordinary Output, not a warning.
+Both canonical blueprints were applied twice with zero failures or warnings after the earlier source correction. The combined managed audit observed all `180/180` expected paths with zero missing, wrong-class, duplicate, or unexpected paths. Exact source parity passed `44/44`, and the six approved remotes were exact. The existing persistence proof remains valid because this final pass changed no Studio-managed source, manifest property, or permanent instance. Fresh post-probe Play passed all three suites with zero fresh actionable warnings or errors after baseline; no synchronization or save was performed.
 
 ## Emulator and physical-device evidence
 
-- **Evidence environment:** Roblox Studio `0.729.0.7290838`. Desktop and automated suites used Play; touch/orientation used Play with Device Emulator; gamepad/hybrid used Play with Controller Emulator; two-player used Local Server with two players; persistence used Edit mode after direct cloud reopen.
-- **Studio device emulator:** All six required categories were exercised at `373×666`, `392×758`, `665×374`, `749×368`, `767×1022`, and `1022×767`. All recorded visual/state checks passed except the unavailable simultaneous-second-touch manual hold.
-- **Studio controller emulator:** Generic Gamepad proved prompts, one-cell D-pad movement, deadzone/immediate-step behavior, exactly-one placement, deliberate One More, and Pack Again after the focused source correction. Button B's no-request observation predates that correction. The uninterrupted round, held timing, full Button X matrix, post-correction Button B rerun, and Decision reconnect remain pending.
+- **Evidence environment:** Roblox Studio `0.729.0.7290838`. Desktop and automated suites used Play; touch/orientation used Play with Device Emulator; gamepad and mode-switch observations used Play with Controller Emulator; earlier two-player checks used Local Server; persistence used Edit mode after a direct cloud reopen.
+- **Studio device emulator:** All six required categories were exercised at `373×666`, `392×758`, `665×374`, `749×368`, `767×1022`, and `1022×767`; the completed matrix is accepted under the revised policy.
+- **Studio controller emulator:** The final Generic Gamepad trace confirmed connection/reconnection, exactly three bindings, safe Results restart, and mode-exit cleanup. The complete controller-only A-J gate and uninterrupted hybrid round remain pending.
+- **Fresh two-player final session:** Not completed. Earlier evidence does not satisfy this requested fresh gate.
 - **Physical phone:** Not tested. Studio device emulation was used.
 - **Physical controller:** Not tested. Studio controller emulation was used.
 
@@ -227,16 +230,17 @@ Both canonical blueprints were applied twice with zero failures or warnings afte
 - Because Studio-managed sources changed during acceptance, both canonical synchronization paths were rebuilt and applied twice before saving. The no-resynchronization reopen audit passed `180/180` unique managed paths, zero missing/wrong-class/unexpected/duplicate paths, `44/44` exact canonical sources, and the exact six-remotes surface.
 - The post-reopen command audit contained reads and diagnostics only; it contained zero mutating synchronization commands.
 - The safe-area properties, touch surface, focus strokes, size constraints, responsive anchors, and earlier permanent content remained present after reopen.
+- No Studio-managed source, manifest property, or permanent instance changed in the final pass, so this proof was reused without synchronization, save, or reopen.
 
 A historical cloud reconnect attempt failed with Studio `RCC-277` after transport connected but no join snapshot arrived. The final corrected place later saved and reopened normally from cloud; RCC-277 was not a current persistence blocker and did not invalidate either proof.
 
 ## Known limitations and remaining acceptance gates
 
-- Manual simultaneous-second-touch rejection remains unproven even though the deterministic tracker contract passes.
-- The uninterrupted controller-only round, held repeat timing, stick direction-change/diagonal/tie behavior, multi-rotation Button X, complete outside-state negative matrix, exact Ship request/bank trace, post-correction Button B rerun, Decision disconnect/reconnect, and Gamepad mode-exit cleanup remain pending.
-- The complete keyboard → gamepad → touch → keyboard hybrid round remains pending; exercised mode changes preserved authoritative state.
-- Two-player owner/spectator assignment, camera/reward isolation, spectator controls, respawn, release, and later acquisition were observed, but spectator action-denial, owner move/place/bank with different simultaneous input modes, and previous-owner control restoration remain incomplete.
-- Ten mixed-input rounds and the final duplicate-handler single-action checks remain pending.
+- Physical simultaneous multi-touch: Deferred to later physical-device QA.
+- The complete controller-only A-J session remains pending; emulator connection/reconnection, three bindings, safe restart, and mode-exit cleanup were confirmed but do not constitute a full pass.
+- The uninterrupted keyboard → gamepad → touch → keyboard round remains pending.
+- The requested fresh two-player owner/spectator regression remains pending; earlier observations do not satisfy this fresh gate.
+- The prescribed ten-round mixed-input soak and final duplicate-handler checks remain pending.
 - Corrected implementation head `f04a507eb7cae76a34573cf7d8ba6aaf8b4d7b68` passed branch-push run `29335824552` and draft-PR run `29335826478`; both `Phase 01–03 Node Validation` jobs passed every step.
 - The exact latest documentation head and its post-commit checks are reported from live GitHub state in the completion report because a commit cannot contain its own post-commit result.
 

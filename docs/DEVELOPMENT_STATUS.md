@@ -2,13 +2,14 @@
 
 ## Current phase and Git state
 
-- **Phase result:** Partial. All six required touch profiles, both orientation changes, focused gamepad confirmation paths, and the core two-player owner/spectator lifecycle were exercised, but the simultaneous second-touch check, uninterrupted controller-only round, held-stick timing, complete gamepad negative/reconnect matrix, uninterrupted hybrid round, complete two-player owner gameplay, and ten-round soak remain open.
+- **Phase result:** Partial. The completed six-profile touch/orientation matrix is accepted and simultaneous second-touch emulation is waived as a merge blocker. The complete controller-only A-J session, uninterrupted keyboard/mouse → gamepad → touch → keyboard round, fresh two-player regression, and prescribed ten-round mixed-input soak remain open.
 - **Current phase:** Phase 03 — Cross-Platform Interaction and Responsive UI.
 - **Current branch:** `codex/phase-03-cross-platform-input`.
 - **Draft pull request:** [PR #3 — Phase 03: Cross-Platform Interaction and Responsive UI](https://github.com/kotonja/ONE-MORE-ITEM-/pull/3), open, draft, based on `main`, and unmerged.
 - **Protected base:** `main` and `origin/main` remain at the Phase 02 merge SHA `73b3428c5ff0068f1e57f89d2150ffb8dccfdf20`.
 - **Latest verified implementation SHA:** `f04a507eb7cae76a34573cf7d8ba6aaf8b4d7b68` (`fix: harden phase 03 gamepad confirmation`).
-- **Documentation record:** This file records the current partial manual-acceptance snapshot. The completion report records the later documentation commit and its exact-head GitHub Actions runs after they exist; no uncreated commit or run is claimed here.
+- **Acceptance starting head:** `de0583915b13f6bdb0d9b7ef3cac7be1b8789c4f`.
+- **Documentation record:** This file records the final non-waived acceptance attempt truthfully as partial. The completion report records the later documentation commit and its exact-head GitHub Actions runs after they exist; no uncreated commit or run is claimed here.
 
 ## Completed Phase 03 implementation
 
@@ -63,11 +64,11 @@ The Phase 03 gate verifies sole-manifest ownership, permanent authored content, 
 ## Fresh automated Studio tests
 
 ```text
-[ONE_MORE_ITEM][FoundationTests] RESULT suites=15 tests=69 passed=69 failed=0 duration=0.414568s fuzzCases=1000 fuzzSeed=24012026
+[ONE_MORE_ITEM][FoundationTests] RESULT suites=15 tests=69 passed=69 failed=0 duration=0.356362s fuzzCases=1000 fuzzSeed=24012026
 [ONE_MORE_ITEM][FoundationTests] PASS: all 69 tests passed
-[ONE_MORE_ITEM][Phase02Tests] RESULT suites=11 tests=94 passed=94 failed=0 duration=4.961201s seed=24022026
+[ONE_MORE_ITEM][Phase02Tests] RESULT suites=11 tests=94 passed=94 failed=0 duration=6.942747s seed=24022026
 [ONE_MORE_ITEM][Phase02Tests] PASS: all 94 tests passed
-[ONE_MORE_ITEM][Phase03Tests] RESULT suites=8 tests=65 passed=65 failed=0 duration=0.006936s seed=13072026
+[ONE_MORE_ITEM][Phase03Tests] RESULT suites=8 tests=65 passed=65 failed=0 duration=0.005859s seed=13072026
 [ONE_MORE_ITEM][Phase03Tests] PASS: all 65 tests passed
 ```
 
@@ -90,18 +91,18 @@ All manual evidence below was recorded in Roblox Studio `0.729.0.7290838`. Deskt
 | Gate | Result |
 | --- | --- |
 | Desktop round | **Passed.** Verified timeout failure, Pack Again, keyboard placement, deliberate One More, completed shipment, `+15 TAPE`, `SESSION 15 TAPE`, Results, and another Pack Again. |
-| Touch six-profile matrix | **Partial.** iPhone 7 portrait `373×666`, iPhone 16 portrait `392×758`, iPhone 7 landscape `665×374`, iPhone 13 landscape `749×368`, iPad 6 portrait `767×1022`, and iPad 6 landscape `1022×767` all passed safe-area, camera, default-control, center/corner mapping, drag/release, multi-rotation Chair, Place, both Ship and One More, failure, Results, Pack Again, and cleanup checks. A simultaneous second touch could not be held by the available automation, so no profile is called fully passed. |
+| Touch six-profile matrix | **Accepted.** iPhone 7 portrait `373×666`, iPhone 16 portrait `392×758`, iPhone 7 landscape `665×374`, iPhone 13 landscape `749×368`, iPad 6 portrait `767×1022`, and iPad 6 landscape `1022×767` passed safe-area, camera, default-control, center/corner mapping, drag/release, multi-rotation Chair, Place, both Ship and One More, failure, Results, Pack Again, and cleanup checks. Physical simultaneous multi-touch: Deferred to later physical-device QA. |
 | Touch coordinate mapping | **Passed in all six profiles.** Center `2,2`; rear-left `0,0`; rear-right `4,0`; front-left `0,4`; front-right `4,4`. Release returned `ActivePlacementTouch=false` and never placed. |
 | Orientation | **Passed for one phone and one tablet.** RoundId, StateVersion, RoundState, item, count, bank, and logical ghost position were preserved; coordinate mapping remained correct; camera retargeted; `LayoutTweens` returned to zero. |
-| Gamepad prompts/focus | **Partial.** Generic Gamepad showed the expected prompts, three bindings, exact one-cell D-pad movement, deadzone rejection, immediate stick step, selected Ship/One More/Pack Again focus, exactly-one Place, default-Ship Button A transition, deliberate One More, and Pack Again restart. The exact one-request/bank-once Ship trace was not separately recorded. A pre-correction Button B press sent no request/state change, but that check was not repeated after the selection fix. |
-| Full controller flow | **Pending.** No uninterrupted controller-only round was completed; held repeat delay/interval, multi-rotation Button X, all outside-state negatives, Decision disconnect/reconnect, and final binding-duplication checks remain open. |
-| Hybrid switch | **Partial.** Mode changes preserved authoritative state in the exercised transitions, but Studio automation did not complete one uninterrupted keyboard → gamepad → touch → keyboard round. |
-| Two-player owner/spectator | **Partial.** Owner/spectator identities, camera and reward isolation, spectator controls, owner respawn, station release, and later-player acquisition were observed. Spectator action-denial, owner move/place/bank with different simultaneous input modes, and previous-owner control restoration were not fully exercised. The final fresh startup emitted the expected spectator condition as normal Output and zero game-owned warnings/errors. |
-| Ten mixed-input rounds | **Pending.** Automated cleanup contracts pass, but the extended live leak audit was not completed. |
+| Earlier focused gamepad evidence | **Partial historical evidence.** Prior acceptance checks recorded prompts, bindings, portions of D-pad/stick/placement/focus/One More/Pack Again behavior, and a pre-correction inert Button B observation. Those focused observations do not replace the required uninterrupted final A-J trace. |
+| Full controller flow | **Pending.** The final Generic Gamepad trace proved connection, exactly three bindings, safe Results/Pack Again focus, one restart, disconnect cleanup, reconnect with three rather than six bindings, and mode exit. It did not complete A-J: all-direction D-pad proof, held-stick deadzone/repeat/direction/diagonal timing, Button X and outside-state negatives, exact placement/Ship/One More/Button B request traces, or Decision-state reconnect remain open. |
+| Hybrid switch | **Pending.** Individual Gamepad, Touch, and KeyboardMouse transitions were observed with cleanup, but Studio automation did not complete one uninterrupted keyboard → gamepad → touch → keyboard gameplay round with the required state/reward/request trace. |
+| Two-player owner/spectator | **Partial.** Earlier Local Server evidence covers portions of identity, camera/reward isolation, respawn, release, spectator continuity, and later acquisition. The required fresh final two-player regression, full owner gameplay, spectator action-denial matrix, respawn controls, release cleanup, and later-owner verification were not completed in this pass. |
+| Ten mixed-input rounds | **Pending.** Exploratory rounds and timeouts did not satisfy the prescribed ten-round distribution, baseline/final metrics, or post-soak duplicate-handler checks. |
 | Physical phone | **Not tested.** Studio device emulation was used. |
 | Physical controller | **Not tested.** Studio controller emulation was used. |
 
-Temporary Controller Emulator mappings were restored to defaults (`A=9`, `X=8`, `DPadRight=4`) before handoff.
+The final attempt did not edit Controller Emulator mappings. The emulator panel was closed after the trace, and the transient acceptance probe was removed from Edit mode before the final suites.
 
 ## Cloud persistence
 
@@ -116,13 +117,14 @@ A historical reconnect accepted Team Create transport but never received a join 
 ## Output and diagnostics
 
 - The final clean Play run passed all three Studio suites and produced zero fresh game-owned warnings/errors.
+- The final post-probe baseline at 2026-07-14 15:31 UTC returned zero fresh actionable Output errors or warnings. The transient probe was absent from the Edit hierarchy before this run.
 - The post-correction two-client startup logged `[ONE_MORE_ITEM][Station] user=-2 is spectator reason=NO_STATION` as `MessageOutput`, not a warning. The only observed errors/warnings were unrelated Studio plugin-icon or bridge-rate noise.
 
 ## Known issues and remaining gates
 
-- The simultaneous second-touch rejection could not be manually held with the available automation; the deterministic tracker contract passes, but the manual gate remains open.
-- Full controller-only gameplay, held-repeat timing, stick direction-change/diagonal/tie behavior, multi-rotation Button X, outside-state negatives, the exact Ship request/bank trace, the post-correction Button B rerun, Decision disconnect/reconnect, Gamepad mode-exit cleanup, and the uninterrupted binding-cleanup flow remain pending.
-- Complete hybrid switching, the remaining two-player owner gameplay/control-restoration checks, and the ten-round cleanup/duplicate-handler soak remain pending.
+- Physical simultaneous multi-touch: Deferred to later physical-device QA. The deterministic single-active-touch contract and accepted six-profile matrix are no longer Phase 03 merge blockers.
+- The complete controller-only A-J session remains pending, including held-repeat timing, stick direction-change/diagonal/tie behavior, multi-rotation Button X, outside-state negatives, exact placement/Ship/One More/Button B traces, and Decision-state disconnect/reconnect.
+- The uninterrupted hybrid round, fresh two-player owner/spectator regression, and prescribed ten-round cleanup/duplicate-handler soak remain pending.
 - Physical phone and physical controller testing were not performed. Studio emulation was used.
 - Exact status-only-head equality and checks are a handoff-time Git/GitHub observation rather than a remaining Phase 03 product gate; the completion report records them from live state.
 
@@ -132,4 +134,4 @@ Seven additional stations, the full launch arena/dispatch presentation, final mo
 
 ## Exact next phase recommendation
 
-Finish only the outstanding simultaneous-touch, full gamepad, hybrid, two-player owner-gameplay, and ten-round cleanup gates. Keep PR #3 draft and unmerged. After Phase 03 is fully accepted, reviewed, and later merged by explicit authorization, **Phase 04 is the only recommended next phase**. Do not begin Phase 04 now.
+Finish only the outstanding controller-only A-J, uninterrupted hybrid, fresh two-player, and prescribed ten-round cleanup gates. Keep PR #3 draft and unmerged; it is not ready for final review yet. After Phase 03 is fully accepted, reviewed, and later merged by explicit authorization, **Phase 04 is the only recommended next phase**. Do not begin Phase 04 now.
