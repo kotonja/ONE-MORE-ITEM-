@@ -17,12 +17,14 @@ const supportedServices = new Map([
   ["Workspace", "Workspace"],
 ]);
 const supportedClasses = new Set([
+  "BillboardGui",
   "Folder",
   "Frame",
   "LocalScript",
   "Model",
   "ModuleScript",
   "Part",
+  "PointLight",
   "RemoteEvent",
   "ScreenGui",
   "Script",
@@ -48,6 +50,17 @@ const supportedValueTypes = new Set([
   "CFrame",
 ]);
 const builtInParents = new Map([["StarterPlayer.StarterPlayerScripts", "StarterPlayerScripts"]]);
+const stationTemplateRoot = "Workspace.ONE_MORE_ITEM_WORLD.PlaytestArena.Stations.Station_01";
+const expectedStationPlacements = [
+  { direction: "North", angleDegrees: -90, yawDegrees: 180 },
+  { direction: "NE", angleDegrees: -45, yawDegrees: 135 },
+  { direction: "East", angleDegrees: 0, yawDegrees: 90 },
+  { direction: "SE", angleDegrees: 45, yawDegrees: 45 },
+  { direction: "South", angleDegrees: 90, yawDegrees: 0 },
+  { direction: "SW", angleDegrees: 135, yawDegrees: -45 },
+  { direction: "West", angleDegrees: 180, yawDegrees: -90 },
+  { direction: "NW", angleDegrees: -135, yawDegrees: -135 },
+];
 
 function fail(message) {
   throw new Error(`[Phase02StudioSync] ${message}`);
@@ -122,12 +135,20 @@ function validateTypedValue(value, label) {
       }
       break;
     case "CFrame":
-      assertKeys(value, new Set(["type", "position", "rotationDegrees"]), label);
-      for (const [field, expectedLength] of [["position", 3], ["rotationDegrees", 3]]) {
-        if (!Array.isArray(value[field]) || value[field].length !== expectedLength) {
-          fail(`${label}.${field} must contain exactly ${expectedLength} numbers`);
+      if (Object.hasOwn(value, "components")) {
+        assertKeys(value, new Set(["type", "components"]), label);
+        if (!Array.isArray(value.components) || value.components.length !== 12) {
+          fail(`${label}.components must contain exactly 12 numbers`);
         }
-        value[field].forEach((component, index) => assertFiniteNumber(component, `${label}.${field}[${index}]`));
+        value.components.forEach((component, index) => assertFiniteNumber(component, `${label}.components[${index}]`));
+      } else {
+        assertKeys(value, new Set(["type", "position", "rotationDegrees"]), label);
+        for (const [field, expectedLength] of [["position", 3], ["rotationDegrees", 3]]) {
+          if (!Array.isArray(value[field]) || value[field].length !== expectedLength) {
+            fail(`${label}.${field} must contain exactly ${expectedLength} numbers`);
+          }
+          value[field].forEach((component, index) => assertFiniteNumber(component, `${label}.${field}[${index}]`));
+        }
       }
       break;
     default:
@@ -154,6 +175,7 @@ function typedValueToLuau(value) {
     case "UDim2":
       return `UDim2.new(${value.xScale},${value.xOffset},${value.yScale},${value.yOffset})`;
     case "CFrame": {
+      if (Array.isArray(value.components)) return `CFrame.new(${value.components.join(",")})`;
       const [x, y, z] = value.position;
       const [rx, ry, rz] = value.rotationDegrees;
       return `CFrame.new(${x},${y},${z})*CFrame.Angles(math.rad(${rx}),math.rad(${ry}),math.rad(${rz}))`;
@@ -171,6 +193,7 @@ function cleanRotationComponent(value) {
 }
 
 function cframeComponents(value) {
+  if (Array.isArray(value.components)) return value.components.map(cleanRotationComponent);
   const [x, y, z] = value.position;
   const [rxDegrees, ryDegrees, rzDegrees] = value.rotationDegrees;
   const rx = (rxDegrees * Math.PI) / 180;
@@ -196,6 +219,44 @@ function cframeComponents(value) {
     (sx * cz) + (cx * sy * sz),
     cx * cy,
   ].map(cleanRotationComponent);
+}
+
+function multiplyCFrameComponents(left, right) {
+  const result = new Array(12);
+  for (let row = 0; row < 3; row += 1) {
+    for (let column = 0; column < 3; column += 1) {
+      let component = 0;
+      for (let inner = 0; inner < 3; inner += 1) {
+        component += left[3 + (row * 3) + inner] * right[3 + (inner * 3) + column];
+      }
+      result[3 + (row * 3) + column] = cleanRotationComponent(component);
+    }
+  }
+  for (let row = 0; row < 3; row += 1) {
+    let component = left[row];
+    for (let inner = 0; inner < 3; inner += 1) {
+      component += left[3 + (row * 3) + inner] * right[inner];
+    }
+    result[row] = cleanRotationComponent(component);
+  }
+  return result;
+}
+
+function placementCFrameComponents(placement) {
+  const angleRadians = (placement.angleDegrees * Math.PI) / 180;
+  const position = [
+    cleanRotationComponent(placement.radius * Math.cos(angleRadians)),
+    0,
+    cleanRotationComponent(placement.radius * Math.sin(angleRadians)),
+  ];
+  return cframeComponents({ type: "CFrame", position, rotationDegrees: [0, placement.yawDegrees, 0] });
+}
+
+function transformCFrameValue(value, placement) {
+  return {
+    type: "CFrame",
+    components: multiplyCFrameComponents(placementCFrameComponents(placement), cframeComponents(value)),
+  };
 }
 
 function typedValueToBridge(value) {
@@ -280,6 +341,7 @@ function validateBuiltInParents(entries) {
   const declared = new Map();
   for (const [index, entry] of entries.entries()) {
     if (!isObject(entry)) fail(`builtInParents[${index}] must be an object`);
+    assertKeys(entry, new Set(["path", "className"]), `builtInParents[${index}]`);
     const expectedClass = builtInParents.get(entry.path);
     if (expectedClass === undefined || entry.className !== expectedClass) {
       fail(`builtInParents[${index}] is not an approved built-in parent: ${String(entry.path)}`);
@@ -293,6 +355,89 @@ function validateBuiltInParents(entries) {
   return declared;
 }
 
+function validateStationPlacements(entries) {
+  if (!Array.isArray(entries) || entries.length !== expectedStationPlacements.length) {
+    fail(`Manifest stationPlacements must contain exactly ${expectedStationPlacements.length} descriptors`);
+  }
+  const names = new Set();
+  const stationIds = new Set();
+  const stationIndexes = new Set();
+  const normalized = [];
+  for (const [index, entry] of entries.entries()) {
+    const label = `stationPlacements[${index}]`;
+    if (!isObject(entry)) fail(`${label} must be an object`);
+    assertKeys(entry, new Set(["name", "stationId", "stationIndex", "direction", "radius", "angleDegrees", "yawDegrees"]), label);
+    const expected = expectedStationPlacements[index];
+    const expectedIndex = index + 1;
+    const suffix = String(expectedIndex).padStart(2, "0");
+    if (entry.name !== `Station_${suffix}`) fail(`${label}.name must be Station_${suffix}`);
+    if (entry.stationId !== `station_${suffix}`) fail(`${label}.stationId must be station_${suffix}`);
+    if (entry.stationIndex !== expectedIndex) fail(`${label}.stationIndex must be ${expectedIndex}`);
+    if (entry.direction !== expected.direction) fail(`${label}.direction must be ${expected.direction}`);
+    if (entry.radius !== 38) fail(`${label}.radius must be 38`);
+    if (entry.angleDegrees !== expected.angleDegrees) fail(`${label}.angleDegrees must be ${expected.angleDegrees}`);
+    if (entry.yawDegrees !== expected.yawDegrees) fail(`${label}.yawDegrees must be ${expected.yawDegrees}`);
+    for (const [field, value] of [["radius", entry.radius], ["angleDegrees", entry.angleDegrees], ["yawDegrees", entry.yawDegrees]]) {
+      assertFiniteNumber(value, `${label}.${field}`);
+    }
+    if (names.has(entry.name)) fail(`Duplicate station placement name: ${entry.name}`);
+    if (stationIds.has(entry.stationId)) fail(`Duplicate station placement id: ${entry.stationId}`);
+    if (stationIndexes.has(entry.stationIndex)) fail(`Duplicate station placement index: ${entry.stationIndex}`);
+    names.add(entry.name);
+    stationIds.add(entry.stationId);
+    stationIndexes.add(entry.stationIndex);
+    normalized.push({ ...entry });
+  }
+  return normalized;
+}
+
+function validateRawInstanceShapes(entries) {
+  if (!Array.isArray(entries)) fail("Manifest instances must be an array");
+  for (const [index, entry] of entries.entries()) {
+    const label = `instances[${index}]`;
+    if (!isObject(entry)) fail(`${label} must be an object`);
+    assertKeys(entry, new Set(["path", "className", "properties", "attributes"]), label);
+    parseManagedPath(entry.path, `${label}.path`);
+    if (typeof entry.className !== "string") fail(`${label}.className must be a string`);
+  }
+}
+
+function expandStationInstances(rawInstances, placements) {
+  const templateEntries = rawInstances.filter((entry) => entry.path === stationTemplateRoot || entry.path.startsWith(`${stationTemplateRoot}.`));
+  if (templateEntries.length === 0 || templateEntries[0].path !== stationTemplateRoot || templateEntries[0].className !== "Model") {
+    fail(`Station source template must begin with a Model at ${stationTemplateRoot}`);
+  }
+  const concreteEntries = rawInstances.filter((entry) => entry.path !== stationTemplateRoot && !entry.path.startsWith(`${stationTemplateRoot}.`));
+  const stationsParent = parentPathOf(stationTemplateRoot);
+  for (const placement of placements) {
+    const targetRoot = `${stationsParent}.${placement.name}`;
+    for (const templateEntry of templateEntries) {
+      const entry = structuredClone(templateEntry);
+      const suffix = templateEntry.path.slice(stationTemplateRoot.length);
+      entry.path = `${targetRoot}${suffix}`;
+      if (entry.properties?.CFrame !== undefined) {
+        entry.properties.CFrame = transformCFrameValue(entry.properties.CFrame, placement);
+      }
+      if (suffix === "") {
+        entry.attributes = {
+          ...(entry.attributes ?? {}),
+          StationId: { type: "string", value: placement.stationId },
+          StationIndex: { type: "number", value: placement.stationIndex },
+        };
+      }
+      if (suffix === ".OwnerDisplay.BillboardGui.StationNumber") {
+        entry.properties = {
+          ...(entry.properties ?? {}),
+          Text: { type: "string", value: `STATION ${String(placement.stationIndex).padStart(2, "0")}` },
+        };
+      }
+      concreteEntries.push(entry);
+    }
+  }
+  concreteEntries.sort(compareManagedEntries);
+  return concreteEntries;
+}
+
 function loadAndValidateManifest(manifestPath) {
   let manifest;
   try {
@@ -301,18 +446,20 @@ function loadAndValidateManifest(manifestPath) {
     fail(`Unable to parse manifest: ${error instanceof Error ? error.message : String(error)}`);
   }
   if (!isObject(manifest)) fail("Manifest root must be an object");
+  assertKeys(manifest, new Set(["name", "mode", "builtInParents", "stationPlacements", "instances", "scripts"]), "Manifest root");
   if (typeof manifest.name !== "string" || manifest.name.length === 0) fail("Manifest name must be a non-empty string");
   if (manifest.mode !== "edit") fail("Manifest mode must be edit");
-  if (!Array.isArray(manifest.instances)) fail("Manifest instances must be an array");
   if (!Array.isArray(manifest.scripts)) fail("Manifest scripts must be an array");
 
   const declaredBuiltIns = validateBuiltInParents(manifest.builtInParents);
+  const stationPlacements = validateStationPlacements(manifest.stationPlacements);
+  validateRawInstanceShapes(manifest.instances);
+  const concreteInstanceEntries = expandStationInstances(manifest.instances, stationPlacements);
   const guaranteedClasses = new Map([...supportedServices, ...declaredBuiltIns]);
   const managedPaths = new Set();
   const instances = [];
-  for (const [index, entry] of manifest.instances.entries()) {
-    const label = `instances[${index}]`;
-    if (!isObject(entry)) fail(`${label} must be an object`);
+  for (const [index, entry] of concreteInstanceEntries.entries()) {
+    const label = `expandedInstances[${index}]`;
     parseManagedPath(entry.path, `${label}.path`);
     if (!supportedClasses.has(entry.className) || supportedScriptClasses.has(entry.className)) {
       fail(`${label}.className is unsupported for an authored instance: ${String(entry.className)}`);
@@ -333,6 +480,7 @@ function loadAndValidateManifest(manifestPath) {
   for (const [index, entry] of manifest.scripts.entries()) {
     const label = `scripts[${index}]`;
     if (!isObject(entry)) fail(`${label} must be an object`);
+    assertKeys(entry, new Set(["path", "className", "enabled", "sourceFile"]), label);
     parseManagedPath(entry.path, `${label}.path`);
     if (!supportedScriptClasses.has(entry.className)) fail(`${label}.className is unsupported: ${String(entry.className)}`);
     if (managedPaths.has(entry.path) || guaranteedClasses.has(entry.path)) fail(`Duplicate managed path: ${entry.path}`);
@@ -382,6 +530,8 @@ function appendParentResolution(commands, managedPath, classByPath) {
     const expectedClass = classByPath.get(currentPath);
     if (expectedClass === undefined) fail(`Generator has no expected class for parent ${currentPath}`);
     commands.push(`local child=parent:FindFirstChild(${JSON.stringify(part)})`);
+    commands.push(`local childCount=0;for _,candidate in ipairs(parent:GetChildren()) do if candidate.Name==${JSON.stringify(part)} then childCount+=1 end end`);
+    commands.push(`if childCount>1 then error(${JSON.stringify(`Phase 02 Studio sync duplicate managed child at ${currentPath}`)}) end`);
     commands.push(`if not child then error(${JSON.stringify(`Phase 02 Studio sync missing managed parent: ${currentPath}`)}) end`);
     commands.push(`if not child:IsA(${JSON.stringify(expectedClass)}) then error(${JSON.stringify(`Phase 02 Studio sync conflict at ${currentPath}: expected ${expectedClass}, found `)}..child.ClassName) end`);
     commands.push("parent=child");
@@ -404,6 +554,8 @@ function buildEnsureInstanceCommand(entry, classByPath) {
   appendParentResolution(commands, entry.path, classByPath);
   const instanceName = entry.path.split(".").at(-1);
   commands.push(`local instance=parent:FindFirstChild(${JSON.stringify(instanceName)})`);
+  commands.push(`local instanceCount=0;for _,candidate in ipairs(parent:GetChildren()) do if candidate.Name==${JSON.stringify(instanceName)} then instanceCount+=1 end end`);
+  commands.push(`if instanceCount>1 then error(${JSON.stringify(`Phase 02 Studio sync duplicate managed child at ${entry.path}`)}) end`);
   commands.push(`if instance and not instance:IsA(${JSON.stringify(entry.className)}) then error(${JSON.stringify(`Phase 02 Studio sync conflict at ${entry.path}: expected ${entry.className}, found `)}..instance.ClassName) end`);
   commands.push("local created=false");
   commands.push(`if not instance then instance=Instance.new(${JSON.stringify(entry.className)});instance.Name=${JSON.stringify(instanceName)};created=true end`);
@@ -417,6 +569,8 @@ function buildWriteScriptCommand(entry, classByPath) {
   appendParentResolution(commands, entry.path, classByPath);
   const instanceName = entry.path.split(".").at(-1);
   commands.push(`local instance=parent:FindFirstChild(${JSON.stringify(instanceName)})`);
+  commands.push(`local instanceCount=0;for _,candidate in ipairs(parent:GetChildren()) do if candidate.Name==${JSON.stringify(instanceName)} then instanceCount+=1 end end`);
+  commands.push(`if instanceCount>1 then error(${JSON.stringify(`Phase 02 Studio sync duplicate managed child at ${entry.path}`)}) end`);
   commands.push(`if instance and not instance:IsA(${JSON.stringify(entry.className)}) then error(${JSON.stringify(`Phase 02 Studio sync conflict at ${entry.path}: expected ${entry.className}, found `)}..instance.ClassName) end`);
   commands.push("local created=false");
   commands.push(`if not instance then instance=Instance.new(${JSON.stringify(entry.className)});instance.Name=${JSON.stringify(instanceName)};created=true end`);

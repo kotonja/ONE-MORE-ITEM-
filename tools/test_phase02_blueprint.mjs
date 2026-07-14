@@ -17,7 +17,8 @@ const serviceRoots = new Set(["ReplicatedStorage", "ServerScriptService", "Start
 const supportedTypes = new Set(["boolean", "number", "string", "EnumItem", "Color3", "Vector2", "Vector3", "UDim", "UDim2", "CFrame"]);
 const expectedRemotes = ["ClientReadyRequest", "DecisionRequest", "PlaceItemRequest", "PlacementResponse", "RestartRequest", "RoundSnapshot"];
 const worldRoot = "Workspace.ONE_MORE_ITEM_WORLD.PlaytestArena";
-const stationRoot = `${worldRoot}.Stations.Station_01`;
+const stationTemplateRoot = `${worldRoot}.Stations.Station_01`;
+const stationRoots = Array.from({ length: 8 }, (_, index) => `${worldRoot}.Stations.Station_${String(index + 1).padStart(2, "0")}`);
 const uiScreen = "StarterGui.ONE_MORE_ITEM_Gameplay";
 const uiRoot = "StarterGui.ONE_MORE_ITEM_Gameplay.Root";
 const requiredViewports = [
@@ -29,33 +30,68 @@ const requiredViewports = [
 const expectedWorldPaths = [
   `${worldRoot}.ArenaFloor`,
   `${worldRoot}.ArenaBackdrop`,
+  `${worldRoot}.ArenaRails`,
+  `${worldRoot}.ArenaRails.North`,
+  `${worldRoot}.ArenaRails.East`,
+  `${worldRoot}.ArenaRails.South`,
+  `${worldRoot}.ArenaRails.West`,
+  `${worldRoot}.SpectatorSpawn`,
+  `${worldRoot}.CenterDispatch`,
+  `${worldRoot}.CenterDispatch.Base`,
+  `${worldRoot}.CenterDispatch.Lift`,
+  `${worldRoot}.CenterDispatch.LiftTop`,
+  `${worldRoot}.CenterDispatch.ShowcaseEntry`,
+  `${worldRoot}.CenterDispatch.ArenaAnnouncement`,
+  `${worldRoot}.CenterDispatch.ArenaAnnouncement.BillboardGui`,
+  `${worldRoot}.CenterDispatch.ArenaAnnouncement.BillboardGui.Headline`,
+  `${worldRoot}.CenterDispatch.ArenaAnnouncement.BillboardGui.Detail`,
+  `${worldRoot}.CenterDispatch.ServerBest`,
+  `${worldRoot}.CenterDispatch.ServerBest.BillboardGui`,
+  `${worldRoot}.CenterDispatch.ServerBest.BillboardGui.PlayerName`,
+  `${worldRoot}.CenterDispatch.ServerBest.BillboardGui.ShipmentValue`,
+  `${worldRoot}.CenterDispatch.ServerBest.BillboardGui.ItemCount`,
+  `${worldRoot}.ShowcaseLoop`,
+  `${worldRoot}.ShowcaseLoop.PathNodes`,
+  `${worldRoot}.ShowcaseLoop.Runtime`,
   `${worldRoot}.Stations`,
-  stationRoot,
-  `${stationRoot}.StationRoot`,
-  `${stationRoot}.PlayerStand`,
-  `${stationRoot}.CameraAnchor`,
-  `${stationRoot}.CameraAnchorTouchLandscape`,
-  `${stationRoot}.CameraAnchorTouchPortrait`,
-  `${stationRoot}.CameraFocus`,
-  `${stationRoot}.PresentationPoint`,
-  `${stationRoot}.Crate`,
-  `${stationRoot}.Crate.Base`,
-  `${stationRoot}.Crate.GridOrigin`,
-  `${stationRoot}.Crate.GridTiles`,
-  `${stationRoot}.Crate.WallFront`,
-  `${stationRoot}.Crate.WallBack`,
-  `${stationRoot}.Crate.WallLeft`,
-  `${stationRoot}.Crate.WallRight`,
-  `${stationRoot}.Crate.Lid`,
-  `${stationRoot}.Crate.CrateFocus`,
-  `${stationRoot}.ControlConsole`,
-  `${stationRoot}.ControlConsole.RotateButton`,
-  `${stationRoot}.ControlConsole.PlaceButton`,
-  `${stationRoot}.ControlConsole.ShipButton`,
-  `${stationRoot}.ControlConsole.OneMoreButton`,
-  `${stationRoot}.PlacedItems`,
-  `${stationRoot}.RuntimePresentation`,
 ];
+const expectedStationRelativePaths = [
+  "StationRoot",
+  "PlayerStand",
+  "CameraAnchor",
+  "CameraAnchorTouchLandscape",
+  "CameraAnchorTouchPortrait",
+  "CameraFocus",
+  "PresentationPoint",
+  "DispatchPort",
+  "OwnerDisplay",
+  "OwnerDisplay.BillboardGui",
+  "OwnerDisplay.BillboardGui.PlayerName",
+  "OwnerDisplay.BillboardGui.RoundStatus",
+  "OwnerDisplay.BillboardGui.RiskValue",
+  "OwnerDisplay.BillboardGui.StationNumber",
+  "RiskIndicator",
+  "RiskIndicator.IndicatorPart",
+  "RiskIndicator.IndicatorPart.Light",
+  "Crate",
+  "Crate.Base",
+  "Crate.GridOrigin",
+  "Crate.GridTiles",
+  "Crate.WallFront",
+  "Crate.WallBack",
+  "Crate.WallLeft",
+  "Crate.WallRight",
+  "Crate.Lid",
+  "Crate.CrateFocus",
+  "ControlConsole",
+  "ControlConsole.RotateButton",
+  "ControlConsole.PlaceButton",
+  "ControlConsole.ShipButton",
+  "ControlConsole.OneMoreButton",
+  "PlacedItems",
+  "RuntimePresentation",
+];
+const showcaseTemplateRoot = "ReplicatedStorage.ONE_MORE_ITEM.Assets.Development.ShowcaseCrateTemplate";
 const expectedUiPaths = [
   `${uiRoot}.TouchDragSurface`,
   `${uiRoot}.CurrentItemCard`,
@@ -171,6 +207,23 @@ function formatBounds(bounds) {
   return `(${bounds.left.toFixed(2)},${bounds.top.toFixed(2)})-(${bounds.right.toFixed(2)},${bounds.bottom.toFixed(2)})`;
 }
 
+function assertNear(actual, expected, label, tolerance = 1e-9) {
+  assert.ok(Math.abs(actual - expected) <= tolerance, `${label}: expected ${expected}, received ${actual}`);
+}
+
+function expectedWorldPosition(placement, localPosition) {
+  const angle = (placement.angleDegrees * Math.PI) / 180;
+  const yaw = (placement.yawDegrees * Math.PI) / 180;
+  const originX = placement.radius * Math.cos(angle);
+  const originZ = placement.radius * Math.sin(angle);
+  const [x, y, z] = localPosition;
+  return [
+    originX + (Math.cos(yaw) * x) + (Math.sin(yaw) * z),
+    y,
+    originZ - (Math.sin(yaw) * x) + (Math.cos(yaw) * z),
+  ];
+}
+
 function allTypedValues(manifest) {
   const values = [];
   for (const entry of manifest.instances) {
@@ -208,13 +261,31 @@ function expectedSourceHash(source) {
 }
 
 let temporaryDirectory;
+function invalidManifestResult(manifest, name) {
+  temporaryDirectory ??= fs.mkdtempSync(path.join(os.tmpdir(), "one-more-item-phase02-"));
+  const invalidManifestPath = path.join(temporaryDirectory, `${name}.manifest.json`);
+  fs.writeFileSync(invalidManifestPath, `${JSON.stringify(manifest)}\n`, "utf8");
+  return runNode(generatorPath, [invalidManifestPath, path.join(temporaryDirectory, `${name}-output`)]);
+}
+
 try {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 
   criterion("manifest parses", () => {
     assert.equal(manifest.mode, "edit", "Phase 02 authoring must be Edit-mode only");
+    assert.deepEqual(Object.keys(manifest).sort(), ["builtInParents", "instances", "mode", "name", "scripts", "stationPlacements"]);
     assert.ok(Array.isArray(manifest.instances), "Manifest instances array is required");
     assert.ok(Array.isArray(manifest.scripts), "Manifest scripts array is required");
+    assert.deepEqual(manifest.stationPlacements, [
+      { name: "Station_01", stationId: "station_01", stationIndex: 1, direction: "North", radius: 38, angleDegrees: -90, yawDegrees: 180 },
+      { name: "Station_02", stationId: "station_02", stationIndex: 2, direction: "NE", radius: 38, angleDegrees: -45, yawDegrees: 135 },
+      { name: "Station_03", stationId: "station_03", stationIndex: 3, direction: "East", radius: 38, angleDegrees: 0, yawDegrees: 90 },
+      { name: "Station_04", stationId: "station_04", stationIndex: 4, direction: "SE", radius: 38, angleDegrees: 45, yawDegrees: 45 },
+      { name: "Station_05", stationId: "station_05", stationIndex: 5, direction: "South", radius: 38, angleDegrees: 90, yawDegrees: 0 },
+      { name: "Station_06", stationId: "station_06", stationIndex: 6, direction: "SW", radius: 38, angleDegrees: 135, yawDegrees: -45 },
+      { name: "Station_07", stationId: "station_07", stationIndex: 7, direction: "West", radius: 38, angleDegrees: 180, yawDegrees: -90 },
+      { name: "Station_08", stationId: "station_08", stationIndex: 8, direction: "NW", radius: 38, angleDegrees: -135, yawDegrees: -135 },
+    ]);
   });
 
   criterion("sources exist", () => {
@@ -246,18 +317,25 @@ try {
     const worldEntries = manifest.instances.filter((entry) => entry.path.includes("ONE_MORE_ITEM_WORLD"));
     assert.ok(worldEntries.length > 0, "Permanent world entries are required");
     assert.ok(worldEntries.every((entry) => entry.path.startsWith("Workspace.ONE_MORE_ITEM_WORLD")));
-    const station = manifest.instances.find((entry) => entry.path === stationRoot);
+    const rawStationEntries = manifest.instances.filter((entry) => entry.path === stationTemplateRoot || entry.path.startsWith(`${stationTemplateRoot}.`));
+    assert.equal(rawStationEntries.length, 60, "Raw Station_01 must remain the single complete source template");
+    assert.equal(
+      manifest.instances.some((entry) => entry.path.startsWith(`${worldRoot}.Stations.Station_02`)),
+      false,
+      "Station_02 through Station_08 must be build-time expansions rather than copied manifest trees",
+    );
+    const station = manifest.instances.find((entry) => entry.path === stationTemplateRoot);
     assert.equal(station.className, "Model", "Station_01 must be a Model for station assignment and client binding");
     assert.deepEqual(
       Object.fromEntries(Object.entries(station.attributes).map(([key, value]) => [key, value.value])),
-      { Active: true, CellSize: 2, GridDepth: 5, GridHeight: 4, GridWidth: 5, StationId: "station_01" },
+      { Active: true, CellSize: 2, GridDepth: 5, GridHeight: 4, GridWidth: 5, StationId: "station_01", StationIndex: 1 },
     );
     const touchCameraAnchors = [
       ["CameraAnchorTouchLandscape", [0, 21, 22], [-40, 0, 0]],
       ["CameraAnchorTouchPortrait", [0, 28, 30], [-43, 0, 0]],
     ];
     for (const [name, position, rotationDegrees] of touchCameraAnchors) {
-      const anchor = manifest.instances.find((entry) => entry.path === `${stationRoot}.${name}`);
+      const anchor = manifest.instances.find((entry) => entry.path === `${stationTemplateRoot}.${name}`);
       assert.equal(anchor?.className, "Part", `${name} must be a permanently authored Part`);
       assert.equal(anchor.properties.Anchored?.value, true, `${name} must be anchored`);
       assert.equal(anchor.properties.CanCollide?.value, false, `${name} cannot collide`);
@@ -400,14 +478,37 @@ try {
   });
 
   criterion("unsupported classes fail", () => {
-    temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "one-more-item-phase02-"));
     const invalidManifest = structuredClone(manifest);
     invalidManifest.instances[0].className = "DataStoreService";
-    const invalidManifestPath = path.join(temporaryDirectory, "invalid.manifest.json");
-    fs.writeFileSync(invalidManifestPath, `${JSON.stringify(invalidManifest)}\n`, "utf8");
-    const result = runNode(generatorPath, [invalidManifestPath, path.join(temporaryDirectory, "output")]);
+    const result = invalidManifestResult(invalidManifest, "unsupported-class");
     assert.notEqual(result.status, 0, "Unsupported class generation must fail");
     assert.match(result.stderr, /className is unsupported/, "Unsupported class failure must be explicit");
+  });
+
+  criterion("station placement schema is closed and exact", () => {
+    const unknownFieldManifest = structuredClone(manifest);
+    unknownFieldManifest.stationPlacements[0].offset = [0, 0, 0];
+    const unknownFieldResult = invalidManifestResult(unknownFieldManifest, "station-unknown-field");
+    assert.notEqual(unknownFieldResult.status, 0);
+    assert.match(unknownFieldResult.stderr, /unsupported field offset/);
+
+    const duplicateIdManifest = structuredClone(manifest);
+    duplicateIdManifest.stationPlacements[1].stationId = "station_01";
+    const duplicateIdResult = invalidManifestResult(duplicateIdManifest, "station-duplicate-id");
+    assert.notEqual(duplicateIdResult.status, 0);
+    assert.match(duplicateIdResult.stderr, /stationId must be station_02|Duplicate station placement id/);
+
+    const missingPlacementManifest = structuredClone(manifest);
+    missingPlacementManifest.stationPlacements.pop();
+    const missingPlacementResult = invalidManifestResult(missingPlacementManifest, "station-missing-placement");
+    assert.notEqual(missingPlacementResult.status, 0);
+    assert.match(missingPlacementResult.stderr, /exactly 8 descriptors/);
+
+    const unknownRootManifest = structuredClone(manifest);
+    unknownRootManifest.stationPlacement = unknownRootManifest.stationPlacements;
+    const unknownRootResult = invalidManifestResult(unknownRootManifest, "unknown-root-field");
+    assert.notEqual(unknownRootResult.status, 0);
+    assert.match(unknownRootResult.stderr, /unsupported field stationPlacement/);
   });
 
   const firstGeneration = runNode(generatorPath);
@@ -425,6 +526,8 @@ try {
       const synchronizationPrefix = operation.type === "writeScript" ? operation.command.split("local sourceOk")[0] : operation.command;
       assert.match(operation.command, /Edit-mode only/, `Missing Edit-mode guard: ${operation.path}`);
       assert.match(operation.command, /sync conflict/, `Missing visible conflict handling: ${operation.path}`);
+      assert.match(operation.command, /duplicate managed child/, `Missing duplicate-name conflict handling: ${operation.path}`);
+      assert.match(operation.command, /GetChildren/, `Duplicate-name detection must inspect siblings: ${operation.path}`);
       assert.doesNotMatch(synchronizationPrefix, /:Destroy\s*\(/, `Conflict path must not destroy content: ${operation.path}`);
       assert.match(operation.command, /FindFirstChild/, `Correct existing instance must be reused: ${operation.path}`);
       assert.match(operation.command, /if not instance then instance=Instance\.new/, `Missing instance creation must be explicit: ${operation.path}`);
@@ -463,8 +566,43 @@ try {
     assert.equal(rootFrameStep.properties.AnchorPoint.__type, "Vector2");
     const cornerStep = blueprint.steps.find((step) => step.path === `${uiRoot}.CurrentItemCard.Corner`);
     assert.deepEqual(cornerStep.properties.CornerRadius, { __type: "UDim", scale: 0, offset: 12 });
-    const stationStep = blueprint.steps.find((step) => step.path === stationRoot);
-    assert.deepEqual(stationStep.attributes, { Active: true, CellSize: 2, GridDepth: 5, GridHeight: 4, GridWidth: 5, StationId: "station_01" });
+    for (const [index, stationRoot] of stationRoots.entries()) {
+      const placement = manifest.stationPlacements[index];
+      const stationStep = blueprint.steps.find((step) => step.path === stationRoot);
+      assert.deepEqual(stationStep.attributes, {
+        Active: true,
+        CellSize: 2,
+        GridDepth: 5,
+        GridHeight: 4,
+        GridWidth: 5,
+        StationId: placement.stationId,
+        StationIndex: placement.stationIndex,
+      });
+      const stationNumber = blueprint.steps.find((step) => step.path === `${stationRoot}.OwnerDisplay.BillboardGui.StationNumber`);
+      assert.equal(stationNumber.properties.Text, `STATION ${String(index + 1).padStart(2, "0")}`);
+
+      for (const [relativePath, localPosition] of [["StationRoot", [0, 0.75, 0]], ["DispatchPort", [0, 3.5, -15]]]) {
+        const transformed = blueprint.steps.find((step) => step.path === `${stationRoot}.${relativePath}`).properties.CFrame.components;
+        const expectedPosition = expectedWorldPosition(placement, localPosition);
+        for (let component = 0; component < 3; component += 1) {
+          assertNear(transformed[component], expectedPosition[component], `${stationRoot}.${relativePath} position[${component}]`);
+        }
+        if (relativePath === "StationRoot") {
+          const radius = Math.hypot(transformed[0], transformed[2]);
+          const forwardX = -transformed[5];
+          const forwardZ = -transformed[11];
+          const centerX = -transformed[0] / radius;
+          const centerZ = -transformed[2] / radius;
+          assertNear(radius, 38, `${stationRoot} ring radius`);
+          assertNear((forwardX * centerX) + (forwardZ * centerZ), 1, `${stationRoot} local -Z faces center`);
+        }
+      }
+    }
+    const pitchedDiagonalCamera = blueprint.steps.find((step) => step.path === `${stationRoots[1]}.CameraAnchor`).properties.CFrame.components;
+    assertNear(pitchedDiagonalCamera[4], -0.473146789256, "Diagonal camera preserves composed pitch in r01", 1e-12);
+    assertNear(pitchedDiagonalCamera[5], 0.525482745499, "Diagonal camera preserves composed pitch in r02", 1e-12);
+    assertNear(pitchedDiagonalCamera[10], 0.473146789256, "Diagonal camera preserves composed pitch in r21", 1e-12);
+    assertNear(pitchedDiagonalCamera[11], -0.525482745499, "Diagonal camera preserves composed pitch in r22", 1e-12);
 
     for (const step of blueprint.steps.filter((entry) => entry.type === "writeScript")) {
       assert.equal(step.overwrite, true, `Script reapply must be explicit: ${step.path}`);
@@ -493,14 +631,74 @@ try {
 
   criterion("required world hierarchy exists", () => {
     for (const requiredPath of expectedWorldPaths) assert.ok(operationPaths.has(requiredPath), `Missing world operation: ${requiredPath}`);
-    const tiles = operations.filter((operation) => operation.path.startsWith(`${stationRoot}.Crate.GridTiles.Cell_`));
-    assert.equal(tiles.length, 25, "The authored crate needs all 25 grid tiles");
-    for (let x = 0; x < 5; x += 1) {
-      for (let z = 0; z < 5; z += 1) assert.ok(operationPaths.has(`${stationRoot}.Crate.GridTiles.Cell_${x}_${z}`));
+    for (const stationRoot of stationRoots) {
+      assert.ok(operationPaths.has(stationRoot), `Missing expanded station: ${stationRoot}`);
+      for (const relativePath of expectedStationRelativePaths) {
+        assert.ok(operationPaths.has(`${stationRoot}.${relativePath}`), `Missing station operation: ${stationRoot}.${relativePath}`);
+      }
+      const stationOperations = operations.filter((operation) => operation.path === stationRoot || operation.path.startsWith(`${stationRoot}.`));
+      assert.equal(stationOperations.length, 60, `${stationRoot} must expand to the complete 60-instance template`);
+      const tiles = operations.filter((operation) => operation.path.startsWith(`${stationRoot}.Crate.GridTiles.Cell_`));
+      assert.equal(tiles.length, 25, `${stationRoot} needs all 25 grid tiles`);
+      for (let x = 0; x < 5; x += 1) {
+        for (let z = 0; z < 5; z += 1) assert.ok(operationPaths.has(`${stationRoot}.Crate.GridTiles.Cell_${x}_${z}`));
+      }
     }
-    const gridOrigin = manifest.instances.find((entry) => entry.path === `${stationRoot}.Crate.GridOrigin`);
+    const gridOrigin = manifest.instances.find((entry) => entry.path === `${stationTemplateRoot}.Crate.GridOrigin`);
     assert.deepEqual(gridOrigin.properties.CFrame.position, [-4, 4, -4], "GridOrigin must represent logical cell 0,0,0");
     assert.ok(operationPaths.has("ReplicatedStorage.ONE_MORE_ITEM.Assets.Development.CellBlockTemplate"));
+  });
+
+  criterion("showcase path is permanent, unique, and circular", () => {
+    const positions = new Set();
+    for (let index = 1; index <= 16; index += 1) {
+      const pathNode = `${worldRoot}.ShowcaseLoop.PathNodes.Node_${String(index).padStart(2, "0")}`;
+      const entry = manifest.instances.find((candidate) => candidate.path === pathNode);
+      assert.equal(entry?.className, "Part", `Missing authored showcase path node ${pathNode}`);
+      assert.equal(entry.properties.Anchored?.value, true);
+      assert.equal(entry.properties.CanCollide?.value, false);
+      assert.equal(entry.properties.CanQuery?.value, false);
+      assert.equal(entry.properties.CanTouch?.value, false);
+      assert.equal(entry.properties.Transparency?.value, 1);
+      assert.equal(entry.attributes.PathIndex?.value, index);
+      const [x, y, z] = entry.properties.CFrame.position;
+      assertNear(y, 19, `${pathNode} height`);
+      assertNear(Math.hypot(x, z), 25, `${pathNode} radius`, 1e-9);
+      const key = `${x},${y},${z}`;
+      assert.ok(!positions.has(key), `${pathNode} duplicates another path position`);
+      positions.add(key);
+      assert.ok(operationPaths.has(pathNode));
+    }
+    assert.equal(positions.size, 16);
+  });
+
+  criterion("showcase crate template is authored and script free", () => {
+    const requiredPaths = [
+      showcaseTemplateRoot,
+      `${showcaseTemplateRoot}.Base`,
+      `${showcaseTemplateRoot}.Lid`,
+      `${showcaseTemplateRoot}.WallFront`,
+      `${showcaseTemplateRoot}.WallBack`,
+      `${showcaseTemplateRoot}.WallLeft`,
+      `${showcaseTemplateRoot}.WallRight`,
+      `${showcaseTemplateRoot}.DisplayAnchor`,
+      `${showcaseTemplateRoot}.DisplayAnchor.BillboardGui`,
+      `${showcaseTemplateRoot}.DisplayAnchor.BillboardGui.PlayerName`,
+      `${showcaseTemplateRoot}.DisplayAnchor.BillboardGui.ShipmentValue`,
+      `${showcaseTemplateRoot}.DisplayAnchor.BillboardGui.ItemCount`,
+    ];
+    for (const requiredPath of requiredPaths) assert.ok(operationPaths.has(requiredPath), `Missing showcase template operation: ${requiredPath}`);
+    const templateParts = manifest.instances.filter((entry) => entry.path.startsWith(`${showcaseTemplateRoot}.`) && entry.className === "Part");
+    assert.equal(templateParts.length, 7);
+    for (const entry of templateParts) {
+      assert.equal(entry.properties.Anchored?.value, true, `${entry.path} must be anchored`);
+      assert.equal(entry.properties.CanCollide?.value, false, `${entry.path} cannot collide`);
+      assert.equal(entry.properties.CanQuery?.value, false, `${entry.path} cannot be queried`);
+      assert.equal(entry.properties.CanTouch?.value, false, `${entry.path} cannot generate touches`);
+    }
+    assert.equal(manifest.scripts.some((entry) => entry.path === showcaseTemplateRoot || entry.path.startsWith(`${showcaseTemplateRoot}.`)), false);
+    assert.ok(operations.some((operation) => operation.className === "BillboardGui"));
+    assert.ok(operations.some((operation) => operation.className === "PointLight"));
   });
 
   criterion("required UI hierarchy exists", () => {
@@ -576,6 +774,10 @@ try {
 
   const instanceCount = operations.filter((operation) => operation.type === "ensureInstance").length;
   const scriptCount = operations.filter((operation) => operation.type === "writeScript").length;
+  criterion("expanded artifact counts are exact", () => {
+    assert.equal(instanceCount, 616, "Eight stations and permanent showcase authoring must produce exactly 616 instances");
+    assert.equal(scriptCount, 34, "Authoring expansion must not add runtime scripts");
+  });
   console.log(
     `[Phase02StudioSyncSmoke] PASS criteria=${criterionCount} instances=${instanceCount} scripts=${scriptCount} remotes=${expectedRemotes.length} deterministic=true phase01=true`,
   );
