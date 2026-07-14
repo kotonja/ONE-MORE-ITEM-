@@ -125,7 +125,7 @@ These are deterministic development-art bounds. Physical-device performance rema
 - **Permissions/configuration:** `contents: read`, dependency cache disabled, no package install, no third-party dependency.
 - **Triggers:** pull requests to `main`, pushes to `main`, and pushes to `codex/**`.
 - **Commands:** all four Node validations run in order.
-- **Latest implementation-head status:** branch-push run `29364192500` / job `87191541084` and draft-PR run `29364191719` / job `87191538408` passed at `f5334da63db37d6d930da3113fc30e5331b08df5`; setup, checkout, Node 24 setup, all four validation steps, and post steps succeeded. Final documentation-head runs must still be recorded after the documentation commit.
+- **Documentation-head status:** at `1d3069bd142d3dbae7d0b59609f6a14fb52eefc9`, branch-push run `29364520534` / job `87192644103` and draft-PR run `29364523993` / job `87192655613` passed. In both jobs, setup, checkout, Node 24 setup, Phase 01, Phase 02, Phase 03, Phase 04, both post steps, and completion all succeeded. The containing status-only commit's own runs are reported in PR #5 and the final handoff because a commit cannot contain its future run IDs.
 
 ## Cloud persistence
 
@@ -145,7 +145,7 @@ Persistence is not yet accepted: save and full close passed, but the original pl
 
 - [Issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open for extended controller, hybrid, multiplayer-soak, physical-device, and integration QA.
 - The remaining Phase 04 manual gates are the complete Station_05/Station_07 action flows, three-mode desktop/touch/gamepad multiplayer matrix, visible 12-shipment showcase stress, and its final cleanup proof.
-- Final documentation-head GitHub Actions and direct no-resync cloud-reopen parity remain unverified.
+- Documentation-head GitHub Actions passed; the containing status-only commit's own runs are reported externally. Direct no-resync cloud-reopen parity remains unverified.
 - Current published `MaxPlayers` was not observed; experience settings were not changed.
 - No known deterministic production-code failure remains in the latest local Node or Studio suites.
 - External plugin-icon and bridge-rate messages are not game-owned warnings. The earlier HTTP 500 is superseded by the successful save, but the post-update login gate still prevents direct-reopen proof.

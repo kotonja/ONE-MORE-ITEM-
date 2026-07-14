@@ -282,7 +282,7 @@ Cloud save and complete close passed. Direct cloud reopen and no-resync parity r
 - Live Station_05 and Station_07 placement/decision/shipment coverage is incomplete; rotated views alone do not pass those gates.
 - Phase 04 cross-platform multiplayer on desktop, touch emulator, and controller emulator is incomplete.
 - The eight-client graphical attempt is recorded; the prescribed live graphical showcase stress observation remains incomplete.
-- Exact-head branch-push and draft-PR GitHub Actions results must be checked after the documentation commit.
+- Documentation head `1d3069bd142d3dbae7d0b59609f6a14fb52eefc9` passed branch-push run `29364520534` / job `87192644103` and draft-PR run `29364523993` / job `87192655613`, with every individual step successful. The containing status-only commit's own runs are reported in PR #5 and the final handoff.
 - Phase 04 cloud save and complete close passed; direct reopen and post-reopen no-resync parity are incomplete because the updated Studio requires account login.
 - Current published `MaxPlayers` has not been recorded; public experience settings were not changed.
 - Physical phone/controller and lower-end-device performance checks remain pre-release QA in issue #4.
