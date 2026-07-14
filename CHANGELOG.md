@@ -15,7 +15,7 @@
 - Completed a desktop timeout/reset/One More/shipment/Results flow and a `667×375` touch-landscape drag/invalid-feedback/Place/Ship/Results/Pack Again flow. Generic Gamepad prompts and safe Pack Again focus were visible; the full controller-only round remains pending.
 - Updated CI to `actions/checkout@v7`, retained `actions/setup-node@v6` and Node 24, and kept `contents: read`, dependency caching disabled, and no install step.
 - Opened draft PR #3 from `codex/phase-03-cross-platform-input` and left `main` unchanged.
-- A later Roblox reconnect returned `RCC-277` after transport connected without a join snapshot. The earlier cloud persistence proof remains valid. Phase 03 remains incomplete pending five touch-emulator profiles, the full controller-only flow, complete hybrid and two-player checks, ten mixed-input rounds, and final documentation-head CI.
+- A later Roblox reconnect returned `RCC-277` after transport connected without a join snapshot. The earlier cloud persistence proof remains valid. Documentation/CI record head `1c3675f36ed0a078baad526831746e50a5438a31` passed both branch-push and draft-PR workflows with zero annotations. Phase 03 remains incomplete pending five touch-emulator profiles, the full controller-only flow, complete hybrid and two-player checks, and ten mixed-input rounds.
 
 ## 2026-07-13 — Phase 02 final visual-truth and motion corrections
 

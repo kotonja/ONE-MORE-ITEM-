@@ -220,7 +220,7 @@ A later cloud reconnect attempt failed with Studio `RCC-277` after transport con
 - Mid-round hybrid switching, assigned respawn, two-player spectator isolation, and ten mixed-input rounds remain pending.
 - The final pass observed a gamepad-to-keyboard prompt switch, but the complete keyboard → gamepad → touch hybrid flow remains pending.
 - A later reconnect was blocked by `RCC-277`; the earlier Phase 03 cloud persistence gate is passed and preserved.
-- GitHub Actions passed on implementation head `8bc43880c48164547e6bd0e63a634f683304d078`; the later documentation head still requires its own green push and pull-request checks.
+- GitHub Actions passed on implementation head `8bc43880c48164547e6bd0e63a634f683304d078` and documentation/CI record head `1c3675f36ed0a078baad526831746e50a5438a31`. The exact latest status-only head and its post-commit checks are reported from live GitHub state in the completion report because a commit cannot contain its own post-commit result.
 
 ## Deferred systems
 

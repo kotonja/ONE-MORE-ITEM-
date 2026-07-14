@@ -34,7 +34,8 @@
 - **Triggers:** Pull requests targeting `main`; pushes to `main`; pushes to `codex/**`.
 - **Commands:** Phase 01, Phase 02, and Phase 03 dependency-free Node validations run in order.
 - Implementation-head push run `29288248053` and PR run `29288250378` passed at `8bc43880c48164547e6bd0e63a634f683304d078` before the documentation/checkout-major correction.
-- A fresh push and both final-head checks are required after the documentation record is committed.
+- Documentation/CI record head `1c3675f36ed0a078baad526831746e50a5438a31` passed [branch-push run 29295662133](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29295662133) ([job 86968466310](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29295662133/job/86968466310)) and [draft-PR run 29295664112](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29295664112) ([job 86968472279](https://github.com/kotonja/ONE-MORE-ITEM-/actions/runs/29295664112/job/86968472279)). Every setup, checkout, Node, Phase 01, Phase 02, Phase 03, post, and completion step succeeded; both check annotation lists were empty.
+- A commit cannot contain its own post-commit result. The completion report records the exact latest status-only head, local/remote/PR-head equality, and both exact-head workflow results from live GitHub state.
 
 ## Local Node 24 validation
 
@@ -118,7 +119,7 @@ A later cloud reconnect accepted Team Create transport but never received a join
 - Full controller-only gameplay, repeat observation, deliberate risky-choice protection, and reconnect remain pending.
 - Complete hybrid switching, Phase 03 two-player regression, and ten-round cleanup remain pending.
 - A later Roblox cloud reconnect is blocked by `RCC-277`; the earlier successful persistence/reopen proof remains valid.
-- Final documentation/checkout-major commit, push, and both final-head GitHub Actions checks remain pending until performed.
+- Exact status-only-head equality and checks are a handoff-time Git/GitHub observation rather than a remaining Phase 03 product gate; the completion report records them from live state.
 
 ## Deferred by design
 
