@@ -13,6 +13,7 @@ end
 
 local Root = requireDirect(ReplicatedStorage, "ONE_MORE_ITEM", "Folder")
 local Net = requireDirect(Root, "Net", "Folder")
+local ProfileNet = requireDirect(Root, "ProfileNet", "Folder")
 
 local expectedRemoteNames: { [string]: boolean } = {
 	ClientReadyRequest = true,
@@ -35,12 +36,26 @@ if remoteCount ~= 6 then
 	error(string.format("ONE_MORE_ITEM.Net must contain exactly six RemoteEvents; found %d", remoteCount))
 end
 
+local profileRemoteCount = 0
+for _, child in ipairs(ProfileNet:GetChildren()) do
+	if child:IsA("RemoteEvent") then
+		profileRemoteCount += 1
+		if child.Name ~= "ProfileSnapshot" then
+			error(string.format("Unexpected profile RemoteEvent %s", child:GetFullName()))
+		end
+	end
+end
+if profileRemoteCount ~= 1 then
+	error(string.format("ONE_MORE_ITEM.ProfileNet must contain exactly one RemoteEvent; found %d", profileRemoteCount))
+end
+
 local ClientReadyRequest = requireDirect(Net, "ClientReadyRequest", "RemoteEvent") :: RemoteEvent
 local PlaceItemRequest = requireDirect(Net, "PlaceItemRequest", "RemoteEvent") :: RemoteEvent
 local DecisionRequest = requireDirect(Net, "DecisionRequest", "RemoteEvent") :: RemoteEvent
 local RestartRequest = requireDirect(Net, "RestartRequest", "RemoteEvent") :: RemoteEvent
 local RoundSnapshot = requireDirect(Net, "RoundSnapshot", "RemoteEvent") :: RemoteEvent
 local PlacementResponse = requireDirect(Net, "PlacementResponse", "RemoteEvent") :: RemoteEvent
+local ProfileSnapshot = requireDirect(ProfileNet, "ProfileSnapshot", "RemoteEvent") :: RemoteEvent
 
 local worldRoot = requireDirect(workspace, "ONE_MORE_ITEM_WORLD", "Folder")
 local arena = requireDirect(worldRoot, "PlaytestArena", "Folder")
@@ -57,6 +72,11 @@ local assets = requireDirect(Root, "Assets", "Folder")
 local developmentAssets = requireDirect(assets, "Development", "Folder")
 local cellBlockTemplate = requireDirect(developmentAssets, "CellBlockTemplate", "BasePart") :: BasePart
 local showcaseCrateTemplate = requireDirect(developmentAssets, "ShowcaseCrateTemplate", "Model") :: Model
+local collectionShelfItemTemplate = requireDirect(
+	developmentAssets,
+	"CollectionShelfItemTemplate",
+	"BasePart"
+) :: BasePart
 
 local StationService = require(script.Parent.Services.StationService)
 local WorldItemService = require(script.Parent.Services.WorldItemService)
@@ -68,6 +88,11 @@ local ShowcaseService = require(script.Parent.Services.ShowcaseService)
 local ServerBestService = require(script.Parent.Services.ServerBestService)
 local StationDisplayService = require(script.Parent.Services.StationDisplayService)
 local ArenaAnnouncementService = require(script.Parent.Services.ArenaAnnouncementService)
+local CollectionShelfService = require(script.Parent.Services.CollectionShelfService)
+local ProfileModules = script.Parent.Services.Profile
+local DataStoreProfileAdapter = require(ProfileModules.DataStoreProfileAdapter)
+local ProfileService = require(ProfileModules.ProfileService)
+local ProgressionService = require(ProfileModules.ProgressionService)
 
 type StationRecord = StationService.StationRecord
 type RoundStateEvent = RoundService.RoundStateEvent
@@ -75,9 +100,66 @@ type HighRiskMilestoneEvent = RoundService.HighRiskMilestoneEvent
 type RoundFailureEvent = RoundService.RoundFailureEvent
 type ShipmentRecord = RoundService.ShipmentRecord
 
-local stationService = StationService.Create(stationsRoot)
-local worldItemService = WorldItemService.Create(cellBlockTemplate, stationService)
-local stationDisplayService = StationDisplayService.Create(stationService)
+local readyPlayers: { [Player]: boolean } = {}
+local removingPlayers: { [Player]: boolean } = {}
+local shutdownStarted = false
+
+local profileService: any = nil
+local stationService: any = nil
+local worldItemService: any = nil
+local stationDisplayService: any = nil
+local collectionShelfService: any = nil
+local roundService: any = nil
+
+local function playerForUserId(userId: number): Player?
+	return Players:GetPlayerByUserId(userId)
+end
+
+profileService = ProfileService.Create(DataStoreProfileAdapter.Create(), {
+	SnapshotSink = function(userId: number, snapshot: any)
+		local player = playerForUserId(userId)
+		if player == nil then
+			return
+		end
+		ProfileSnapshot:FireClient(player, snapshot)
+		if stationService ~= nil and collectionShelfService ~= nil then
+			local stationId = stationService:GetStationId(player)
+			local profile = profileService:GetProfileCopy(userId)
+			if stationId ~= nil and profile ~= nil then
+				local ok, reason = collectionShelfService:Render(stationId, profile :: any)
+				if not ok then
+					warn(string.format("[ONE_MORE_ITEM][Shelf] refresh rejected station=%s reason=%s", stationId, reason))
+				end
+			end
+		end
+	end,
+	LifecycleSink = function(userId: number, state: string)
+		local player = playerForUserId(userId)
+		if player == nil or stationService == nil or roundService == nil then
+			return
+		end
+		if state == "Conflict" or state == "Unavailable" or state == "Releasing" or state == "Released" then
+			roundService:RemovePlayer(player)
+			stationService:ReleasePlayer(player)
+		elseif (state == "Ready" or state == "Saving" or state == "SaveDelayed")
+			and stationService:GetStationId(player) == nil
+		then
+			stationService:AssignPlayer(player)
+		end
+	end,
+})
+local progressionService = ProgressionService.Create(profileService)
+
+stationService = StationService.Create(stationsRoot, {
+	IsPlayerEligible = function(player: Player): boolean
+		return not removingPlayers[player]
+			and not shutdownStarted
+			and profileService:CanEnterGameplay(player.UserId)
+	end,
+})
+worldItemService = WorldItemService.Create(cellBlockTemplate, stationService)
+stationDisplayService = StationDisplayService.Create(stationService)
+collectionShelfService = CollectionShelfService.Create(stationsRoot, collectionShelfItemTemplate)
 local showcaseService = ShowcaseService.Create(showcaseCrateTemplate, showcaseEntry, pathNodes, showcaseRuntime)
 local serverBestService = ServerBestService.Create(serverBestDisplay)
 local announcementService = ArenaAnnouncementService.Create(announcementDisplay)
@@ -125,25 +207,34 @@ local eventSink: RoundService.EventSink = {
 	end,
 }
 
-local roundService = RoundService.Create(
-	stationService,
-	worldItemService,
-	nil,
-	nil,
-	function(player: Player, snapshot)
+roundService = RoundService.Create(stationService, worldItemService, {
+	SnapshotSink = function(player: Player, snapshot: any)
 		RoundSnapshot:FireClient(player, snapshot)
 	end,
-	eventSink,
-	shipmentRecordService
-)
+	EventSink = eventSink,
+	ShipmentRecordService = shipmentRecordService,
+	ProfileService = profileService,
+	ProgressionService = progressionService,
+	ServerSessionId = profileService:GetServerSessionId(),
+})
 local rateLimiter = RequestRateLimiter.Create()
-local readyPlayers: { [Player]: boolean } = {}
 
-local WAITING_REASON = "WAITING FOR A PACKING STATION"
+local function waitingReason(player: Player): string
+	local state = profileService:GetState(player.UserId)
+	if state == "Loading" or state == nil then
+		return "LOADING YOUR PROFILE"
+	elseif state == "Unavailable" then
+		return "DATA UNAVAILABLE | REJOIN TO RETRY"
+	elseif state == "Conflict" then
+		return "PROFILE OPEN ELSEWHERE | CLOSE THE OTHER SESSION AND REJOIN"
+	end
+	return "WAITING FOR A PACKING STATION"
+end
 
 local function sendWaitingSnapshot(player: Player)
 	RoundSnapshot:FireClient(player, {
 		RoundId = 0,
+		OutcomeId = nil,
 		StateVersion = 0,
 		State = "Waiting",
 		StationId = "",
@@ -158,10 +249,10 @@ local function sendWaitingSnapshot(player: Player)
 		ShipmentValue = 0,
 		PossibleNextShipmentValue = 0,
 		CurrentMultiplier = 1,
-		SessionBank = 0,
+		SessionBank = profileService:GetTape(player.UserId) or 0,
 		PlacementDeadline = nil,
 		DecisionDeadline = nil,
-		ResultReason = WAITING_REASON,
+		ResultReason = waitingReason(player),
 		ResultValue = 0,
 		ResultLostValue = 0,
 		QueuePosition = stationService:GetQueuePosition(player),
@@ -170,12 +261,20 @@ end
 
 stationService:SetCallbacks({
 	OnReleased = function(_player: Player, station: StationRecord)
-		-- Release cleanup is synchronous and completes before StationService promotes FIFO waiters.
+		-- Cleanup completes before FIFO promotion, preventing inherited world/profile presentation.
 		worldItemService:ClearStation(station.Id)
 		stationDisplayService:ReleaseStation(station.Id)
+		collectionShelfService:Clear(station.Id)
 	end,
 	OnAssigned = function(player: Player, station: StationRecord, reason: string)
 		stationDisplayService:SetOwner(player, station.Id)
+		local profile = profileService:GetProfileCopy(player.UserId)
+		if profile ~= nil then
+			local rendered, renderReason = collectionShelfService:Render(station.Id, profile :: any)
+			if not rendered then
+				warn(string.format("[ONE_MORE_ITEM][Shelf] assignment render rejected station=%s reason=%s", station.Id, renderReason))
+			end
+		end
 		print(string.format(
 			"[ONE_MORE_ITEM][Station] user=%d station=%s index=%d reason=%s",
 			player.UserId,
@@ -183,7 +282,7 @@ stationService:SetCallbacks({
 			station.Index,
 			reason
 		))
-		if readyPlayers[player] then
+		if readyPlayers[player] and profileService:CanEnterGameplay(player.UserId) then
 			roundService:HandleClientReady(player)
 		end
 	end,
@@ -197,7 +296,10 @@ local function rateAllowed(player: Player, actionName: string): boolean
 	return allowed
 end
 
-local function assignPlayer(player: Player)
+local function assignEligiblePlayer(player: Player)
+	if not profileService:CanEnterGameplay(player.UserId) then
+		return
+	end
 	local assignment = stationService:AssignPlayer(player)
 	if assignment.Waiting then
 		print(string.format(
@@ -214,22 +316,60 @@ local function assignPlayer(player: Player)
 end
 
 local function syncPlayerState(player: Player)
+	if not profileService:CanEnterGameplay(player.UserId) then
+		sendWaitingSnapshot(player)
+		return
+	end
 	if stationService:GetStationId(player) == nil then
-		stationService:AssignPlayer(player)
+		assignEligiblePlayer(player)
 	end
 	if stationService:GetStationId(player) == nil then
 		sendWaitingSnapshot(player)
-	elseif roundService:GetRound(player) ~= nil or readyPlayers[player] then
+	elseif readyPlayers[player] then
 		roundService:HandleClientReady(player)
 	end
 end
 
-Players.PlayerAdded:Connect(assignPlayer)
+local function beginProfileLoad(player: Player)
+	task.spawn(function()
+		local success, code = profileService:LoadPlayer(player.UserId)
+		if player.Parent ~= Players or removingPlayers[player] then
+			profileService:BeginRelease(player.UserId)
+			profileService:Release(player.UserId)
+			return
+		end
+		if success then
+			assignEligiblePlayer(player)
+			syncPlayerState(player)
+		else
+			warn(string.format("[ONE_MORE_ITEM][Profile] load ended userId=%d code=%s", player.UserId, code))
+			sendWaitingSnapshot(player)
+		end
+	end)
+end
+
+Players.PlayerAdded:Connect(beginProfileLoad)
 Players.PlayerRemoving:Connect(function(player: Player)
+	if removingPlayers[player] then
+		return
+	end
+	removingPlayers[player] = true
 	readyPlayers[player] = nil
+	profileService:BeginRelease(player.UserId)
 	roundService:RemovePlayer(player)
 	stationService:ReleasePlayer(player)
 	rateLimiter:RemoveUser(player.UserId)
+	if not shutdownStarted then
+		task.spawn(function()
+			local success, code = profileService:Release(player.UserId)
+			if not success then
+				warn(string.format("[ONE_MORE_ITEM][Profile] release failed userId=%d code=%s", player.UserId, code))
+			end
+			removingPlayers[player] = nil
+		end)
+	else
+		removingPlayers[player] = nil
+	end
 end)
 
 ClientReadyRequest.OnServerEvent:Connect(function(player: Player)
@@ -238,7 +378,10 @@ ClientReadyRequest.OnServerEvent:Connect(function(player: Player)
 		syncPlayerState(player)
 		return
 	end
-	assignPlayer(player)
+	local profileSnapshot = profileService:GetSnapshot(player.UserId)
+	if profileSnapshot ~= nil then
+		ProfileSnapshot:FireClient(player, profileSnapshot)
+	end
 	syncPlayerState(player)
 end)
 
@@ -288,18 +431,34 @@ RestartRequest.OnServerEvent:Connect(function(player: Player, payload: unknown)
 end)
 
 for _, player in ipairs(Players:GetPlayers()) do
-	assignPlayer(player)
+	beginProfileLoad(player)
 end
 
 game:BindToClose(function()
+	shutdownStarted = true
+	profileService:BeginShutdown()
+	for _, player in ipairs(Players:GetPlayers()) do
+		removingPlayers[player] = true
+		roundService:RemovePlayer(player)
+		stationService:ReleasePlayer(player)
+	end
+	local result = profileService:Shutdown()
+	print(string.format(
+		"[ONE_MORE_ITEM][Profile] shutdown successes=%d failures=%d skipped=%d",
+		result.Successes,
+		result.Failures,
+		result.Skipped
+	))
+	collectionShelfService:ClearAll()
 	announcementService:Destroy()
 	showcaseService:Destroy()
 	stationService:Destroy()
 end)
 
 print(string.format(
-	"[ONE_MORE_ITEM][Phase04] server ready stations=%d remotes=%d showcasePathNodes=%d",
+	"[ONE_MORE_ITEM][Phase05] server ready stations=%d gameplayRemotes=%d profileRemotes=%d profileStore=%s",
 	stationService:GetStationCount(),
 	remoteCount,
-	ShowcaseService.PATH_NODE_COUNT
+	profileRemoteCount,
+	profileService:GetStoreEnvironment()
 ))

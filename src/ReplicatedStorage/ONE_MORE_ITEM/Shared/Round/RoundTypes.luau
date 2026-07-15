@@ -35,6 +35,8 @@ export type PlacedItemPresentation = {
 export type RoundRecord = {
 	PlayerUserId: number,
 	RoundId: number,
+	OutcomeId: string,
+	OutcomeProcessed: boolean,
 	StateVersion: number,
 	State: RoundState,
 	StationId: string,

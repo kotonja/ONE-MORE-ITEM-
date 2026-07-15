@@ -8,6 +8,7 @@ local DevelopmentItemDefinitions = require(Root.Shared.Content.DevelopmentItemDe
 local OccupancyGrid = require(Root.Shared.Grid.OccupancyGrid)
 local IntegerValidation = require(Root.Shared.Grid.IntegerValidation)
 local NetworkTypes = require(Root.Shared.Net.NetworkTypes)
+local ProgressionTypes = require(Root.Shared.Profile.ProgressionTypes)
 local RoundTypes = require(Root.Shared.Round.RoundTypes)
 local RoundMath = require(Root.Shared.Round.RoundMath)
 local DisplayNameSanitizer = require(Root.Shared.World.DisplayNameSanitizer)
@@ -29,10 +30,34 @@ type WorldItemServiceContract = WorldItemServiceModule.Service
 type ShipmentRecordServiceContract = ShipmentRecordServiceModule.Service
 export type ShipmentRecord = ShipmentRecordServiceModule.ShipmentRecord
 type PlacedItemPresentation = RoundTypes.PlacedItemPresentation
+type ProgressionReward = ProgressionTypes.ProgressionReward
 
 type Scheduler = (number, () -> ()) -> ()
 type Clock = () -> number
 type SnapshotSink = (Player, RoundSnapshot) -> ()
+
+type ProfileServiceContract = {
+	CanEnterGameplay: (self: ProfileServiceContract, userId: number) -> boolean,
+	CanMutate: (self: ProfileServiceContract, userId: number) -> boolean,
+	GetTape: (self: ProfileServiceContract, userId: number) -> number?,
+}
+
+type ProgressionServiceContract = {
+	ApplyShipment: (
+		self: ProgressionServiceContract,
+		userId: number,
+		roundId: number,
+		outcomeId: string,
+		shipmentRecord: ShipmentRecord
+	) -> (ProgressionReward?, string),
+	ApplyFailure: (
+		self: ProgressionServiceContract,
+		userId: number,
+		roundId: number,
+		outcomeId: string,
+		itemCount: number
+	) -> (ProgressionReward?, string),
+}
 
 export type RoundStateEvent = {
 	PlayerUserId: number,
@@ -73,6 +98,17 @@ export type EventSink = {
 	OnRoundFailed: ((RoundFailureEvent) -> ())?,
 }
 
+export type Options = {
+	Clock: Clock?,
+	Scheduler: Scheduler?,
+	SnapshotSink: SnapshotSink?,
+	EventSink: EventSink?,
+	ShipmentRecordService: ShipmentRecordServiceContract?,
+	ProfileService: ProfileServiceContract,
+	ProgressionService: ProgressionServiceContract,
+	ServerSessionId: string,
+}
+
 export type Service = {
 	GetRound: (self: Service, player: Player) -> RoundRecord?,
 	GetSnapshot: (self: Service, player: Player) -> RoundSnapshot?,
@@ -106,10 +142,12 @@ type RoundServiceImpl = Service & {
 	_snapshotSink: SnapshotSink,
 	_rounds: { [Player]: RoundRecord },
 	_sequences: { [Player]: Sequence },
-	_sessionBanks: { [Player]: number },
 	_roundOrdinals: { [number]: number },
 	_eventSink: EventSink,
 	_shipmentRecordService: ShipmentRecordServiceContract,
+	_profileService: ProfileServiceContract,
+	_progressionService: ProgressionServiceContract,
+	_serverSessionId: string,
 }
 
 local RoundService = {}
@@ -129,25 +167,29 @@ end
 function RoundService.Create(
 	stationService: StationServiceContract,
 	worldItemService: WorldItemServiceContract,
-	clock: Clock?,
-	scheduler: Scheduler?,
-	snapshotSink: SnapshotSink?,
-	eventSink: EventSink?,
-	shipmentRecordService: ShipmentRecordServiceContract?
+	options: Options
 ): RoundServiceImpl
-	local resolvedClock = clock or defaultClock
+	if type(options.ServerSessionId) ~= "string"
+		or options.ServerSessionId == ""
+		or #options.ServerSessionId > 120
+	then
+		error("RoundService requires a bounded non-empty ServerSessionId", 2)
+	end
+	local resolvedClock = options.Clock or defaultClock
 	return setmetatable({
 		_stationService = stationService,
 		_worldItemService = worldItemService,
 		_clock = resolvedClock,
-		_scheduler = scheduler or defaultScheduler,
-		_snapshotSink = snapshotSink or noSnapshot,
+		_scheduler = options.Scheduler or defaultScheduler,
+		_snapshotSink = options.SnapshotSink or noSnapshot,
 		_rounds = {},
 		_sequences = {},
-		_sessionBanks = {},
 		_roundOrdinals = {},
-		_eventSink = eventSink or {},
-		_shipmentRecordService = shipmentRecordService or ShipmentRecordServiceModule.Create(resolvedClock),
+		_eventSink = options.EventSink or {},
+		_shipmentRecordService = options.ShipmentRecordService or ShipmentRecordServiceModule.Create(resolvedClock),
+		_profileService = options.ProfileService,
+		_progressionService = options.ProgressionService,
+		_serverSessionId = options.ServerSessionId,
 	}, RoundService) :: RoundServiceImpl
 end
 
@@ -177,8 +219,13 @@ function RoundService.GetSnapshot(self: RoundServiceImpl, player: Player): Round
 		copiedCells[index] = { X = cell.X, Y = cell.Y, Z = cell.Z }
 	end
 
+	local profileTape = self._profileService:GetTape(player.UserId)
+	if profileTape ~= nil then
+		round.SessionBank = profileTape
+	end
 	return {
 		RoundId = round.RoundId,
+		OutcomeId = round.OutcomeId,
 		StateVersion = round.StateVersion,
 		State = round.State,
 		StationId = round.StationId,
@@ -273,7 +320,11 @@ function RoundService.StartRound(
 	preparationMode: PreparationMode?
 ): RoundRecord?
 	local stationId = self._stationService:GetStationId(player)
-	if not stationId then
+	if not stationId or not self._profileService:CanEnterGameplay(player.UserId) then
+		return nil
+	end
+	local profileTape = self._profileService:GetTape(player.UserId)
+	if profileTape == nil then
 		return nil
 	end
 
@@ -285,6 +336,8 @@ function RoundService.StartRound(
 	local round: RoundRecord = {
 		PlayerUserId = player.UserId,
 		RoundId = roundId,
+		OutcomeId = string.format("%d:%s:%d", player.UserId, self._serverSessionId, roundId),
+		OutcomeProcessed = false,
 		StateVersion = 0,
 		State = "Preparing",
 		StationId = stationId,
@@ -296,7 +349,7 @@ function RoundService.StartRound(
 		ItemCount = 0,
 		BaseValueSum = 0,
 		ShipmentValue = 0,
-		SessionBank = self._sessionBanks[player] or 0,
+		SessionBank = profileTape,
 		PlacementDeadline = nil,
 		DecisionDeadline = nil,
 		LastClientSequences = { Place = -1, Decision = -1, Restart = -1 },
@@ -317,6 +370,9 @@ function RoundService.StartRound(
 end
 
 function RoundService.HandleClientReady(self: RoundServiceImpl, player: Player): RoundRecord?
+	if not self._profileService:CanEnterGameplay(player.UserId) then
+		return nil
+	end
 	local existing = self._rounds[player]
 	if existing then
 		self:_emitSnapshot(player)
@@ -343,17 +399,10 @@ end
 
 function RoundService._enterShipping(self: RoundServiceImpl, player: Player, reason: string)
 	local round = self._rounds[player]
-	if not round or round.ShipmentBanked then
+	if not round or round.OutcomeProcessed or not self._profileService:CanMutate(player.UserId) then
 		return
 	end
 	local shipmentValue = round.ShipmentValue
-	local bank, banked = RoundMath.BankShipment(round.SessionBank, shipmentValue, round.ShipmentBanked)
-	round.SessionBank = bank
-	round.ShipmentBanked = banked
-	self._sessionBanks[player] = bank
-	round.ResultReason = reason
-	round.ResultValue = shipmentValue
-	round.ResultLostValue = 0
 
 	local shipmentRecord: ShipmentRecord? = nil
 	local captureOk, capturedOrFailure, captureReason = pcall(function(): (ShipmentRecord?, string)
@@ -367,6 +416,45 @@ function RoundService._enterShipping(self: RoundServiceImpl, player: Player, rea
 	else
 		warn(string.format("[ONE_MORE_ITEM][Shipment] record capture failed: %s", tostring(capturedOrFailure)))
 	end
+	if shipmentRecord == nil then
+		round.ResultReason = "SHIPMENT_RECORD_FAILED"
+		round.ResultValue = 0
+		round.ResultLostValue = shipmentValue
+		round.PlacementDeadline = nil
+		round.DecisionDeadline = nil
+		self:_transition(player, "Results")
+		return
+	end
+
+	local progressionOk, rewardOrFailure, progressionCode = pcall(function(): (ProgressionReward?, string)
+		return self._progressionService:ApplyShipment(
+			player.UserId,
+			round.RoundId,
+			round.OutcomeId,
+			shipmentRecord :: ShipmentRecord
+		)
+	end)
+	local reward = if progressionOk then rewardOrFailure :: ProgressionReward? else nil
+	if reward == nil or reward.Duplicate then
+		local failureCode = if progressionOk then progressionCode else tostring(rewardOrFailure)
+		round.OutcomeProcessed = reward ~= nil and reward.Duplicate
+		round.SessionBank = if reward ~= nil then reward.NewTape else round.SessionBank
+		round.ResultReason = if reward ~= nil and reward.Duplicate then "DUPLICATE_OUTCOME" else "PROFILE_REWARD_FAILED"
+		round.ResultValue = 0
+		round.ResultLostValue = shipmentValue
+		round.PlacementDeadline = nil
+		round.DecisionDeadline = nil
+		warn(string.format("[ONE_MORE_ITEM][Progression] shipment rejected userId=%d code=%s", player.UserId, tostring(failureCode)))
+		self:_transition(player, "Results")
+		return
+	end
+
+	round.OutcomeProcessed = true
+	round.ShipmentBanked = true
+	round.SessionBank = reward.NewTape
+	round.ResultReason = reason
+	round.ResultValue = reward.TapeDelta
+	round.ResultLostValue = 0
 
 	round.BaseValueSum = 0
 	round.ShipmentValue = 0
@@ -389,23 +477,46 @@ end
 
 function RoundService._enterFailure(self: RoundServiceImpl, player: Player, reason: string)
 	local round = self._rounds[player]
-	if not round then
+	if not round or round.OutcomeProcessed or not self._profileService:CanMutate(player.UserId) then
 		return
 	end
+	local lostValue = round.ShipmentValue
+	local progressionOk, rewardOrFailure, progressionCode = pcall(function(): (ProgressionReward?, string)
+		return self._progressionService:ApplyFailure(
+			player.UserId,
+			round.RoundId,
+			round.OutcomeId,
+			round.ItemCount
+		)
+	end)
+	local reward = if progressionOk then rewardOrFailure :: ProgressionReward? else nil
+	if reward == nil or reward.Duplicate then
+		local failureCode = if progressionOk then progressionCode else tostring(rewardOrFailure)
+		round.OutcomeProcessed = reward ~= nil and reward.Duplicate
+		round.SessionBank = if reward ~= nil then reward.NewTape else round.SessionBank
+		round.ResultReason = if reward ~= nil and reward.Duplicate then "DUPLICATE_OUTCOME" else "PROFILE_REWARD_FAILED"
+		round.ResultValue = 0
+		round.ResultLostValue = lostValue
+		round.PlacementDeadline = nil
+		round.DecisionDeadline = nil
+		warn(string.format("[ONE_MORE_ITEM][Progression] failure rejected userId=%d code=%s", player.UserId, tostring(failureCode)))
+		self:_transition(player, "Results")
+		return
+	end
+	round.OutcomeProcessed = true
+	round.SessionBank = reward.NewTape
 	local failureEvent = table.freeze({
 		PlayerUserId = round.PlayerUserId,
 		PlayerDisplayName = DisplayNameSanitizer.Sanitize(player.DisplayName),
 		StationId = round.StationId,
 		RoundId = round.RoundId,
 		ItemCount = round.ItemCount,
-		LostValue = round.ShipmentValue,
+		LostValue = lostValue,
 		Reason = reason,
 	}) :: RoundFailureEvent
 	round.ResultReason = reason
 	round.ResultValue = 0
-	round.ResultLostValue = round.ShipmentValue
-	round.SessionBank = RoundMath.BankAfterFailure(round.SessionBank)
-	self._sessionBanks[player] = round.SessionBank
+	round.ResultLostValue = lostValue
 	round.BaseValueSum = 0
 	round.ShipmentValue = 0
 	round.CurrentItemId = nil
@@ -432,6 +543,7 @@ function RoundService.HandleCapturedTimer(
 ): boolean
 	local round = self._rounds[player]
 	if not round
+		or not self._profileService:CanMutate(player.UserId)
 		or round.PlayerUserId ~= player.UserId
 		or round.RoundId ~= roundId
 		or round.StateVersion ~= stateVersion
@@ -462,7 +574,7 @@ function RoundService.HandlePlacement(
 	payload: unknown
 ): PlacementResult
 	local round = self._rounds[player]
-	if not round then
+	if not round or not self._profileService:CanMutate(player.UserId) then
 		return { Accepted = false, Reason = "NO_ROUND", ClientSequence = -1, Placement = nil }
 	end
 	local currentItemId = round.CurrentItemId
@@ -551,6 +663,9 @@ end
 function RoundService.HandleDecision(self: RoundServiceImpl, player: Player, payload: unknown): (boolean, string)
 	local round = self._rounds[player]
 	local request = requestTable(payload)
+	if not self._profileService:CanMutate(player.UserId) then
+		return false, "PROFILE_NOT_READY"
+	end
 	if not round or not request then
 		return false, "MALFORMED_REQUEST"
 	end
@@ -580,7 +695,8 @@ function RoundService.HandleDecision(self: RoundServiceImpl, player: Player, pay
 	if choice == "SHIP" then
 		round.LastClientSequences.Decision = sequenceValue :: number
 		self:_enterShipping(player, "PLAYER_SHIPPED")
-		return true, "SHIPPING"
+		return if round.State == "Shipping" then true else false,
+			if round.State == "Shipping" then "SHIPPING" else (round.ResultReason or "PROFILE_REWARD_FAILED")
 	elseif choice == "ONE_MORE" and round.PreviewedNextItemId then
 		round.LastClientSequences.Decision = sequenceValue :: number
 		round.CurrentItemId = round.PreviewedNextItemId
@@ -596,6 +712,9 @@ end
 function RoundService.HandleRestart(self: RoundServiceImpl, player: Player, payload: unknown): (boolean, string)
 	local round = self._rounds[player]
 	local request = requestTable(payload)
+	if not self._profileService:CanMutate(player.UserId) then
+		return false, "PROFILE_NOT_READY"
+	end
 	if not round or not request then
 		return false, "MALFORMED_REQUEST"
 	end
@@ -631,7 +750,6 @@ function RoundService.RemovePlayer(self: RoundServiceImpl, player: Player)
 	self._worldItemService:ClearPlayer(player)
 	self._rounds[player] = nil
 	self._sequences[player] = nil
-	self._sessionBanks[player] = nil
 end
 
 return table.freeze(RoundService)

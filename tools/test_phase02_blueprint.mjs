@@ -317,7 +317,10 @@ try {
     const worldEntries = manifest.instances.filter((entry) => entry.path.includes("ONE_MORE_ITEM_WORLD"));
     assert.ok(worldEntries.length > 0, "Permanent world entries are required");
     assert.ok(worldEntries.every((entry) => entry.path.startsWith("Workspace.ONE_MORE_ITEM_WORLD")));
-    const rawStationEntries = manifest.instances.filter((entry) => entry.path === stationTemplateRoot || entry.path.startsWith(`${stationTemplateRoot}.`));
+    const rawStationEntries = manifest.instances.filter((entry) =>
+      (entry.path === stationTemplateRoot || entry.path.startsWith(`${stationTemplateRoot}.`))
+      && !entry.path.startsWith(`${stationTemplateRoot}.CollectionShelf`)
+    );
     assert.equal(rawStationEntries.length, 60, "Raw Station_01 must remain the single complete source template");
     assert.equal(
       manifest.instances.some((entry) => entry.path.startsWith(`${worldRoot}.Stations.Station_02`)),
@@ -464,8 +467,11 @@ try {
     assert.equal(clientScripts.find((entry) => entry.path.endsWith(".ClientBootstrap")).className, "LocalScript");
   });
 
-  criterion("six remotes are permanent", () => {
-    const remoteEntries = manifest.instances.filter((entry) => entry.className === "RemoteEvent");
+  criterion("six gameplay remotes are permanent under Net", () => {
+    const remoteEntries = manifest.instances.filter((entry) =>
+      entry.className === "RemoteEvent"
+      && entry.path.startsWith("ReplicatedStorage.ONE_MORE_ITEM.Net.")
+    );
     assert.deepEqual(remoteEntries.map((entry) => entry.path.split(".").at(-1)).sort(), expectedRemotes);
     assert.ok(remoteEntries.every((entry) => entry.path.startsWith("ReplicatedStorage.ONE_MORE_ITEM.Net.")));
   });
@@ -636,7 +642,10 @@ try {
       for (const relativePath of expectedStationRelativePaths) {
         assert.ok(operationPaths.has(`${stationRoot}.${relativePath}`), `Missing station operation: ${stationRoot}.${relativePath}`);
       }
-      const stationOperations = operations.filter((operation) => operation.path === stationRoot || operation.path.startsWith(`${stationRoot}.`));
+      const stationOperations = operations.filter((operation) =>
+        (operation.path === stationRoot || operation.path.startsWith(`${stationRoot}.`))
+        && !operation.path.startsWith(`${stationRoot}.CollectionShelf`)
+      );
       assert.equal(stationOperations.length, 60, `${stationRoot} must expand to the complete 60-instance template`);
       const tiles = operations.filter((operation) => operation.path.startsWith(`${stationRoot}.Crate.GridTiles.Cell_`));
       assert.equal(tiles.length, 25, `${stationRoot} needs all 25 grid tiles`);
@@ -775,9 +784,34 @@ try {
 
   const instanceCount = operations.filter((operation) => operation.type === "ensureInstance").length;
   const scriptCount = operations.filter((operation) => operation.type === "writeScript").length;
-  criterion("expanded artifact counts are exact", () => {
-    assert.equal(instanceCount, 616, "Eight stations and permanent showcase authoring must produce exactly 616 instances");
-    assert.equal(scriptCount, 45, "Phase 04 canonical source mapping must produce exactly 45 scripts");
+  criterion("inherited Phase 04 artifact counts remain exact inside the Phase 05 extension", () => {
+    const phase05InstancePrefixes = [
+      "ReplicatedStorage.ONE_MORE_ITEM.ProfileNet",
+      "ReplicatedStorage.ONE_MORE_ITEM.Shared.Profile",
+      "ServerScriptService.ONE_MORE_ITEM_Server.Services.Profile",
+      "ReplicatedStorage.ONE_MORE_ITEM.Assets.Development.CollectionShelfItemTemplate",
+      "StarterGui.ONE_MORE_ITEM_Gameplay.Root.MetaBar",
+      "StarterGui.ONE_MORE_ITEM_Gameplay.Root.CollectionPanel",
+      "StarterGui.ONE_MORE_ITEM_Gameplay.Root.DiscoveryReveal",
+      "StarterGui.ONE_MORE_ITEM_Gameplay.Root.RankUpBanner",
+    ];
+    const phase05ExactInstances = new Set([
+      "StarterGui.ONE_MORE_ITEM_Gameplay.Root.ResultsPanel.XPReward",
+      "StarterGui.ONE_MORE_ITEM_Gameplay.Root.ResultsPanel.RankProgress",
+      "StarterGui.ONE_MORE_ITEM_Gameplay.Root.ResultsPanel.DiscoverySummary",
+    ]);
+    const inheritedInstances = operations.filter((operation) =>
+      operation.type === "ensureInstance"
+      && !phase05InstancePrefixes.some((prefix) => operation.path === prefix || operation.path.startsWith(`${prefix}.`))
+      && !phase05ExactInstances.has(operation.path)
+      && !operation.path.includes(".CollectionShelf")
+    );
+    const phase05SourcePattern = /(?:^|\/)(?:Profile\/|CollectionShelfService\.luau$|ClientProfileStore\.luau$|ProfileResponsiveLayout\.luau$|ProfileUIController\.luau$|Phase05TestSuite\.luau$|RunPhase05Tests\.server\.luau$)/;
+    const inheritedScripts = manifest.scripts.filter((entry) => !phase05SourcePattern.test(entry.sourceFile));
+    assert.equal(inheritedInstances.length, 616, "The accepted Phase 04 instance baseline must remain exactly 616 paths");
+    assert.equal(inheritedScripts.length, 45, "The accepted Phase 04 source baseline must remain exactly 45 scripts");
+    assert.equal(scriptCount, manifest.scripts.length, "Every canonical source mapping must generate exactly one script operation");
+    assert.ok(instanceCount > inheritedInstances.length, "Phase 05 must extend rather than replace the inherited instance baseline");
   });
   console.log(
     `[Phase02StudioSyncSmoke] PASS criteria=${criterionCount} instances=${instanceCount} scripts=${scriptCount} remotes=${expectedRemotes.length} deterministic=true phase01=true`,

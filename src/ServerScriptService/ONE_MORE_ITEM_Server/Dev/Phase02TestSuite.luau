@@ -133,6 +133,8 @@ local function makeRound(): RoundRecord
 	return {
 		PlayerUserId = 101,
 		RoundId = 7,
+		OutcomeId = "101:phase02-test:7",
+		OutcomeProcessed = false,
 		StateVersion = 3,
 		State = "AwaitingPlacement",
 		StationId = "station_01",
@@ -474,6 +476,8 @@ local function newHarness(userId: number?): Harness
 	local scheduledTimers: { ScheduledTimer } = {}
 	local spawnCount = { Value = 0 }
 	local clearCount = { Value = 0 }
+	local persistentTape = { Value = 0 }
+	local service: any = nil
 	local station = ({
 		GetStationId = function(_self, _player: Player): string?
 			return "station_01"
@@ -488,16 +492,38 @@ local function newHarness(userId: number?): Harness
 			clearCount.Value += 1
 		end,
 	} :: any)
-	local service = RoundService.Create(
+	local profileContract = {
+		CanEnterGameplay = function(_self: any, _userId: number): boolean return true end,
+		CanMutate = function(_self: any, _userId: number): boolean return true end,
+		GetTape = function(_self: any, _userId: number): number return persistentTape.Value end,
+	}
+	local progressionContract = {
+		ApplyShipment = function(_self: any, _userId: number, roundId: number, outcomeId: string, record: any): (any, string)
+			local currentRound = service:GetRound(player)
+			persistentTape.Value = currentRound.SessionBank + record.ShipmentValue
+			return { OutcomeId = outcomeId, RoundId = roundId, Duplicate = false, NewTape = persistentTape.Value, TapeDelta = record.ShipmentValue }, "APPLIED"
+		end,
+		ApplyFailure = function(_self: any, _userId: number, roundId: number, outcomeId: string, _itemCount: number): (any, string)
+			local currentRound = service:GetRound(player)
+			persistentTape.Value = currentRound.SessionBank
+			return { OutcomeId = outcomeId, RoundId = roundId, Duplicate = false, NewTape = persistentTape.Value, TapeDelta = 0 }, "APPLIED"
+		end,
+	}
+	service = RoundService.Create(
 		station,
 		world,
-		function(): number return clockState.Now end,
-		function(duration: number, callback: () -> ())
-			table.insert(scheduledTimers, { Duration = duration, Callback = callback })
-		end,
-		function(_player: Player, snapshot)
-			table.insert(snapshots, snapshot)
-		end
+		{
+			Clock = function(): number return clockState.Now end,
+			Scheduler = function(duration: number, callback: () -> ())
+				table.insert(scheduledTimers, { Duration = duration, Callback = callback })
+			end,
+			SnapshotSink = function(_player: Player, snapshot)
+				table.insert(snapshots, snapshot)
+			end,
+			ProfileService = profileContract,
+			ProgressionService = progressionContract,
+			ServerSessionId = "phase02-test-session",
+		}
 	)
 	return {
 		Player = player,

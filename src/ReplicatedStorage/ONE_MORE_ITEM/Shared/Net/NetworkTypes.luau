@@ -39,6 +39,7 @@ export type PlacementResponse = {
 
 export type RoundSnapshot = {
 	RoundId: number,
+	OutcomeId: string?,
 	StateVersion: number,
 	State: string,
 	StationId: string,

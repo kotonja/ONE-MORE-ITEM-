@@ -7,10 +7,12 @@ local Workspace = game:GetService("Workspace")
 local controllers = script.Parent:WaitForChild("Controllers")
 local CameraController = require(controllers:WaitForChild("CameraController"))
 local CharacterController = require(controllers:WaitForChild("CharacterController"))
+local ClientProfileStore = require(controllers:WaitForChild("ClientProfileStore"))
 local ClientRoundStore = require(controllers:WaitForChild("ClientRoundStore"))
 local InputController = require(controllers:WaitForChild("InputController"))
 local InputModeStore = require(controllers:WaitForChild("InputModeStore"))
 local PresentationTokens = require(controllers:WaitForChild("PresentationTokens"))
+local ProfileUIController = require(controllers:WaitForChild("ProfileUIController"))
 local ResponsiveLayout = require(controllers:WaitForChild("ResponsiveLayout"))
 local ResponsiveUIController = require(controllers:WaitForChild("ResponsiveUIController"))
 local RoundUIController = require(controllers:WaitForChild("RoundUIController"))
@@ -20,6 +22,7 @@ local ViewportPreviewController = require(controllers:WaitForChild("ViewportPrev
 type Snapshot = ClientRoundStore.Snapshot
 type PlacementResponse = ClientRoundStore.PlacementResponse
 type Cell = ClientRoundStore.Cell
+type ProfileSnapshot = ClientProfileStore.Snapshot
 type InputMode = InputModeStore.InputMode
 type LayoutClass = ResponsiveLayout.LayoutClass
 
@@ -70,6 +73,7 @@ end
 
 local root = requireChild(ReplicatedStorage, "ONE_MORE_ITEM")
 local net = requireChild(root, "Net")
+local profileNet = requireChild(root, "ProfileNet")
 local shared = requireChild(root, "Shared")
 local assets = requireChild(root, "Assets")
 local developmentAssets = requireChild(assets, "Development")
@@ -88,6 +92,7 @@ local decisionRequest = requireRemote(net, "DecisionRequest")
 local restartRequest = requireRemote(net, "RestartRequest")
 local roundSnapshotRemote = requireRemote(net, "RoundSnapshot")
 local placementResponseRemote = requireRemote(net, "PlacementResponse")
+local profileSnapshotRemote = requireRemote(profileNet, "ProfileSnapshot")
 
 local worldRoot = requireChild(Workspace, "ONE_MORE_ITEM_WORLD")
 local arena = requireChild(worldRoot, "PlaytestArena")
@@ -142,11 +147,13 @@ local function getShapeCells(shapeId: string): { Cell }?
 end
 
 local store = ClientRoundStore.new()
+local profileStore = ClientProfileStore.new()
 local camera = CameraController.new()
 local character = CharacterController.new()
 local roundUI = RoundUIController.new(gameplayGui, resolveItemName)
 local inputMode: InputMode = "KeyboardMouse"
 local layoutClass: LayoutClass = "Wide"
+local profileUIForLayout: ProfileUIController.Controller? = nil
 local responsiveUI = ResponsiveUIController.new(guiRoot, {
 	BeforeApply = function(panelPositions, buttonSizes)
 		roundUI:SetResponsiveTargets(panelPositions, buttonSizes)
@@ -154,6 +161,10 @@ local responsiveUI = ResponsiveUIController.new(guiRoot, {
 	LayoutChanged = function(newLayoutClass: LayoutClass)
 		layoutClass = newLayoutClass
 		camera:SetPresentation(layoutClass, inputMode)
+		local activeProfileUI = profileUIForLayout
+		if activeProfileUI ~= nil then
+			activeProfileUI:SetLayoutClass(layoutClass)
+		end
 		script:SetAttribute("LayoutClass", layoutClass)
 	end,
 	Observability = function(currentLayoutClass: LayoutClass, activeTweens: number)
@@ -271,6 +282,20 @@ local input = InputController.new({
 	end,
 }, roundUI:GetButtons(), guiRoot, touchDragSurface)
 
+local profileUI = ProfileUIController.new(guiRoot, cellBlockTemplate, {
+	MenuOpenChanged = function(isOpen: boolean)
+		input:SetProfileMenuOpen(isOpen)
+		script:SetAttribute("ProfileMenuOpen", isOpen)
+	end,
+	AudioHook = function(eventName: string)
+		-- Phase 05 intentionally has no audio assets. This observable hook is the
+		-- single future integration seam for discovery, mastery, and rank audio.
+		script:SetAttribute("LastProfileAudioHook", eventName)
+	end,
+})
+profileUIForLayout = profileUI
+profileUI:SetLayoutClass(layoutClass)
+
 stationContext = StationContextController.new({
 	StationsRoot = stations,
 	PlaceItemRequest = placeItemRequest,
@@ -329,6 +354,7 @@ local unsubscribe = store:Subscribe(function(snapshot: Snapshot)
 		previousLoggedStation = activeStationId
 	end
 	roundUI:ApplySnapshot(snapshot, nowAssigned)
+	profileUI:ApplyRoundSnapshot(snapshot, nowAssigned)
 	if nowAssigned then
 		viewportPreview:ApplySnapshot(snapshot)
 	else
@@ -343,6 +369,19 @@ local unsubscribe = store:Subscribe(function(snapshot: Snapshot)
 	input:RefreshPointer()
 end)
 
+local unsubscribeProfile = profileStore:Subscribe(function(snapshot: ProfileSnapshot)
+	if destroyed then
+		return
+	end
+	profileUI:ApplyProfileSnapshot(snapshot)
+	script:SetAttribute("ProfileSessionId", snapshot.ProfileSessionId)
+	script:SetAttribute("ProfileRevision", snapshot.Revision)
+	script:SetAttribute("ProfileState", snapshot.State)
+	script:SetAttribute("ProfileSaveState", snapshot.SaveState)
+	script:SetAttribute("ProfileTape", snapshot.Tape)
+	script:SetAttribute("ProfilePackingXP", snapshot.PackingXP)
+end)
+
 table.insert(connections, roundSnapshotRemote.OnClientEvent:Connect(function(snapshot: Snapshot)
 	store:ApplySnapshot(snapshot)
 end))
@@ -354,12 +393,17 @@ table.insert(connections, placementResponseRemote.OnClientEvent:Connect(function
 	end
 end))
 
+table.insert(connections, profileSnapshotRemote.OnClientEvent:Connect(function(snapshot: ProfileSnapshot)
+	profileStore:ApplySnapshot(snapshot)
+end))
+
 local function cleanup()
 	if destroyed then
 		return
 	end
 	destroyed = true
 	unsubscribe()
+	unsubscribeProfile()
 	for _, connection in ipairs(connections) do
 		connection:Disconnect()
 	end
@@ -369,6 +413,8 @@ local function cleanup()
 	if context ~= nil then
 		context:Destroy()
 	end
+	profileUIForLayout = nil
+	profileUI:Destroy()
 	input:Destroy()
 	responsiveUI:Destroy()
 	viewportPreview:Destroy()
@@ -376,13 +422,15 @@ local function cleanup()
 	camera:Destroy()
 	character:Destroy()
 	store:Destroy()
+	profileStore:Destroy()
 	script:SetAttribute("Initialized", false)
 end
 
 table.insert(connections, script.Destroying:Connect(cleanup))
 
 script:SetAttribute("Initialized", true)
-script:SetAttribute("ClientVersion", "phase04")
+script:SetAttribute("ClientVersion", "phase05")
+script:SetAttribute("ProfileMenuOpen", false)
 script:SetAttribute("InputMode", inputMode)
 script:SetAttribute("LayoutClass", layoutClass)
 print("[ONE_MORE_ITEM][Client] READY controls=keyboard+mouse+touch+gamepad authority=server")

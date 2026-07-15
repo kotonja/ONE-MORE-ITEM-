@@ -10,6 +10,7 @@ export type Cell = {
 
 export type Snapshot = {
 	RoundId: RoundId,
+	OutcomeId: string?,
 	StateVersion: number,
 	State: string,
 	StationId: string?,
@@ -72,6 +73,7 @@ end
 local function copySnapshot(snapshot: Snapshot): Snapshot
 	local copied: Snapshot = {
 		RoundId = snapshot.RoundId,
+		OutcomeId = snapshot.OutcomeId,
 		StateVersion = snapshot.StateVersion,
 		State = snapshot.State,
 		StationId = snapshot.StationId,

@@ -391,7 +391,10 @@ try {
   });
 
   criterion("exactly six gameplay remotes remain", () => {
-    const remotes = instanceSteps.filter((step) => step.className === "RemoteEvent");
+    const remotes = instanceSteps.filter((step) =>
+      step.className === "RemoteEvent"
+      && step.path.startsWith("ReplicatedStorage.ONE_MORE_ITEM.Net.")
+    );
     assert.equal(remotes.length, 6);
     assert.deepEqual(remotes.map((step) => step.path.split(".").at(-1)).sort(), expectedRemotes);
   });
@@ -483,9 +486,9 @@ try {
     assert.ok(gitFiles.every((file) => !/\.(?:rbxl|rbxlx|tmp|bak)$/i.test(file)));
   });
 
-  criterion("workflow runs the four Node 24 gates", () => {
+  criterion("workflow runs the five Node 24 gates", () => {
     const workflow = readText(".github/workflows/phase01-node-validation.yml");
-    assert.match(workflow, /^name:\s*Phase 01–04 Node Validation/m);
+    assert.match(workflow, /^name:\s*Phase 01(?:–|-)05 Node Validation/m);
     assert.match(workflow, /actions\/checkout@v7/);
     assert.match(workflow, /actions\/setup-node@v6/);
     assert.match(workflow, /node-version:\s*24/);
@@ -495,6 +498,7 @@ try {
       "node tools/test_phase02_blueprint.mjs",
       "node tools/test_phase03_cross_platform.mjs",
       "node tools/test_phase04_multiplayer_arena.mjs",
+      "node tools/test_phase05_persistent_progression.mjs",
     ]) assert.match(workflow, new RegExp(command.replaceAll("/", "\\/")));
   });
 
@@ -511,10 +515,11 @@ try {
     assert.match(docs, /PR #3[^\n]*merged|merged[^\n]*PR #3/i);
   });
 
-  criterion("Phase 04 branch and active status are recorded", () => {
+  criterion("Phase 04 merged baseline and Phase 05 active branch are recorded", () => {
     const docs = `${readText("README.md")}\n${readText("docs/DEVELOPMENT_STATUS.md")}`;
-    assert.match(docs, /codex\/phase-04-multiplayer-arena/);
-    assert.match(docs, /Phase 04[^\n]*(?:active|Active|implementation)/);
+    assert.match(docs, /213f3581bd242523e34601cfefa5b5a74770ddee/);
+    assert.match(docs, /PR #5[^\n]*merged|merged[^\n]*PR #5/i);
+    assert.match(docs, /codex\/phase-05-persistent-progression/);
   });
 
   criterion("phase02 manifest remains the sole Phase 02 through 04 owner", () => {
@@ -555,8 +560,8 @@ try {
   });
 
   criterion("permanent instance count stays explicit and auditable", () => {
-    assert.ok(instanceSteps.length >= 500, `Expected expanded permanent arena, found only ${instanceSteps.length} instances`);
-    assert.ok(instanceSteps.length < 750, `Permanent arena exceeded the bounded authored budget: ${instanceSteps.length}`);
+    assert.ok(instanceSteps.length >= 616, `Expected the complete inherited arena, found only ${instanceSteps.length} instances`);
+    assert.ok(instanceSteps.length < 1_000, `Permanent authored content exceeded the bounded Phase 05 budget: ${instanceSteps.length}`);
   });
 
   console.log(

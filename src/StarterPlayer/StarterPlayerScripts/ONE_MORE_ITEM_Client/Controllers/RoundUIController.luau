@@ -242,10 +242,10 @@ local function renderCountValue(self: InternalController, key: string, value: nu
 	if key == "ShipmentValue" then
 		self._labels.ShipmentValue.Text = string.format("%d TAPE", rounded)
 	elseif key == "SessionBank" then
-		self._labels.SessionBank.Text = string.format("BANK %d TAPE", rounded)
+		self._labels.SessionBank.Text = string.format("TAPE %d", rounded)
 		local snapshot = self._snapshot
 		if snapshot ~= nil and self._assigned and snapshot.State == "Results" then
-			self._labels.SessionTotal.Text = string.format("SESSION %d TAPE", rounded)
+			self._labels.SessionTotal.Text = string.format("TOTAL TAPE %d", rounded)
 		end
 	elseif key == "ResultValue" then
 		local snapshot = self._snapshot
@@ -665,7 +665,7 @@ function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Sna
 		self._labels.ResultReason.Text = formatReason(snapshot.ResultReason)
 		if failedResult then
 			self._labels.ResultValue.Text = string.format("LOST %d TAPE", snapshot.ResultLostValue)
-			self._labels.SessionTotal.Text = string.format("SESSION %d TAPE", snapshot.SessionBank)
+			self._labels.SessionTotal.Text = string.format("TOTAL TAPE %d", snapshot.SessionBank)
 		end
 	end
 	self._statusBanner.Visible = self._statusBanner.Text ~= ""
