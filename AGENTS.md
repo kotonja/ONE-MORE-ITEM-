@@ -34,6 +34,9 @@
 - Test failures must be visible, include exact messages, and must never be reported as success.
 - Keep fixed seeds for fuzz/property tests and record test totals, failures, seed/case count, and non-gating benchmark results.
 - Do not claim a test passed unless fresh Output proves it.
+- Phase 05 acceptance fixtures are Studio-only, disabled by default, and armed only by the three attributes on `ServerScriptService.ONE_MORE_ITEM_Server`: `ONE_MORE_ITEM_Phase05AcceptanceMode`, `ONE_MORE_ITEM_Phase05AcceptanceTargetUserId`, and `ONE_MORE_ITEM_Phase05AcceptanceExpiresAt`.
+- An armed Phase 05 acceptance fixture selects the injected `MemoryProfileAdapter` for the entire test server, not only the targeted player. Allowed modes are `Unavailable`, `SaveDelayed`, and `Conflict`; expiry must be an integer no more than 600 seconds in the future.
+- Clear all three Phase 05 acceptance attributes before any normal Studio-test persistence run, cloud save, or cloud reopen. Never save or publish a place while an acceptance fixture is armed, and never treat memory-fixture evidence as a substitute for real Studio-test-store persistence.
 
 ## Scope and status
 

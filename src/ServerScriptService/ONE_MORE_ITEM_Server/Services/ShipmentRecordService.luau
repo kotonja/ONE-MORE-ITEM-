@@ -7,6 +7,7 @@ local RoundMath = require(Root.Shared.Round.RoundMath)
 local RoundTypes = require(Root.Shared.Round.RoundTypes)
 local DisplayNameSanitizer = require(Root.Shared.World.DisplayNameSanitizer)
 local ShipmentTypes = require(Root.Shared.World.ShipmentTypes)
+local ProfileConfig = require(script.Parent.Profile.ProfileConfig)
 
 type RoundRecord = RoundTypes.RoundRecord
 type PlacedItemPresentation = RoundTypes.PlacedItemPresentation
@@ -74,13 +75,18 @@ function ShipmentRecordService.Capture(
 		return nil, "PLACED_ITEM_COUNT_MISMATCH"
 	end
 
-	local shipmentId = string.format("%d:%d", round.PlayerUserId, round.RoundId)
-	if self._seenIds[shipmentId] then
+	local outcomeId = round.OutcomeId
+	if type(outcomeId) ~= "string" or outcomeId == "" or #outcomeId > ProfileConfig.MAXIMUM_OUTCOME_ID_LENGTH then
+		return nil, "INVALID_OUTCOME_ID"
+	end
+	if self._seenIds[outcomeId] then
 		return nil, "DUPLICATE_SHIPMENT"
 	end
 
 	local record = table.freeze({
-		ShipmentId = shipmentId,
+		OutcomeId = outcomeId,
+		-- ShipmentId remains as a compatibility alias for Phase 04 cosmetic consumers.
+		ShipmentId = outcomeId,
 		PlayerUserId = round.PlayerUserId,
 		PlayerDisplayName = DisplayNameSanitizer.Sanitize(player.DisplayName),
 		StationId = round.StationId,
@@ -94,7 +100,7 @@ function ShipmentRecordService.Capture(
 		PerfectShipment = round.ItemCount == RoundConfig.MAXIMUM_ITEMS,
 	}) :: ShipmentRecord
 
-	self._seenIds[shipmentId] = true
+	self._seenIds[outcomeId] = true
 	self._seenCount += 1
 	return record, "CAPTURED"
 end

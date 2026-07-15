@@ -54,6 +54,7 @@ export type Controller = {
 	GetMode: (self: Controller) -> InputMode,
 	ApplySnapshot: (self: Controller, snapshot: Snapshot, assigned: boolean) -> (),
 	SetAssigned: (self: Controller, assigned: boolean) -> (),
+	SetProfileMenuOpen: (self: Controller, isOpen: boolean) -> (),
 	RefreshContext: (self: Controller) -> (),
 	RefreshPointer: (self: Controller) -> (),
 	Destroy: (self: Controller) -> (),
@@ -70,6 +71,7 @@ type InternalController = Controller & {
 	_snapshot: Snapshot?,
 	_mode: InputMode,
 	_assigned: boolean,
+	_profileMenuOpen: boolean,
 	_touchActive: boolean,
 	_boundGamepadActions: number,
 	_repeatActive: boolean,
@@ -139,7 +141,8 @@ local function currentState(self: InternalController): string
 end
 
 local function awaitingPlacement(self: InternalController): boolean
-	return self._assigned
+	return not self._profileMenuOpen
+		and self._assigned
 		and currentState(self) == "AwaitingPlacement"
 		and not self._callbacks.IsPlacementPending()
 end
@@ -162,11 +165,11 @@ local function refreshContexts(self: InternalController)
 	local state = currentState(self)
 	local touch = self._touch
 	if touch ~= nil then
-		touch:SetContext(self._mode == "Touch", self._assigned, awaitingPlacement(self))
+		touch:SetContext(self._mode == "Touch" and not self._profileMenuOpen, self._assigned, awaitingPlacement(self))
 	end
 	local gamepad = self._gamepad
 	if gamepad ~= nil then
-		gamepad:SetContext(self._mode == "Gamepad", self._assigned, state)
+		gamepad:SetContext(self._mode == "Gamepad" and not self._profileMenuOpen, self._assigned, state)
 	end
 	observe(self)
 end
@@ -183,6 +186,7 @@ end
 
 local function handleKeyboardMouse(self: InternalController, input: InputObject, gameProcessed: boolean)
 	if self._destroyed
+		or self._profileMenuOpen
 		or self._mode ~= "KeyboardMouse"
 		or not self._assigned
 		or gameProcessed
@@ -236,6 +240,7 @@ local function bindAuthoredButtons(self: InternalController, buttons: Buttons)
 	local function connect(button: TextButton, gamepadSelectable: boolean, callback: () -> ())
 		table.insert(self._connections, button.Activated:Connect(function()
 			if self._destroyed
+				or self._profileMenuOpen
 				or not InputController.ShouldHandleAuthoredButton(
 					self._mode,
 					self._assigned,
@@ -294,6 +299,7 @@ function InputController.new(
 		_snapshot = nil,
 		_mode = modeStore:GetMode(),
 		_assigned = false,
+		_profileMenuOpen = false,
 		_touchActive = false,
 		_boundGamepadActions = 0,
 		_repeatActive = false,
@@ -344,7 +350,7 @@ function InputController.new(
 		handleKeyboardMouse(self, input, gameProcessed)
 	end))
 	table.insert(self._connections, UserInputService.InputChanged:Connect(function(input: InputObject)
-		if self._destroyed or self._mode ~= "KeyboardMouse" or isTyping() then
+		if self._destroyed or self._profileMenuOpen or self._mode ~= "KeyboardMouse" or isTyping() then
 			return
 		end
 		if input.UserInputType == Enum.UserInputType.MouseMovement then
@@ -380,6 +386,14 @@ function ControllerMethods.SetAssigned(self: InternalController, assigned: boole
 		return
 	end
 	self._assigned = assigned
+	refreshContexts(self)
+end
+
+function ControllerMethods.SetProfileMenuOpen(self: InternalController, isOpen: boolean)
+	if self._destroyed or self._profileMenuOpen == isOpen then
+		return
+	end
+	self._profileMenuOpen = isOpen
 	refreshContexts(self)
 end
 

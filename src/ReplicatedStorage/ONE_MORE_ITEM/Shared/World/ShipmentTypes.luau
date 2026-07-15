@@ -5,6 +5,7 @@ local RoundTypes = require(script.Parent.Parent.Round.RoundTypes)
 export type PlacedItemPresentation = RoundTypes.PlacedItemPresentation
 
 export type ShipmentRecord = {
+	OutcomeId: string,
 	ShipmentId: string,
 	PlayerUserId: number,
 	PlayerDisplayName: string,

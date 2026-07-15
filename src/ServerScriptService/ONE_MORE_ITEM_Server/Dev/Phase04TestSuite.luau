@@ -267,6 +267,8 @@ local function roundRecord(userId: number, roundId: number, stationId: string, i
 	return {
 		PlayerUserId = userId,
 		RoundId = roundId,
+		OutcomeId = string.format("%d:phase04-test:%d", userId, roundId),
+		OutcomeProcessed = false,
 		StateVersion = 0,
 		State = "Shipping",
 		StationId = stationId,
@@ -301,6 +303,7 @@ local function shipmentRecord(sequence: number, value: number?, itemCount: numbe
 	end
 	table.freeze(items)
 	return table.freeze({
+		OutcomeId = string.format("test:%03d", sequence),
 		ShipmentId = string.format("test:%03d", sequence),
 		PlayerUserId = 1000 + sequence,
 		PlayerDisplayName = string.format("Player %d", sequence),
@@ -1211,6 +1214,12 @@ local function newEightRoundHarness(): any
 	local shipmentEvents: { any } = {}
 	local failureEvents: { any } = {}
 	local stateEvents: { any } = {}
+	local playerByUserId: { [number]: Player } = {}
+	local persistentTape: { [number]: number } = {}
+	for _, player in ipairs(players) do
+		playerByUserId[player.UserId] = player
+		persistentTape[player.UserId] = 0
+	end
 	local stationContract = {
 		GetStationId = function(_self: any, player: Player): string?
 			return stationByPlayer[player]
@@ -1225,18 +1234,44 @@ local function newEightRoundHarness(): any
 			clears[player] = (clears[player] or 0) + 1
 		end,
 	}
-	local service = RoundService.Create(
+	local service: any = nil
+	local profileContract = {
+		CanEnterGameplay = function(_self: any, _userId: number): boolean return true end,
+		CanMutate = function(_self: any, _userId: number): boolean return true end,
+		GetTape = function(_self: any, userId: number): number return persistentTape[userId] or 0 end,
+	}
+	local progressionContract = {
+		ApplyShipment = function(_self: any, userId: number, roundId: number, outcomeId: string, record: any): (any, string)
+			local player = playerByUserId[userId]
+			local round = service:GetRound(player)
+			local newTape = round.SessionBank + record.ShipmentValue
+			persistentTape[userId] = newTape
+			return { OutcomeId = outcomeId, RoundId = roundId, Duplicate = false, NewTape = newTape, TapeDelta = record.ShipmentValue }, "APPLIED"
+		end,
+		ApplyFailure = function(_self: any, userId: number, roundId: number, outcomeId: string, _itemCount: number): (any, string)
+			local player = playerByUserId[userId]
+			local round = service:GetRound(player)
+			persistentTape[userId] = round.SessionBank
+			return { OutcomeId = outcomeId, RoundId = roundId, Duplicate = false, NewTape = round.SessionBank, TapeDelta = 0 }, "APPLIED"
+		end,
+	}
+	service = RoundService.Create(
 		stationContract :: any,
 		worldContract :: any,
-		function(): number return clockState.Now end,
-		function(duration: number, callback: () -> ()) table.insert(timers, { Duration = duration, Callback = callback }) end,
-		function(player: Player, snapshot: any) table.insert(snapshots, { Player = player, Snapshot = snapshot }) end,
 		{
-			OnRoundStateChanged = function(player: Player, event: any) table.insert(stateEvents, { Player = player, Event = event }) end,
-			OnShipmentCompleted = function(record: any) table.insert(shipmentEvents, record) end,
-			OnRoundFailed = function(event: any) table.insert(failureEvents, event) end,
-		},
-		ShipmentRecordService.Create(function(): number return clockState.Now end)
+			Clock = function(): number return clockState.Now end,
+			Scheduler = function(duration: number, callback: () -> ()) table.insert(timers, { Duration = duration, Callback = callback }) end,
+			SnapshotSink = function(player: Player, snapshot: any) table.insert(snapshots, { Player = player, Snapshot = snapshot }) end,
+			EventSink = {
+				OnRoundStateChanged = function(player: Player, event: any) table.insert(stateEvents, { Player = player, Event = event }) end,
+				OnShipmentCompleted = function(record: any) table.insert(shipmentEvents, record) end,
+				OnRoundFailed = function(event: any) table.insert(failureEvents, event) end,
+			},
+			ShipmentRecordService = ShipmentRecordService.Create(function(): number return clockState.Now end),
+			ProfileService = profileContract,
+			ProgressionService = progressionContract,
+			ServerSessionId = "phase04-test-session",
+		}
 	)
 	return {
 		Players = players,
@@ -1647,7 +1682,8 @@ addSuite("Immutable shipment records", {
 			local record, reason = service:Capture(player, round)
 			expectEqual(reason, "CAPTURED")
 			expect(record ~= nil, "Record expected")
-			expectEqual(record.ShipmentId, "51:7")
+			expectEqual(record.OutcomeId, "51:phase04-test:7")
+			expectEqual(record.ShipmentId, record.OutcomeId)
 			expectEqual(record.PlayerDisplayName, "Test Player")
 			expectEqual(record.StationId, "station_05")
 			expectEqual(record.CreatedAt, 1234.5)
@@ -1672,7 +1708,8 @@ addSuite("Immutable shipment records", {
 			local record, reason = service:Capture(fakePlayer(72, "  Exact   Player  "), round)
 
 			expectEqual(reason, "CAPTURED")
-			expectEqual(record.ShipmentId, "72:9")
+			expectEqual(record.OutcomeId, "72:phase04-test:9")
+			expectEqual(record.ShipmentId, record.OutcomeId)
 			expectEqual(record.PlayerUserId, 72)
 			expectEqual(record.PlayerDisplayName, "Exact Player")
 			expectEqual(record.StationId, "station_07")
@@ -1771,7 +1808,8 @@ addSuite("Immutable shipment records", {
 			end
 			expectNoPlayerReference(record)
 			expectEqual(harness.Service:GetRound(player).RoundId, 2)
-			expectEqual(record.ShipmentId, string.format("%d:1", player.UserId))
+			expectEqual(record.OutcomeId, string.format("%d:phase04-test-session:1", player.UserId))
+			expectEqual(record.ShipmentId, record.OutcomeId)
 			expectEqual(record.StationId, "station_01")
 			expectEqual(record.ItemCount, 1)
 			expectEqual(record.BaseValueSum, 35)

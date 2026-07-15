@@ -1,4 +1,4 @@
-name: Phase 01–04 Node Validation
+name: Phase 01–05 Node Validation
 
 on:
   pull_request:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   node-validation:
-    name: Phase 01–04 Node Validation
+    name: Phase 01–05 Node Validation
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -37,3 +37,6 @@ jobs:
 
       - name: Run Phase 04 multiplayer arena smoke test
         run: node tools/test_phase04_multiplayer_arena.mjs
+
+      - name: Run Phase 05 persistent progression smoke test
+        run: node tools/test_phase05_persistent_progression.mjs

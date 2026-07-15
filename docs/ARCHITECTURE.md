@@ -119,7 +119,7 @@ The complete mappings, responsive matrix, safe-area contract, tests, verified ev
 
 ## Phase 04 permanent arena authoring
 
-The historically named `studio/phase02.manifest.json` remains the sole canonical owner of every Phase 02-04 permanent path. Its `stationPlacements` array defines eight ordered descriptors. `tools/build_phase02_blueprint.mjs` validates that exact order and expands the complete Station_01 subtree into eight explicit, independently auditable final station paths. Expansion is deterministic, parent-first, idempotent, and conflict safe; it never clones stations at runtime and never silently replaces a wrong-class object.
+The historically named `studio/phase02.manifest.json` remains the sole canonical owner of every Phase 02-05 permanent path. Its `stationPlacements` array defines eight ordered descriptors. `tools/build_phase02_blueprint.mjs` validates that exact order and expands the complete Station_01 subtree into eight explicit, independently auditable final station paths. Expansion is deterministic, parent-first, idempotent, and conflict safe; it never clones stations at runtime and never silently replaces a wrong-class object.
 
 Stations occupy a 38-stud ring at 45-degree intervals. Their local negative Z axis points toward the arena center. The authored transforms are:
 
@@ -177,3 +177,57 @@ One conditional Heartbeat connection accumulates fixed `1/30`-second steps while
 - Completed, failed, restarted, released, and drained state is explicitly destroyed so temporary runtime containers return to baseline.
 
 The complete hierarchy, operational limits, tests, current live evidence, and unfinished acceptance gates are documented in `docs/PHASE04_MULTIPLAYER_ARENA.md`.
+
+## Phase 05 profile ownership boundary
+
+Phase 05 replaces the Phase 04 session-only wallet with a server-owned Version 1 profile. `ProfileService` owns loaded profile tables, lifecycle, dirty revisions, lock ownership, one shared due-save scheduler, copied snapshots, bounded release, and shutdown. `ProgressionService` is a separate deterministic mutation boundary; it calculates rewards and never calls a DataStore. `RoundService` keeps round authority but asks progression to commit the outcome before publishing cosmetic shipment events. `CollectionShelfService` reads copied profile state and station ownership but contains no persistence logic.
+
+This dependency direction prevents circular ownership:
+
+```text
+DataStoreProfileAdapter / MemoryProfileAdapter
+                    |
+              ProfileService
+                    |
+           ProgressionService
+                    |
+              RoundService
+
+StationService -> ServerBootstrap coordination <- CollectionShelfService
+```
+
+Client profile presentation is similarly separate. `ClientProfileStore` accepts only copied `ProfileSnapshot` values and is not merged into `ClientRoundStore`. `ProfileUIController` correlates round and reward presentation by server-created OutcomeId without delaying or changing gameplay.
+
+## Phase 05 schema, stores, and locking
+
+The canonical profile persists only schema version, Tape, Packing XP, statistics, collection discovery/mastery/recent IDs, the bounded processed-outcome list, timestamps, and an optional server session. Rank, progress percentages, content display properties, world/grid/round state, and UI state are derived or transient.
+
+Non-Studio servers are configured to select `ONE_MORE_ITEM_PlayerProfiles_v1`; normal Studio persistence selects `ONE_MORE_ITEM_PlayerProfiles_StudioTest_v1`; deterministic tests inject `MemoryProfileAdapter`. No production-store test or rollout is claimed. `DataStoreProfileAdapter` is server-only and uses guarded `UpdateAsync` transforms for claim, save, heartbeat, and release. Transforms are synchronous non-yielding table operations; retry, request-budget waiting, and backoff occur outside them. `ProfileSchema` deep-copies and deterministically migrates nil, documented Version 0, or Version 1 data and rejects future versions.
+
+One identifier is created per server process, and each loaded player receives one secret lock token. A 60-second-or-less heartbeat and 180-second stale timeout govern ownership. Load may claim no lock, refresh the identical token, or take over a stale lock. Save/release verify the exact token. Losing ownership transitions the profile to Conflict and blocks further rewards rather than overwriting another server. Lock tokens and heartbeat metadata never replicate.
+
+## Phase 05 progression and receipts
+
+Every round creates `{UserId}:{ServerSessionId}:{RoundId}` at start. The same OutcomeId identifies its one possible successful or failed progression result. The profile retains at most 128 processed IDs; a duplicate returns an explicit zero-delta result, so Tape, XP, discovery, mastery, and statistics cannot be applied twice.
+
+Successful progression adds ShipmentValue Tape, formula-derived XP, discovery in immutable shipment order, one mastery count per shipped occurrence, and all shipment statistics. Failure adds only bounded consolation XP and the failed-round statistic. Every placed-item ID is validated before mutation, making the in-memory change atomic. Rank and mastery tiers are derived from strict shared definitions. Shelf/showcase presentation runs only after the authoritative mutation and cannot undo it.
+
+## Phase 05 load, save, and assignment lifecycle
+
+Player startup is join -> Loading -> Ready -> station assignment or FIFO waiting -> round. ClientReady may precede or follow load; neither condition assigns alone. Loading, Unavailable, and Conflict profiles cannot consume a station or enter reward-bearing gameplay. Waiting snapshots use a per-player monotonic `StateVersion`, so Loading, queued Ready, and Unavailable transitions at `RoundId=0` cannot be rejected as stale by the client store.
+
+One shared scheduler coalesces dirty mutations using a five-second debounce, catches them on a 60-second autosave interval, performs heartbeats, and caps simultaneous saves at eight. A captured save revision clears dirty state only if no newer mutation arrived. Failed owned writes become SaveDelayed and remain dirty for bounded retry; ownership loss becomes Conflict. Player removal closes mutation and releases round/station/shelf before the slow store path. `BindToClose` runs bounded concurrent final save/release work within a 25-second deadline.
+
+## Phase 05 Studio-only failure acceptance fixture
+
+The acceptance fixture is disabled by default and can run only when `RunService:IsStudio()` is true. It reads three attributes from `ServerScriptService.ONE_MORE_ITEM_Server`: `ONE_MORE_ITEM_Phase05AcceptanceMode`, optional `ONE_MORE_ITEM_Phase05AcceptanceTargetUserId`, and `ONE_MORE_ITEM_Phase05AcceptanceExpiresAt`. The only allowed modes are `Unavailable`, `SaveDelayed`, and `Conflict`; expiry must be a finite integer later than the current time and no more than 600 seconds ahead. An invalid or expired arming request is rejected.
+
+A valid fixture replaces the storage adapter for the entire test server with one `MemoryProfileAdapter`; the optional target only chooses which player receives the injected failure. This prevents any controlled outage or conflict test from touching the Studio-test or production store. The three attributes must be absent before every normal Studio-test persistence run, cloud save, or cloud reopen, and the place must never be saved or published while the fixture is armed. Fixture logs validate failure behavior, but cannot substitute for real Session A/B Studio-test-store persistence.
+
+## Phase 05 permanent UI, networking, and shelves
+
+The six gameplay remotes remain unchanged. `ReplicatedStorage.ONE_MORE_ITEM.ProfileNet.ProfileSnapshot` is a separate permanent server-to-client event with no mutation counterpart. Its presentation-safe session ID and monotonic revision let the client reject stale/duplicate snapshots while allowing a new profile presentation session. The snapshot exposes derived/copied Tape, XP, rank, collection, statistics, lifecycle, save state, and last reward, never receipts, lock data, keys, or internal tables.
+
+The canonical manifest permanently authors MetaBar, DataStatus, CollectionPanel with eight complete slots, DiscoveryReveal, RankUpBanner, Results additions, eight six-slot station shelves, and one script-free shelf proxy template. Runtime creates only temporary previews and at most six proxy Parts per shelf. Shelf selection is deterministic: up to three newest valid discoveries, then mastery tier, mastery count, and catalog order. Clear-before-render and station-scoped ownership prevent one player inheriting another player's display.
+
+The detailed contracts, exact formulas and thresholds, completed deterministic and Studio-test persistence evidence, and still-blocked final cloud-reopen/manual-device gates are documented in `docs/PHASE05_PERSISTENT_PROGRESSION.md`.

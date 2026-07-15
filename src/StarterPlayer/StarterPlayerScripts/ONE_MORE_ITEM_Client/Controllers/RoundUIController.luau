@@ -242,10 +242,10 @@ local function renderCountValue(self: InternalController, key: string, value: nu
 	if key == "ShipmentValue" then
 		self._labels.ShipmentValue.Text = string.format("%d TAPE", rounded)
 	elseif key == "SessionBank" then
-		self._labels.SessionBank.Text = string.format("BANK %d TAPE", rounded)
+		self._labels.SessionBank.Text = string.format("TAPE %d", rounded)
 		local snapshot = self._snapshot
 		if snapshot ~= nil and self._assigned and snapshot.State == "Results" then
-			self._labels.SessionTotal.Text = string.format("SESSION %d TAPE", rounded)
+			self._labels.SessionTotal.Text = string.format("TOTAL TAPE %d", rounded)
 		end
 	elseif key == "ResultValue" then
 		local snapshot = self._snapshot
@@ -389,6 +389,17 @@ local function formatReason(reason: string?): string
 		return "TIME UP — SHIPPED SAFELY"
 	end
 	return string.gsub(reason, "_", " ")
+end
+
+function RoundUIController.ResolveWaitingCopy(reason: string?): (string, string, Color3)
+	if reason == "DATA UNAVAILABLE | REJOIN TO RETRY" then
+		return "DATA UNAVAILABLE", "REJOIN TO RETRY", PresentationTokens.Color.Red
+	elseif reason == "PROFILE OPEN ELSEWHERE | CLOSE THE OTHER SESSION AND REJOIN" then
+		return "PROFILE OPEN ELSEWHERE", "CLOSE THE OTHER SESSION AND REJOIN", PresentationTokens.Color.Red
+	elseif reason == "LOADING YOUR PROFILE" then
+		return "LOADING YOUR PROFILE", "", PresentationTokens.Color.Cyan
+	end
+	return "WAITING FOR A PACKING STATION", "YOU WILL BE ASSIGNED AUTOMATICALLY", PresentationTokens.Color.Cyan
 end
 
 local function isFailureResult(snapshot: Snapshot): boolean
@@ -652,11 +663,12 @@ function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Sna
 	end
 
 	if waiting then
-		self._statusBanner.Text = "WAITING FOR A PACKING STATION"
-		self._statusBanner.TextColor3 = PresentationTokens.Color.SecondaryText
-		self._labels.ResultTitle.Text = "WAITING FOR A PACKING STATION"
-		self._labels.ResultTitle.TextColor3 = PresentationTokens.Color.Cyan
-		self._labels.ResultReason.Text = "YOU WILL BE ASSIGNED AUTOMATICALLY"
+		local title, instruction, color = RoundUIController.ResolveWaitingCopy(snapshot.ResultReason)
+		self._statusBanner.Text = title
+		self._statusBanner.TextColor3 = color
+		self._labels.ResultTitle.Text = title
+		self._labels.ResultTitle.TextColor3 = color
+		self._labels.ResultReason.Text = instruction
 		self._labels.ResultValue.Text = ""
 		self._labels.SessionTotal.Text = ""
 	elseif results then
@@ -665,7 +677,7 @@ function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Sna
 		self._labels.ResultReason.Text = formatReason(snapshot.ResultReason)
 		if failedResult then
 			self._labels.ResultValue.Text = string.format("LOST %d TAPE", snapshot.ResultLostValue)
-			self._labels.SessionTotal.Text = string.format("SESSION %d TAPE", snapshot.SessionBank)
+			self._labels.SessionTotal.Text = string.format("TOTAL TAPE %d", snapshot.SessionBank)
 		end
 	end
 	self._statusBanner.Visible = self._statusBanner.Text ~= ""

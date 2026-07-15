@@ -317,6 +317,16 @@ function StationService.IsWaiting(self: StationServiceImpl, player: Player): boo
 end
 
 function StationService.AssignPlayer(self: StationServiceImpl, player: Player): AssignmentResult
+	if not self._isPlayerEligible(player) then
+		return {
+			Assigned = false,
+			Waiting = false,
+			StationId = nil,
+			StationIndex = nil,
+			QueuePosition = nil,
+			Reason = "INELIGIBLE",
+		}
+	end
 	local existing = self._playerToStation[player]
 	if existing ~= nil then
 		self:RebindCharacter(player, player.Character)
