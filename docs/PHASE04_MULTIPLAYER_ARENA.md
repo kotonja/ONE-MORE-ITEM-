@@ -6,7 +6,7 @@ Phase 04 converts the approved single-station vertical slice into an authored ei
 
 **Implementation complete and accepted.** The authored arena, station-generalized production architecture, concurrent isolation, shipment/showcase pipeline, one-shot overflow warning, displays, deterministic Studio tests, five-client Station_05 integration, final cleanup, normal cloud save, complete Studio close, and direct no-resynchronization reopen parity passed. Station_07 completion, the full cross-platform multiplayer matrix, physical-device coverage, and a visible 12-shipment soak remain unpassed extended QA in issue #4 and are not claimed here.
 
-Phase 03 is merged through PR #3 at `014ff3964eb63f22f8527894067cddb1b4f98070`. Phase 04 is developed on `codex/phase-04-multiplayer-arena` in draft PR #5. Pre-release QA issue #4 remains open. `main` is unchanged and Phase 05 has not begun.
+Phase 03 is merged through PR #3 at `014ff3964eb63f22f8527894067cddb1b4f98070`. Phase 04 was subsequently squash-merged through PR #5 at `213f3581bd242523e34601cfefa5b5a74770ddee`. Phase 05 is active on `codex/phase-05-persistent-progression` in draft PR #6; pre-release QA issue #4 remains open.
 
 ## Canonical ownership and authoring
 
@@ -282,8 +282,12 @@ The reopened place passed `672/672` managed paths, comprising 617 non-script ins
 
 ## Deferred by design
 
-Phase 04 deliberately excludes persistent Tape, DataStores, packing XP, ranks, collection, object mastery, daily challenges, starter missions, cosmetics, store/monetization, trading, pets, rebirths, multiple worlds, co-op packing, cheer reactions, global/cross-server leaderboards, analytics, quests, final object models, external models, sound, music, final particles, final Tape-wrap presentation, driving, delivery gameplay, camera orbit, haptics, and every Phase 05 system.
+At Phase 04 acceptance, this phase deliberately excluded persistent Tape, DataStores, packing XP, ranks, collection, object mastery, daily challenges, starter missions, cosmetics, store/monetization, trading, pets, rebirths, multiple worlds, co-op packing, cheer reactions, global/cross-server leaderboards, analytics, quests, final object models, external models, sound, music, final particles, final Tape-wrap presentation, driving, delivery gameplay, camera orbit, haptics, and every Phase 05 system.
+
+## Phase 05 cross-reference
+
+Phase 04 was subsequently squash-merged through PR #5 at `213f3581bd242523e34601cfefa5b5a74770ddee`. Phase 05 is active on `codex/phase-05-persistent-progression` in draft PR #6 and extends this protected arena baseline with server-owned profiles, persistent Tape/XP/collection/mastery/statistics, one separate server-to-client ProfileSnapshot event, permanent profile UI, and one permanent collection shelf per station. It does not change the six gameplay remotes or make the Phase 04 showcase authoritative for rewards. Its deterministic, Studio-test persistence, and controlled-failure gates passed; a later waiting-snapshot correction passed all five suites only in an offline recovery copy and is not cloud-saved. Final apply/save/close/direct-reopen parity and manual phone/gamepad collection opening remain incomplete. See `docs/PHASE05_PERSISTENT_PROGRESSION.md` for exact evidence.
 
 ## Exact next recommendation
 
-The next recommended phase is Phase 05, but do not begin it in this task. First review and merge draft PR #5 through a separate authorized action; keep issue #4 open for the explicitly deferred extended QA and leave `main` unchanged until that review.
+The historical Phase 04 recommendation was to review and merge PR #5 before Phase 05. That merge is complete. Phase 05 is now active but not accepted; do not proceed to Phase 06 until the cloud editor opens, the repository queue correction is synchronized and saved, every Studio process closes, the place reopens directly without synchronization, post-reopen parity and fresh suites/Output pass, manual phone/gamepad collection QA is resolved, and PR #6 records green exact-head CI. Do not begin Phase 06 from this document.
