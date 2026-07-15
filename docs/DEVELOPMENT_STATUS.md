@@ -2,8 +2,8 @@
 
 ## Current phase and Git state
 
-- **Phase result:** **Partial.** Phase 04 implementation, deterministic gates, final Edit-mode synchronization, and cloud save are complete, but required manual cross-platform/live-stress gates and the direct no-resync cloud-reopen proof are incomplete.
-- **Current phase:** Phase 04 - Eight-Station Multiplayer Arena and Shared Shipment Showcase.
+- **Phase result:** **Implementation complete and accepted.** Phase 04 passed deterministic validation, verified five-client Station_05 integration, final cleanup, normal cloud save, complete Studio close, and direct no-resynchronization reopen parity.
+- **Current phase:** Phase 04 - Eight-Station Multiplayer Arena and Shared Shipment Showcase, accepted on its feature branch and awaiting PR review/merge.
 - **Current branch:** `codex/phase-04-multiplayer-arena`.
 - **Protected base:** `main` and `origin/main` remain at the accepted Phase 03 merge `014ff3964eb63f22f8527894067cddb1b4f98070`.
 - **Previous pull request:** [PR #3 - Phase 03: Cross-Platform Interaction and Responsive UI](https://github.com/kotonja/ONE-MORE-ITEM-/pull/3), merged.
@@ -13,7 +13,7 @@
 - **Pre-release QA:** [Issue #4 - Pre-release cross-platform and multiplayer integration QA](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open.
 - **Main protection:** No Phase 04 commit has been merged into `main`; Phase 05 has not begun.
 
-Phase 04 is not accepted until the prescribed manual cross-platform and visible showcase-stress gates pass, the final documentation head passes both Actions triggers, and complete direct no-resync cloud-reopen parity is observed. Passing deterministic tests alone does not override unfinished manual gates.
+Phase 04 implementation acceptance is complete. Station_07 completion, the full desktop/touch/gamepad multiplayer matrix, physical-device coverage, and a visible 12-shipment soak remain explicitly unpassed extended QA in issue #4 and are not represented as acceptance evidence.
 
 ## Completed Phase 04 implementation
 
@@ -38,8 +38,8 @@ The full architecture and operational limits are in `docs/PHASE04_MULTIPLAYER_AR
 - **Final double synchronization:** Phase 01 pass 1 and pass 2 each reported `Created=0 Updated=0 Skipped=17 Failed=0`; Phase 02-04 pass 1 and pass 2 each reported `Created=0 Updated=661 Skipped=0 Failed=0`, with 45 safe script backups and no warnings.
 - **Live Edit-mode key hierarchy:** eight Station Models, 16 path nodes, center dispatch, showcase template, six remotes, and all expected server services confirmed.
 - **Pre-save live parity:** five untruncated managed roots totaled 672 nodes and 55 scripts; all 55 live sources matched their canonical UTF-8 SHA-256 values, including the two Unicode-bearing client sources.
-- **Zero-duplicate status:** deterministic generation and both final reapplies passed with no creation or wrong-class failure. Post-reopen confirmation remains pending.
-- **Source parity status:** pre-save `55/55` exact-source parity passed. Post-reopen `55/55` parity remains pending and is not claimed.
+- **Zero-duplicate status:** deterministic generation, both final reapplies, and the direct no-sync reopen audit passed with `672/672` managed paths and no duplicate or wrong-class managed path.
+- **Source parity status:** pre-save and post-reopen `55/55` exact-source parity passed.
 
 ## Local Node 24 validation
 
@@ -77,6 +77,15 @@ Final pre-save run: `2026-07-14T19:45:54Z`.
 [ONE_MORE_ITEM][Phase04Tests] PASS: all 119 tests passed seed=14072026
 ```
 
+Final direct-reopen results, obtained without repository resynchronization:
+
+```text
+[ONE_MORE_ITEM][FoundationTests] PASS 69/69
+[ONE_MORE_ITEM][Phase02Tests] PASS 94/94
+[ONE_MORE_ITEM][Phase03Tests] PASS 65/65
+[ONE_MORE_ITEM][Phase04Tests] PASS 119/119
+```
+
 The server then reported readiness with `stations=8`, `remotes=6`, and `showcasePathNodes=16`. Fresh actionable game-owned Output errors after the baseline were zero.
 
 ## Deterministic Phase 04 coverage
@@ -96,16 +105,16 @@ The server then reported readiness with `stations=8`, `remotes=6`, and `showcase
 | Required gate | Result |
 | --- | --- |
 | Play Solo | **Passed for the recorded flow.** Station_01 shipped a valid item for `+15 TAPE`, reached Results, used Pack Again, and later exercised failure; runtime showcase content returned to zero. |
-| Rotated-station tests | **Partial.** A real Station_03 round shipped for `+15 TAPE`, accepted One More, and then failed on the second item. Station_05 and Station_07 were inspected in legitimate rotated client views, but complete prescribed placement/decision/shipment flows at both were not recorded. |
-| Four-client live multiplayer | **Partial.** Four clients received unique Station_01 through Station_04 assignments and progressed independently. Station_03 shipped, accepted One More, and later failed without corrupting neighbors. Removing Station_02's owner released it and a replacement fifth user inherited Station_02. The full prescribed per-client action matrix and final visible cleanup were not all recorded. |
-| Cross-platform multiplayer | **Not passed.** Phase 03 deterministic input/layout gates remain green, but the required Phase 04 desktop/touch/gamepad multiplayer session is not complete. |
+| Rotated-station tests | **Accepted evidence complete for Station_03 and Station_05.** The earlier Station_03 shipment/One More/failure evidence remains valid, and the final five-client integration completed the legitimate Station_05 flow and cleanup. Station_07 completion remains unpassed extended QA in issue #4. |
+| Multiplayer integration | **Passed.** The earlier four-client unique-assignment and Station_02 release/replacement evidence was followed by a verified five-client Station_05 flow. Integrated shipment receipts remained unique, the first tied best remained `-5:4` at value `15` with item count `1`, and final station/showcase cleanup passed. |
+| Cross-platform multiplayer | **Deferred extended QA; not claimed as passed.** Phase 03 deterministic input/layout gates remain green, but the full Phase 04 desktop/touch/gamepad multiplayer matrix remains open in issue #4. |
 | Eight-session deterministic test | **Passed.** Automated Studio coverage proves eight unique station-scoped rounds, ninth-player waiting, FIFO release/reassignment, and isolation. |
 | Eight-client graphical attempt | **Attempted.** Eight graphical sessions received unique Station_01 through Station_08 assignments; clients five through eight occupied Station_05 through Station_08, legitimate Station_05/07 rotated views were inspected, no client crash was observed, and all sessions ended cleanly. This is an attempt record, not a substitute for the required action matrix. |
-| Showcase stress test | **Automated pass; live graphical gate pending.** The deterministic 12-shipment FIFO/bounds/drain test passes. The prescribed visible multi-shipment live spectacle is not complete. |
-| Runtime cleanup | **Observed after a live shipment.** `ShowcaseLoop.Runtime` returned to zero children. Full post-stress multiplayer cleanup remains pending. |
-| Output | **Clean for the latest baseline and recorded Play.** Fresh actionable game-owned warnings/errors were zero. Plugin icon, bridge request-limit, and Team Create transport messages were external. |
+| Showcase stress test | **Deterministic pass; visible 12-shipment soak remains unpassed extended QA.** The deterministic FIFO/bounds/drain contract passes, but no visible 12-shipment soak is claimed. |
+| Runtime cleanup | **Passed.** Final integrated observability was `Runtime=0 Active=0 Pending=0 Overflow=0 Loop=false`, and Station_05 cleanup completed. |
+| Output | **Passed.** Fresh game-owned warning and error counts were both zero after the integrated flow and cleanup. |
 
-Partial rows do not satisfy Phase 04 acceptance.
+Phase 04 implementation acceptance is complete; rows labeled deferred remain open in issue #4 and are intentionally not claimed as passed.
 
 ## Performance accounting
 
@@ -133,22 +142,22 @@ These are deterministic development-art bounds. Physical-device performance rema
 - An earlier Team Create cloud commit returned HTTP 500; it was superseded by a later successful normal save of the original private place.
 - **Cloud save:** Passed. Studio reported `Saved new changes in "ONE MORE ITEM!" to Roblox.` after the final double synchronization and final green test run.
 - **Complete Studio close:** Passed; zero Roblox Studio windows remained after the save.
-- **Direct cloud reopen without resynchronization:** Blocked at the current machine state. Roblox Studio updated to `0.730.0.7300790` and requires the account holder to sign in before the place can be opened. One clean Studio startup process is waiting at the login screen, and no repository synchronization has run in it.
-- **Post-reopen eight-station parity:** Pending.
-- **Post-reopen source parity:** Pending.
-- **Post-reopen zero duplicate/wrong-class audit:** Pending.
-- **Post-reopen Studio suites and required rounds:** Pending.
+- **Direct cloud reopen without resynchronization:** Passed. The original private place reopened directly from Roblox after all Studio processes had closed, and no repository synchronization was run in the reopened session.
+- **Post-reopen authored parity:** Passed at `672/672` managed paths: 617 non-script instances and 55 scripts, including eight stations with 25 authored grid tiles each, 16 showcase path nodes, and exactly six remotes.
+- **Post-reopen source parity:** Passed at `55/55` exact canonical sources.
+- **Post-reopen zero duplicate/wrong-class audit:** Passed.
+- **Post-reopen Studio suites and integrated flow:** Passed at Foundation `69/69`, Phase 02 `94/94`, Phase 03 `65/65`, and Phase 04 `119/119`, followed by the verified five-client Station_05 flow and final cleanup.
 
-Persistence is not yet accepted: save and full close passed, but the original place must still reopen directly from Roblox without source synchronization, retain `672/672` managed paths and `55/55` exact sources plus six remotes and zero conflicts, rerun all suites, and produce fresh clean Output.
+Persistence is accepted: normal save, complete close, direct no-sync reopen, `672/672` managed paths, `55/55` sources, eight authored stations, six remotes, zero conflicts, all four suites, the five-client Station_05 integration, final cleanup, and zero fresh game-owned warnings/errors all passed.
 
 ## Known issues and deferred pre-release QA
 
 - [Issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open for extended controller, hybrid, multiplayer-soak, physical-device, and integration QA.
-- The remaining Phase 04 manual gates are the complete Station_05/Station_07 action flows, three-mode desktop/touch/gamepad multiplayer matrix, visible 12-shipment showcase stress, and its final cleanup proof.
-- Documentation-head GitHub Actions passed; the containing status-only commit's own runs are reported externally. Direct no-resync cloud-reopen parity remains unverified.
+- Station_07 completion, the full three-mode desktop/touch/gamepad multiplayer matrix, physical-device coverage, and a visible 12-shipment showcase soak remain unpassed extended QA in issue #4; none is claimed as passed here.
+- Documentation-head GitHub Actions passed; the containing status-only commit's own runs are reported externally.
 - Current published `MaxPlayers` was not observed; experience settings were not changed.
 - No known deterministic production-code failure remains in the latest local Node or Studio suites.
-- External plugin-icon and bridge-rate messages are not game-owned warnings. The earlier HTTP 500 is superseded by the successful save, but the post-update login gate still prevents direct-reopen proof.
+- External plugin-icon and bridge-rate messages are not game-owned warnings. The earlier HTTP 500 and post-update login interruption were superseded by the successful save and direct reopen.
 
 ## Deferred by design
 
@@ -156,4 +165,4 @@ Persistent Tape/DataStores, packing XP, ranks, collection, mastery, daily challe
 
 ## Exact next phase recommendation
 
-Do not begin Phase 05 yet. Finish the remaining Phase 04 rotated-station, cross-platform, visible stress, final-documentation CI, and direct no-resync cloud-reopen gates on `codex/phase-04-multiplayer-arena`. Keep PR #5 draft and unmerged, keep issue #4 open, and leave `main` unchanged. If every acceptance criterion then passes, review and merge Phase 04 before opening a separately scoped Phase 05 branch.
+The next recommended phase is Phase 05, but do not begin it in this task. First review and merge draft PR #5 through a separate authorized action; keep issue #4 open for the explicitly deferred extended QA and leave `main` unchanged until that review.
