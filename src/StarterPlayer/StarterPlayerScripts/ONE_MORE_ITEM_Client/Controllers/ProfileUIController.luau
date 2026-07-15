@@ -1017,11 +1017,13 @@ function ProfileUIController.new(root: GuiObject, template: BasePart, callbacks:
 			setPanelOpen(self, not self._panelOpen)
 		end
 	end))
-	table.insert(self._connections, RunService.RenderStepped:Connect(function()
-		if not self._destroyed then
-			updateNumberAnimations(self)
-		end
-	end))
+	if RunService:IsClient() then
+		table.insert(self._connections, RunService.RenderStepped:Connect(function()
+			if not self._destroyed then
+				updateNumberAnimations(self)
+			end
+		end))
+	end
 	return self
 end
 
