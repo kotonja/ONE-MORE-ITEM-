@@ -142,6 +142,7 @@ try {
   const progressionSource = readText("src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Profile/ProgressionService.luau");
   const roundSource = readText("src/ServerScriptService/ONE_MORE_ITEM_Server/Services/RoundService.luau");
   const bootstrapSource = readText("src/ServerScriptService/ONE_MORE_ITEM_Server/ServerBootstrap.server.luau");
+  const roundUiSource = readText("src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/RoundUIController.luau");
   const networkTypesSource = readText("src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Net/NetworkTypes.luau");
 
   criterion("profile schema module exists", () => {
@@ -206,7 +207,36 @@ try {
     assert.match(memorySource, /SetLoadFailure/);
     assert.match(memorySource, /SetSaveFailure/);
     assert.match(memorySource, /SimulateServerCrash/);
+    assert.match(memorySource, /GetRequestCountForUser/);
     assert.doesNotMatch(memorySource, /DataStoreService|task\.wait/);
+    assert.match(bootstrapSource, /if not RunService:IsStudio\(\) then\s*return nil\s*end/);
+    assert.match(bootstrapSource, /ONE_MORE_ITEM_Phase05AcceptanceMode/);
+    assert.match(bootstrapSource, /ONE_MORE_ITEM_Phase05AcceptanceTargetUserId/);
+    assert.match(bootstrapSource, /ONE_MORE_ITEM_Phase05AcceptanceExpiresAt/);
+    assert.match(bootstrapSource, /INVALID_OR_EXPIRED_ARMING/);
+    assert.match(bootstrapSource, /local acceptanceAttributeHost = script\.Parent/);
+    assert.doesNotMatch(bootstrapSource, /game:GetAttribute\(ACCEPTANCE_/);
+    assert.match(bootstrapSource, /rawMode ~= "Unavailable"[\s\S]*rawMode ~= "SaveDelayed"[\s\S]*rawMode ~= "Conflict"/);
+    assert.match(bootstrapSource, /SetLoadFailure\(userId, ProfileConfig\.MAXIMUM_LOAD_ATTEMPTS\)/);
+    assert.match(bootstrapSource,
+      /snapshot\.State == "Saving"[\s\S]*snapshot\.LastReward\.TapeDelta > 0[\s\S]*SetSaveFailure\(userId, ACCEPTANCE_SAVE_FAILURE_COUNT\)/);
+    assert.match(bootstrapSource, /ForceSession\(player\.UserId,[\s\S]*ProcessDueSaves\(math\.huge\)/);
+    assert.match(bootstrapSource, /GetRequestCountForUser\("Load", userId\)/);
+    assert.match(bootstrapSource, /GetRequestCountForUser\("Save", userId\)/);
+    assert.match(bootstrapSource, /ReadStored\(userId\)/);
+    assert.match(bootstrapSource, /storedProgressionMatches=%s outcomeStable=%s receiptCount=%d/);
+    assert.match(bootstrapSource,
+      /if previousRound ~= nil then previousRound\.StateVersion \+ 1 else 1/);
+    assert.match(bootstrapSource, /local waitingStateVersions:\s*\{ \[Player\]: number \} = \{\}/);
+    assert.match(bootstrapSource, /local function nextWaitingStateVersion/);
+    assert.match(bootstrapSource, /nextVersion = math\.max\(nextVersion, minimumStateVersion\)/);
+    assert.match(bootstrapSource, /StateVersion = nextWaitingStateVersion\(player, stateVersion\)/);
+    assert.match(bootstrapSource, /waitingStateVersions\[player\] = nil/);
+    assert.match(roundUiSource, /function RoundUIController\.ResolveWaitingCopy/);
+    assert.match(roundUiSource, /"DATA UNAVAILABLE", "REJOIN TO RETRY"/);
+    assert.match(roundUiSource, /"PROFILE OPEN ELSEWHERE", "CLOSE THE OTHER SESSION AND REJOIN"/);
+    assert.match(bootstrapSource,
+      /local profileAdapter = if acceptanceFixture ~= nil then acceptanceFixture\.Adapter else DataStoreProfileAdapter\.Create\(\)/);
   });
 
   criterion("session-lock fields are persisted", () => {

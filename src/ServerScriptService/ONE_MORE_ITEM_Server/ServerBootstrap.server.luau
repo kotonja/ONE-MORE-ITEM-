@@ -2,6 +2,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local function requireDirect(parent: Instance, name: string, className: string): Instance
 	local child = parent:WaitForChild(name)
@@ -91,7 +92,10 @@ local ArenaAnnouncementService = require(script.Parent.Services.ArenaAnnouncemen
 local CollectionShelfService = require(script.Parent.Services.CollectionShelfService)
 local ProfileModules = script.Parent.Services.Profile
 local DataStoreProfileAdapter = require(ProfileModules.DataStoreProfileAdapter)
+local MemoryProfileAdapter = require(ProfileModules.MemoryProfileAdapter)
+local ProfileConfig = require(ProfileModules.ProfileConfig)
 local ProfileService = require(ProfileModules.ProfileService)
+local ProfileSnapshotBuilder = require(ProfileModules.ProfileSnapshotBuilder)
 local ProgressionService = require(ProfileModules.ProgressionService)
 
 type StationRecord = StationService.StationRecord
@@ -99,6 +103,221 @@ type RoundStateEvent = RoundService.RoundStateEvent
 type HighRiskMilestoneEvent = RoundService.HighRiskMilestoneEvent
 type RoundFailureEvent = RoundService.RoundFailureEvent
 type ShipmentRecord = RoundService.ShipmentRecord
+type AcceptanceMode = "Unavailable" | "SaveDelayed" | "Conflict"
+type AcceptanceFixture = {
+	Mode: AcceptanceMode,
+	Adapter: any,
+	TargetUserId: number?,
+	PreparedUserIds: { [number]: boolean },
+	SawSaveDelayed: boolean,
+	LoggedRecovered: boolean,
+	SaveFailureArmed: boolean,
+	DelayedProgressionFingerprint: string?,
+	DelayedRewardOutcomeId: string?,
+}
+
+local ACCEPTANCE_MODE_ATTRIBUTE = "ONE_MORE_ITEM_Phase05AcceptanceMode"
+local ACCEPTANCE_TARGET_USER_ID_ATTRIBUTE = "ONE_MORE_ITEM_Phase05AcceptanceTargetUserId"
+local ACCEPTANCE_EXPIRES_AT_ATTRIBUTE = "ONE_MORE_ITEM_Phase05AcceptanceExpiresAt"
+local ACCEPTANCE_MAXIMUM_ARM_SECONDS = 600
+local ACCEPTANCE_SAVE_FAILURE_COUNT = 2
+local ACCEPTANCE_CONFLICT_READY_TIMEOUT_SECONDS = 10
+local ACCEPTANCE_CONFLICT_SETTLE_SECONDS = 0.5
+local acceptanceAttributeHost = script.Parent
+
+local function createAcceptanceFixture(): AcceptanceFixture?
+	if not RunService:IsStudio() then
+		return nil
+	end
+	local rawMode = acceptanceAttributeHost:GetAttribute(ACCEPTANCE_MODE_ATTRIBUTE)
+	if rawMode ~= "Unavailable" and rawMode ~= "SaveDelayed" and rawMode ~= "Conflict" then
+		return nil
+	end
+	local rawExpiresAt = acceptanceAttributeHost:GetAttribute(ACCEPTANCE_EXPIRES_AT_ATTRIBUTE)
+	local now = os.time()
+	if type(rawExpiresAt) ~= "number"
+		or rawExpiresAt ~= rawExpiresAt
+		or rawExpiresAt == math.huge
+		or rawExpiresAt == -math.huge
+		or rawExpiresAt % 1 ~= 0
+		or rawExpiresAt <= now
+		or rawExpiresAt > now + ACCEPTANCE_MAXIMUM_ARM_SECONDS
+	then
+		print("[ONE_MORE_ITEM][Phase05Acceptance] disabled reason=INVALID_OR_EXPIRED_ARMING")
+		return nil
+	end
+	local rawTargetUserId = acceptanceAttributeHost:GetAttribute(ACCEPTANCE_TARGET_USER_ID_ATTRIBUTE)
+	local targetUserId: number? = nil
+	if rawTargetUserId ~= nil then
+		if type(rawTargetUserId) ~= "number"
+			or rawTargetUserId ~= rawTargetUserId
+			or rawTargetUserId == math.huge
+			or rawTargetUserId == -math.huge
+			or rawTargetUserId % 1 ~= 0
+			or rawTargetUserId == 0
+		then
+			print("[ONE_MORE_ITEM][Phase05Acceptance] disabled reason=INVALID_TARGET_USER_ID")
+			return nil
+		end
+		targetUserId = rawTargetUserId
+	end
+	print(string.format(
+		"[ONE_MORE_ITEM][Phase05Acceptance] enabled mode=%s target=%s adapter=memory expiresIn=%d",
+		rawMode,
+		if targetUserId == nil then "first-player" else "configured-user",
+		rawExpiresAt - now
+	))
+	return {
+		Mode = rawMode :: AcceptanceMode,
+		Adapter = MemoryProfileAdapter.Create(),
+		TargetUserId = targetUserId,
+		PreparedUserIds = {},
+		SawSaveDelayed = false,
+		LoggedRecovered = false,
+		SaveFailureArmed = false,
+		DelayedProgressionFingerprint = nil,
+		DelayedRewardOutcomeId = nil,
+	}
+end
+
+local acceptanceFixture = createAcceptanceFixture()
+
+local function isAcceptanceTarget(userId: number): boolean
+	local fixture = acceptanceFixture
+	if fixture == nil then
+		return false
+	end
+	if fixture.TargetUserId == nil then
+		fixture.TargetUserId = userId
+	end
+	return fixture.TargetUserId == userId
+end
+
+local function prepareAcceptancePlayer(userId: number): boolean
+	local fixture = acceptanceFixture
+	if fixture == nil or not isAcceptanceTarget(userId) or fixture.PreparedUserIds[userId] then
+		return false
+	end
+	fixture.PreparedUserIds[userId] = true
+	if fixture.Mode == "Unavailable" then
+		fixture.Adapter:SetLoadFailure(userId, ProfileConfig.MAXIMUM_LOAD_ATTEMPTS)
+	end
+	return true
+end
+
+local function acceptanceProgressionFingerprint(snapshot: any): string
+	local discoveredParts: { string } = {}
+	for _, itemId in ipairs(snapshot.DiscoveredItemIds or {}) do
+		table.insert(discoveredParts, tostring(itemId))
+	end
+	table.sort(discoveredParts)
+	local masteryParts: { string } = {}
+	for itemId, count in pairs(snapshot.MasteryCounts or {}) do
+		table.insert(masteryParts, string.format("%s:%s", tostring(itemId), tostring(count)))
+	end
+	table.sort(masteryParts)
+	local stats = snapshot.Stats or {}
+	local reward = snapshot.LastReward
+	return table.concat({
+		tostring(snapshot.Tape),
+		tostring(snapshot.PackingXP),
+		tostring(snapshot.RankIndex),
+		table.concat(discoveredParts, ","),
+		table.concat(masteryParts, ","),
+		tostring(stats.TotalSuccessfulShipments),
+		tostring(stats.TotalItemsShipped),
+		tostring(stats.HighestItemsInShipment),
+		tostring(stats.BestShipmentValue),
+		tostring(stats.PerfectShipments),
+		tostring(stats.TotalFailedRounds),
+		tostring(stats.TotalTapeEarned),
+		if reward == nil then "nil" else tostring(reward.OutcomeId),
+		if reward == nil then "nil" else tostring(reward.TapeDelta),
+		if reward == nil then "nil" else tostring(reward.XPDelta),
+		if reward == nil then "nil" else tostring(reward.Duplicate),
+	}, "|")
+end
+
+local function countStoredOutcomeReceipts(profile: any, outcomeId: string?): number
+	if profile == nil or outcomeId == nil or profile.Receipts == nil then
+		return 0
+	end
+	local count = 0
+	for _, storedOutcomeId in ipairs(profile.Receipts.ProcessedOutcomeIds or {}) do
+		if storedOutcomeId == outcomeId then
+			count += 1
+		end
+	end
+	return count
+end
+
+local function observeAcceptanceSnapshot(userId: number, snapshot: any)
+	local fixture = acceptanceFixture
+	if fixture == nil or not isAcceptanceTarget(userId) then
+		return
+	end
+	if fixture.Mode == "SaveDelayed"
+		and not fixture.SaveFailureArmed
+		and snapshot.State == "Saving"
+		and snapshot.LastReward ~= nil
+		and (snapshot.LastReward.TapeDelta > 0 or snapshot.LastReward.XPDelta > 0)
+	then
+		fixture.SaveFailureArmed = true
+		fixture.Adapter:SetSaveFailure(userId, ACCEPTANCE_SAVE_FAILURE_COUNT)
+		print(string.format(
+			"[ONE_MORE_ITEM][Phase05Acceptance] mode=SaveDelayed armed=true outcomeType=%s",
+			tostring(snapshot.LastReward.OutcomeType)
+		))
+	end
+	if fixture.Mode == "Unavailable" and snapshot.State == "Unavailable" then
+		print(string.format(
+			"[ONE_MORE_ITEM][Phase05Acceptance] mode=Unavailable state=Unavailable loadAttempts=%d",
+			fixture.Adapter:GetRequestCountForUser("Load", userId)
+		))
+	elseif fixture.Mode == "SaveDelayed" and snapshot.State == "SaveDelayed" then
+		if not fixture.SawSaveDelayed then
+			fixture.SawSaveDelayed = true
+			fixture.DelayedProgressionFingerprint = acceptanceProgressionFingerprint(snapshot)
+			fixture.DelayedRewardOutcomeId = if snapshot.LastReward ~= nil then snapshot.LastReward.OutcomeId else nil
+			print("[ONE_MORE_ITEM][Phase05Acceptance] mode=SaveDelayed state=SaveDelayed progressionCaptured=true")
+		end
+	elseif fixture.Mode == "SaveDelayed"
+		and fixture.SawSaveDelayed
+		and not fixture.LoggedRecovered
+		and snapshot.State == "Ready"
+		and snapshot.SaveState == "Saved"
+	then
+		fixture.LoggedRecovered = true
+		local memoryProgressionStable = fixture.DelayedProgressionFingerprint == acceptanceProgressionFingerprint(snapshot)
+		local outcomeStable = fixture.DelayedRewardOutcomeId ~= nil
+			and snapshot.LastReward ~= nil
+			and snapshot.LastReward.OutcomeId == fixture.DelayedRewardOutcomeId
+			and snapshot.LastReward.Duplicate == false
+		local storedProfile = fixture.Adapter:ReadStored(userId)
+		local storedProgressionMatches = false
+		if storedProfile ~= nil then
+			local storedSnapshot = ProfileSnapshotBuilder.Build(
+				storedProfile,
+				"Ready",
+				"Saved",
+				snapshot.Revision,
+				snapshot.ProfileSessionId,
+				snapshot.LastReward
+			)
+			storedProgressionMatches = fixture.DelayedProgressionFingerprint
+				== acceptanceProgressionFingerprint(storedSnapshot)
+		end
+		local receiptCount = countStoredOutcomeReceipts(storedProfile, fixture.DelayedRewardOutcomeId)
+		print(string.format(
+			"[ONE_MORE_ITEM][Phase05Acceptance] mode=SaveDelayed state=Ready saveState=Saved saveAttempts=%d memoryProgressionStable=%s storedProgressionMatches=%s outcomeStable=%s receiptCount=%d",
+			fixture.Adapter:GetRequestCountForUser("Save", userId),
+			tostring(memoryProgressionStable),
+			tostring(storedProgressionMatches),
+			tostring(outcomeStable),
+			receiptCount
+		))
+	end
+end
 
 local readyPlayers: { [Player]: boolean } = {}
 local removingPlayers: { [Player]: boolean } = {}
@@ -110,18 +329,37 @@ local worldItemService: any = nil
 local stationDisplayService: any = nil
 local collectionShelfService: any = nil
 local roundService: any = nil
+local waitingStateVersions: { [Player]: number } = {}
+local sendWaitingSnapshot: (Player, number?, number?) -> () = function(
+	_player: Player,
+	_roundId: number?,
+	_stateVersion: number?
+)
+	-- Replaced before players can join; keeps lifecycle wiring deterministic during bootstrap.
+end
+
+local function nextWaitingStateVersion(player: Player, minimumStateVersion: number?): number
+	local nextVersion = (waitingStateVersions[player] or 0) + 1
+	if minimumStateVersion ~= nil then
+		nextVersion = math.max(nextVersion, minimumStateVersion)
+	end
+	waitingStateVersions[player] = nextVersion
+	return nextVersion
+end
 
 local function playerForUserId(userId: number): Player?
 	return Players:GetPlayerByUserId(userId)
 end
 
-profileService = ProfileService.Create(DataStoreProfileAdapter.Create(), {
+local profileAdapter = if acceptanceFixture ~= nil then acceptanceFixture.Adapter else DataStoreProfileAdapter.Create()
+profileService = ProfileService.Create(profileAdapter, {
 	SnapshotSink = function(userId: number, snapshot: any)
 		local player = playerForUserId(userId)
 		if player == nil then
 			return
 		end
 		ProfileSnapshot:FireClient(player, snapshot)
+		observeAcceptanceSnapshot(userId, snapshot)
 		if stationService ~= nil and collectionShelfService ~= nil then
 			local stationId = stationService:GetStationId(player)
 			local profile = profileService:GetProfileCopy(userId)
@@ -139,8 +377,27 @@ profileService = ProfileService.Create(DataStoreProfileAdapter.Create(), {
 			return
 		end
 		if state == "Conflict" or state == "Unavailable" or state == "Releasing" or state == "Released" then
+			local previousRound = roundService:GetRound(player)
 			roundService:RemovePlayer(player)
-			stationService:ReleasePlayer(player)
+			local release = stationService:ReleasePlayer(player)
+			if state == "Conflict" or state == "Unavailable" then
+				sendWaitingSnapshot(
+					player,
+					if previousRound ~= nil then previousRound.RoundId else nil,
+					if previousRound ~= nil then previousRound.StateVersion + 1 else 1
+				)
+			end
+			if state == "Conflict" and isAcceptanceTarget(userId) then
+				local shelfRuntimeCount = if release.ReleasedStationId ~= nil
+					then collectionShelfService:GetRuntimeCount(release.ReleasedStationId)
+					else 0
+				print(string.format(
+					"[ONE_MORE_ITEM][Phase05Acceptance] mode=Conflict roundCleared=%s stationReleased=%s shelfRuntime=%d",
+					tostring(roundService:GetRound(player) == nil),
+					tostring(release.Released),
+					shelfRuntimeCount
+				))
+			end
 		elseif (state == "Ready" or state == "Saving" or state == "SaveDelayed")
 			and stationService:GetStationId(player) == nil
 		then
@@ -231,11 +488,11 @@ local function waitingReason(player: Player): string
 	return "WAITING FOR A PACKING STATION"
 end
 
-local function sendWaitingSnapshot(player: Player)
+sendWaitingSnapshot = function(player: Player, roundId: number?, stateVersion: number?)
 	RoundSnapshot:FireClient(player, {
-		RoundId = 0,
+		RoundId = roundId or 0,
 		OutcomeId = nil,
-		StateVersion = 0,
+		StateVersion = nextWaitingStateVersion(player, stateVersion),
 		State = "Waiting",
 		StationId = "",
 		CurrentItemId = nil,
@@ -317,20 +574,65 @@ end
 
 local function syncPlayerState(player: Player)
 	if not profileService:CanEnterGameplay(player.UserId) then
-		sendWaitingSnapshot(player)
+		sendWaitingSnapshot(player, nil, nil)
 		return
 	end
 	if stationService:GetStationId(player) == nil then
 		assignEligiblePlayer(player)
 	end
 	if stationService:GetStationId(player) == nil then
-		sendWaitingSnapshot(player)
+		sendWaitingSnapshot(player, nil, nil)
 	elseif readyPlayers[player] then
 		roundService:HandleClientReady(player)
 	end
 end
 
+local function scheduleAcceptanceConflict(player: Player)
+	local fixture = acceptanceFixture
+	if fixture == nil or fixture.Mode ~= "Conflict" or not isAcceptanceTarget(player.UserId) then
+		return
+	end
+	task.spawn(function()
+		local readyDeadline = os.clock() + ACCEPTANCE_CONFLICT_READY_TIMEOUT_SECONDS
+		while player.Parent == Players
+			and not removingPlayers[player]
+			and (not readyPlayers[player] or stationService:GetStationId(player) == nil)
+			and os.clock() < readyDeadline
+		do
+			task.wait(0.1)
+		end
+		if player.Parent ~= Players
+			or removingPlayers[player]
+			or not readyPlayers[player]
+			or stationService:GetStationId(player) == nil
+		then
+			print("[ONE_MORE_ITEM][Phase05Acceptance] mode=Conflict triggered=false reason=PLAYER_NOT_READY")
+			return
+		end
+		task.wait(ACCEPTANCE_CONFLICT_SETTLE_SECONDS)
+		if player.Parent ~= Players or removingPlayers[player] or profileService:GetState(player.UserId) ~= "Ready" then
+			print("[ONE_MORE_ITEM][Phase05Acceptance] mode=Conflict triggered=false reason=STATE_CHANGED")
+			return
+		end
+		local now = math.floor(workspace:GetServerTimeNow())
+		fixture.Adapter:ForceSession(player.UserId, {
+			Token = "phase05-acceptance-foreign-lock",
+			JobId = "phase05-acceptance-foreign-job",
+			PlaceId = game.PlaceId,
+			AcquiredAt = now,
+			HeartbeatAt = now,
+		})
+		local processed = profileService:ProcessDueSaves(math.huge)
+		print(string.format(
+			"[ONE_MORE_ITEM][Phase05Acceptance] mode=Conflict triggered=true processed=%d finalState=%s",
+			processed,
+			tostring(profileService:GetState(player.UserId))
+		))
+	end)
+end
+
 local function beginProfileLoad(player: Player)
+	local acceptanceTarget = prepareAcceptancePlayer(player.UserId)
 	task.spawn(function()
 		local success, code = profileService:LoadPlayer(player.UserId)
 		if player.Parent ~= Players or removingPlayers[player] then
@@ -341,9 +643,16 @@ local function beginProfileLoad(player: Player)
 		if success then
 			assignEligiblePlayer(player)
 			syncPlayerState(player)
+			if acceptanceTarget then
+				scheduleAcceptanceConflict(player)
+			end
 		else
-			warn(string.format("[ONE_MORE_ITEM][Profile] load ended userId=%d code=%s", player.UserId, code))
-			sendWaitingSnapshot(player)
+			if acceptanceTarget and acceptanceFixture ~= nil and acceptanceFixture.Mode == "Unavailable" then
+				print(string.format("[ONE_MORE_ITEM][Profile] acceptance load ended code=%s", code))
+			else
+				warn(string.format("[ONE_MORE_ITEM][Profile] load ended userId=%d code=%s", player.UserId, code))
+			end
+			sendWaitingSnapshot(player, nil, nil)
 		end
 	end)
 end
@@ -355,6 +664,7 @@ Players.PlayerRemoving:Connect(function(player: Player)
 	end
 	removingPlayers[player] = true
 	readyPlayers[player] = nil
+	waitingStateVersions[player] = nil
 	profileService:BeginRelease(player.UserId)
 	roundService:RemovePlayer(player)
 	stationService:ReleasePlayer(player)

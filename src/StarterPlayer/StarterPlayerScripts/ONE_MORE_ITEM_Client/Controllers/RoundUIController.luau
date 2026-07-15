@@ -391,6 +391,17 @@ local function formatReason(reason: string?): string
 	return string.gsub(reason, "_", " ")
 end
 
+function RoundUIController.ResolveWaitingCopy(reason: string?): (string, string, Color3)
+	if reason == "DATA UNAVAILABLE | REJOIN TO RETRY" then
+		return "DATA UNAVAILABLE", "REJOIN TO RETRY", PresentationTokens.Color.Red
+	elseif reason == "PROFILE OPEN ELSEWHERE | CLOSE THE OTHER SESSION AND REJOIN" then
+		return "PROFILE OPEN ELSEWHERE", "CLOSE THE OTHER SESSION AND REJOIN", PresentationTokens.Color.Red
+	elseif reason == "LOADING YOUR PROFILE" then
+		return "LOADING YOUR PROFILE", "", PresentationTokens.Color.Cyan
+	end
+	return "WAITING FOR A PACKING STATION", "YOU WILL BE ASSIGNED AUTOMATICALLY", PresentationTokens.Color.Cyan
+end
+
 local function isFailureResult(snapshot: Snapshot): boolean
 	if snapshot.State == "Failing" or snapshot.ResultLostValue > 0 then
 		return true
@@ -652,11 +663,12 @@ function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Sna
 	end
 
 	if waiting then
-		self._statusBanner.Text = "WAITING FOR A PACKING STATION"
-		self._statusBanner.TextColor3 = PresentationTokens.Color.SecondaryText
-		self._labels.ResultTitle.Text = "WAITING FOR A PACKING STATION"
-		self._labels.ResultTitle.TextColor3 = PresentationTokens.Color.Cyan
-		self._labels.ResultReason.Text = "YOU WILL BE ASSIGNED AUTOMATICALLY"
+		local title, instruction, color = RoundUIController.ResolveWaitingCopy(snapshot.ResultReason)
+		self._statusBanner.Text = title
+		self._statusBanner.TextColor3 = color
+		self._labels.ResultTitle.Text = title
+		self._labels.ResultTitle.TextColor3 = color
+		self._labels.ResultReason.Text = instruction
 		self._labels.ResultValue.Text = ""
 		self._labels.SessionTotal.Text = ""
 	elseif results then

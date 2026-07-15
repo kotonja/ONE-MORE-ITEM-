@@ -33,6 +33,7 @@ local ClientProfileStore = require(ClientControllers:WaitForChild("ClientProfile
 local ClientRoundStore = require(ClientControllers:WaitForChild("ClientRoundStore"))
 local ProfileResponsiveLayout = require(ClientControllers:WaitForChild("ProfileResponsiveLayout"))
 local ProfileUIController = require(ClientControllers:WaitForChild("ProfileUIController"))
+local RoundUIController = require(ClientControllers:WaitForChild("RoundUIController"))
 
 type ProfileLayoutClass = ProfileResponsiveLayout.LayoutClass
 
@@ -1918,6 +1919,47 @@ local function uiLabel(root: Frame, parentName: string, labelName: string): Text
 end
 
 addSuite("Client presentation", {
+	{
+		Name = "waiting copy distinguishes loading queue unavailable and conflict states",
+		Run = function()
+			local loadingTitle, loadingInstruction = RoundUIController.ResolveWaitingCopy("LOADING YOUR PROFILE")
+			expectEqual(loadingTitle, "LOADING YOUR PROFILE")
+			expectEqual(loadingInstruction, "")
+			local queueTitle, queueInstruction = RoundUIController.ResolveWaitingCopy("WAITING FOR A PACKING STATION")
+			expectEqual(queueTitle, "WAITING FOR A PACKING STATION")
+			expectEqual(queueInstruction, "YOU WILL BE ASSIGNED AUTOMATICALLY")
+			local unavailableTitle, unavailableInstruction = RoundUIController.ResolveWaitingCopy(
+				"DATA UNAVAILABLE | REJOIN TO RETRY"
+			)
+			expectEqual(unavailableTitle, "DATA UNAVAILABLE")
+			expectEqual(unavailableInstruction, "REJOIN TO RETRY")
+			local conflictTitle, conflictInstruction = RoundUIController.ResolveWaitingCopy(
+				"PROFILE OPEN ELSEWHERE | CLOSE THE OTHER SESSION AND REJOIN"
+			)
+			expectEqual(conflictTitle, "PROFILE OPEN ELSEWHERE")
+			expectEqual(conflictInstruction, "CLOSE THE OTHER SESSION AND REJOIN")
+		end,
+	},
+	{
+		Name = "initial waiting snapshots advance through queue and unavailable at the same round id",
+		Run = function()
+			local store = ClientRoundStore.new()
+			local loading = roundSnapshot(0, 1, "Waiting", nil)
+			loading.ResultReason = "LOADING YOUR PROFILE"
+			expect(store:ApplySnapshot(loading), "Initial loading snapshot must apply")
+			local queued = roundSnapshot(0, 2, "Waiting", nil)
+			queued.ResultReason = "WAITING FOR A PACKING STATION"
+			expect(store:ApplySnapshot(queued), "Ready queue snapshot must advance the waiting state")
+			expectEqual((store:GetSnapshot() :: any).ResultReason, "WAITING FOR A PACKING STATION")
+			local unavailable = roundSnapshot(0, 3, "Waiting", nil)
+			unavailable.ResultReason = "DATA UNAVAILABLE | REJOIN TO RETRY"
+			expect(store:ApplySnapshot(unavailable), "Unavailable snapshot must advance the waiting state")
+			local current = store:GetSnapshot()
+			expect(current ~= nil)
+			expectEqual((current :: any).ResultReason, "DATA UNAVAILABLE | REJOIN TO RETRY")
+			store:Destroy()
+		end,
+	},
 	{
 		Name = "results keep the meta bar below reveals on compact layouts",
 		Run = function()

@@ -23,6 +23,7 @@ type MemoryProfileAdapterImpl = ProfileStoreAdapter.Adapter & {
 	_budgetAvailable: boolean,
 	_failures: { [string]: FailureFixture },
 	_requestCounts: { [string]: number },
+	_requestCountsByFixture: { [string]: number },
 	SetBudgetAvailable: (self: MemoryProfileAdapterImpl, available: boolean) -> (),
 	SetFailure: (
 		self: MemoryProfileAdapterImpl,
@@ -37,6 +38,7 @@ type MemoryProfileAdapterImpl = ProfileStoreAdapter.Adapter & {
 	Seed: (self: MemoryProfileAdapterImpl, userId: number, rawProfile: any) -> (),
 	ReadStored: (self: MemoryProfileAdapterImpl, userId: number) -> any,
 	GetRequestCount: (self: MemoryProfileAdapterImpl, operation: string) -> number,
+	GetRequestCountForUser: (self: MemoryProfileAdapterImpl, operation: string, userId: number) -> number,
 	SimulateServerCrash: (self: MemoryProfileAdapterImpl, userId: number) -> (),
 	ForceSession: (self: MemoryProfileAdapterImpl, userId: number, session: ProfileTypes.ProfileSession?) -> (),
 }
@@ -84,6 +86,7 @@ function MemoryProfileAdapter.Create(options: Options?): MemoryProfileAdapterImp
 		_budgetAvailable = if resolved.BudgetAvailable == nil then true else resolved.BudgetAvailable,
 		_failures = {},
 		_requestCounts = {},
+		_requestCountsByFixture = {},
 	}, MemoryProfileAdapter) :: MemoryProfileAdapterImpl
 end
 
@@ -136,12 +139,22 @@ function MemoryProfileAdapter.GetRequestCount(self: MemoryProfileAdapterImpl, op
 	return self._requestCounts[operation] or 0
 end
 
+function MemoryProfileAdapter.GetRequestCountForUser(
+	self: MemoryProfileAdapterImpl,
+	operation: string,
+	userId: number
+): number
+	return self._requestCountsByFixture[fixtureKey(operation, userId)] or 0
+end
+
 local function consumeFailure(
 	self: MemoryProfileAdapterImpl,
 	operation: string,
 	userId: number
 ): ProfileTypes.StoreResultCode?
 	self._requestCounts[operation] = (self._requestCounts[operation] or 0) + 1
+	local requestKey = fixtureKey(operation, userId)
+	self._requestCountsByFixture[requestKey] = (self._requestCountsByFixture[requestKey] or 0) + 1
 	if not self._budgetAvailable then
 		return "BudgetDelayed"
 	end
