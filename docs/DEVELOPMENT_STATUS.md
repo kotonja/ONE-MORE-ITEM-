@@ -2,18 +2,18 @@
 
 ## Current phase and Git state
 
-- **Phase result:** **Implementation complete and accepted.** Phase 04 passed deterministic validation, verified five-client Station_05 integration, final cleanup, normal cloud save, complete Studio close, and direct no-resynchronization reopen parity.
-- **Current phase:** Phase 04 - Eight-Station Multiplayer Arena and Shared Shipment Showcase, accepted on its feature branch and awaiting PR review/merge.
-- **Current branch:** `codex/phase-04-multiplayer-arena`.
-- **Protected base:** `main` and `origin/main` remain at the accepted Phase 03 merge `014ff3964eb63f22f8527894067cddb1b4f98070`.
-- **Previous pull request:** [PR #3 - Phase 03: Cross-Platform Interaction and Responsive UI](https://github.com/kotonja/ONE-MORE-ITEM-/pull/3), merged.
-- **Current draft pull request:** [PR #5 - Phase 04: Multiplayer Arena and Shared Shipment Showcase](https://github.com/kotonja/ONE-MORE-ITEM-/pull/5), draft and unmerged.
-- **Latest pushed implementation SHA before documentation:** `f5334da63db37d6d930da3113fc30e5331b08df5` (`test: close Phase 04 acceptance coverage`).
-- **Documentation record:** This file records implementation head `f5334da63db37d6d930da3113fc30e5331b08df5`; the containing documentation commit is identified by Git and the draft PR rather than predicted inside itself.
+- **Phase result:** **Active; not yet accepted.** Phase 05 persistence, progression, authored-interface, Studio-test DataStore, cloud-reopen, and two-session persistence gates remain to be completed.
+- **Current phase:** Phase 05 - Persistent Player Profiles, Tape, Collection, and Packing Rank.
+- **Current branch:** `codex/phase-05-persistent-progression`.
+- **Protected base:** `main` and `origin/main` remain at the accepted Phase 04 squash merge `213f3581bd242523e34601cfefa5b5a74770ddee`.
+- **Previous pull request:** [PR #5 - Phase 04: Multiplayer Arena and Shared Shipment Showcase](https://github.com/kotonja/ONE-MORE-ITEM-/pull/5), merged.
+- **Current draft pull request:** Not yet opened; the Phase 05 branch is initialized and pushed.
+- **Latest Phase 05 implementation SHA:** The branch currently matches the Phase 04 base `213f3581bd242523e34601cfefa5b5a74770ddee`; no Phase 05 implementation commit exists yet.
+- **Documentation record:** This opening correction starts Phase 05 without claiming any Phase 05 persistence or progression result.
 - **Pre-release QA:** [Issue #4 - Pre-release cross-platform and multiplayer integration QA](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open.
-- **Main protection:** No Phase 04 commit has been merged into `main`; Phase 05 has not begun.
+- **Main protection:** Phase 04 is merged; Phase 05 work is isolated to its feature branch and will not be merged during this task.
 
-Phase 04 implementation acceptance is complete. Station_07 completion, the full desktop/touch/gamepad multiplayer matrix, physical-device coverage, and a visible 12-shipment soak remain explicitly unpassed extended QA in issue #4 and are not represented as acceptance evidence.
+Phase 04 implementation acceptance remains complete. Phase 05 is active but has not passed its own deterministic, live DataStore, two-session persistence, cloud-save, direct-reopen, or exact-head CI gates. Station_07 completion, the full desktop/touch/gamepad multiplayer matrix, physical-device coverage, and a visible 12-shipment soak remain explicitly unpassed extended QA in issue #4.
 
 ## Completed Phase 04 implementation
 

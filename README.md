@@ -6,7 +6,7 @@ ONE MORE ITEM! is a premium, mobile-first Roblox packing game built around fitti
 
 ## Current development phase
 
-Phase 04 — Eight-Station Multiplayer Arena and Shared Shipment Showcase: **Implementation complete and accepted on `codex/phase-04-multiplayer-arena`; draft PR #5 remains unmerged.** Phase 03 was accepted and squash-merged through [PR #3](https://github.com/kotonja/ONE-MORE-ITEM-/pull/3) at `014ff3964eb63f22f8527894067cddb1b4f98070`. Extended Station_07, full cross-platform multiplayer, visible 12-shipment soak, controller/hybrid, physical-device, and lower-end-device QA remains unpassed and is tracked in open [GitHub issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4); none of those deferred checks is claimed as passed.
+Phase 05 — Persistent Player Profiles, Tape, Collection, and Packing Rank: **Active on `codex/phase-05-persistent-progression`; not yet accepted.** Phase 04 was accepted and squash-merged through [PR #5](https://github.com/kotonja/ONE-MORE-ITEM-/pull/5) at `213f3581bd242523e34601cfefa5b5a74770ddee`. Extended Station_07, full cross-platform multiplayer, visible 12-shipment soak, controller/hybrid, physical-device, and lower-end-device QA remains unpassed and is tracked in open [GitHub issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4).
 
 Phase 02 is complete and merged through PR #2 at `73b3428c5ff0068f1e57f89d2150ffb8dccfdf20`; its deterministic grid, authored single station, permanent HUD/remotes, desktop presentation, and server-authoritative session-only round loop remain the protected baseline. Phase 03 is limited to responsive safe-area UI, touch, gamepad, dynamic input prompts, responsive camera anchors, and mid-round local input-mode switching.
 
@@ -15,7 +15,8 @@ Phase 02 is complete and merged through PR #2 at `73b3428c5ff0068f1e57f89d2150ff
 - `main` is protected by workflow: work happens on `codex/*` feature branches and is reviewed through pull requests.
 - Phase 02 was merged through PR #2 at `73b3428c5ff0068f1e57f89d2150ffb8dccfdf20`.
 - Phase 03 was squash-merged through PR #3 at `014ff3964eb63f22f8527894067cddb1b4f98070`.
-- Phase 04 uses `codex/phase-04-multiplayer-arena`; its implementation acceptance is complete, including all four local Node 24 validations, deterministic Studio gates, the one-shot showcase-overflow diagnostic, a verified five-client Station_05 integration flow, and direct no-resynchronization cloud-reopen parity. Draft PR #5 remains open and unmerged, and Phase 05 has not begun.
+- Phase 04 was squash-merged through PR #5 at `213f3581bd242523e34601cfefa5b5a74770ddee`.
+- Phase 05 uses `codex/phase-05-persistent-progression`. Its persistence and progression gates have not yet passed, and no Phase 05 acceptance is claimed.
 - Pull before editing, never force-push, and keep every meaningful Studio/code change committed and pushed.
 - `docs/DEVELOPMENT_STATUS.md` is updated on every task.
 - GitHub Actions uses Node 24 with `actions/checkout@v7` and `actions/setup-node@v6` and runs all four dependency-free validations on pull requests targeting `main` and pushes to `main` or `codex/**`.
