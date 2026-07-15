@@ -1891,6 +1891,85 @@ addSuite("Collection shelves", {
 		end,
 	},
 	{
+		Name = "memory adapter reward saving and saved snapshots rebuild once",
+		Run = function()
+			withShelfService(function(service: any, stations: Instance)
+				local userId = 93
+				local adapter = MemoryProfileAdapter.Create()
+				local harness = makeProfileHarness(userId, { Adapter = adapter })
+				local progression = ProgressionService.Create(harness.Service)
+				local initialProfile = harness.Service:GetProfileCopy(userId)
+				expect(initialProfile ~= nil)
+				local initialOk, initialResult = service:Render("station_01", initialProfile)
+				expect(initialOk)
+				expectEqual(initialResult, "RENDERED")
+				local rebuildsBeforeReward = service:GetRebuildCount("station_01")
+
+				local reward, rewardCode = progression:ApplyShipment(
+					userId,
+					1,
+					"93:memory-shelf:1",
+					shipmentRecord(userId, 1, "93:memory-shelf:1", 15, { "parcel" })
+				)
+				expect(reward ~= nil and rewardCode == "APPLIED")
+				local rewardSnapshot = harness.Snapshots[#harness.Snapshots]
+				expectEqual(rewardSnapshot.State, "Saving")
+				expectEqual(rewardSnapshot.SaveState, "Saving")
+				local rewardProfile = harness.Service:GetProfileCopy(userId)
+				expect(rewardProfile ~= nil)
+				local rewardOk, rewardResult = service:Render("station_01", rewardProfile)
+				expect(rewardOk)
+				expectEqual(rewardResult, "RENDERED")
+				expectEqual(service:GetRebuildCount("station_01") - rebuildsBeforeReward, 1)
+
+				local runtime = shelfRuntime(stations, 1)
+				local rewardInstances = featuredInstances(runtime)
+				local rewardChildCount = #rewardInstances
+				expectEqual(rewardChildCount, 1)
+				local snapshotCountBeforeSave = #harness.Snapshots
+				local saved, saveCode = harness.Service:SaveNow(userId)
+				expect(saved and saveCode == "SAVED")
+				expectEqual(adapter:GetRequestCountForUser("Save", userId), 1)
+				expectEqual(#harness.Snapshots, snapshotCountBeforeSave + 2)
+				local savingSnapshot = harness.Snapshots[snapshotCountBeforeSave + 1]
+				local savedSnapshot = harness.Snapshots[snapshotCountBeforeSave + 2]
+				expectEqual(savingSnapshot.State, "Saving")
+				expectEqual(savingSnapshot.SaveState, "Saving")
+				expectEqual(savedSnapshot.State, "Ready")
+				expectEqual(savedSnapshot.SaveState, "Saved")
+
+				local savingOk, savingResult = service:Render("station_01", rewardProfile)
+				expect(savingOk)
+				expectEqual(savingResult, "UNCHANGED")
+				local savedProfile = harness.Service:GetProfileCopy(userId)
+				expect(savedProfile ~= nil)
+				local savedOk, savedResult = service:Render("station_01", savedProfile)
+				expect(savedOk)
+				expectEqual(savedResult, "UNCHANGED")
+				local stableInstances = featuredInstances(runtime)
+				expectEqual(#stableInstances, rewardChildCount)
+				for index, instance in ipairs(rewardInstances) do
+					expectEqual(stableInstances[index], instance)
+					expectEqual(instance.Parent, runtime)
+				end
+				expectEqual(service:GetRebuildCount("station_01") - rebuildsBeforeReward, 1)
+
+				expect(service:Clear("station_01"))
+				local cleanupCount = service:GetRuntimeCount("station_01")
+				expectEqual(cleanupCount, 0)
+				local released, releaseCode = harness.Service:Release(userId)
+				expect(released and releaseCode == "RELEASED")
+				print(string.format(
+					"[ONE_MORE_ITEM][Phase05Tests] MEMORY_SHELF adapter=memory reward=%s saving=%s saved=%s rebuildDelta=1 identitiesStable=true childCountStable=true cleanup=%d",
+					rewardResult,
+					savingResult,
+					savedResult,
+					cleanupCount
+				))
+			end)
+		end,
+	},
+	{
 		Name = "XP changes within one rank do not rebuild",
 		Run = function()
 			withShelfService(function(service: any, stations: Instance)

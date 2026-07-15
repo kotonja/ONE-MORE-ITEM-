@@ -444,6 +444,7 @@ try {
     assert.match(shelfSource, /cached\.Fingerprint == expected\.Fingerprint/);
     assert.match(shelfSource, /cached\.OwnerUserId == currentOwnerUserId/);
     assert.match(shelfSource, /and renderedStructureMatches\(record, expected, self\._template\)/);
+    assert.match(shelfSource, /or not proxy\.Massless/);
     assert.equal((shelfSource.match(/return true, "UNCHANGED"/g) ?? []).length, 1);
     assert.equal((shelfSource.match(/return true, "RENDERED"/g) ?? []).length, 1);
     assert.match(shelfSource, /self\._rebuildCounts\[stationId\][\s\S]{0,120}\+ 1[\s\S]{0,120}return true, "RENDERED"/);
@@ -455,6 +456,16 @@ try {
       /local secondOk, secondResult = service:Render\("station_01", profile\)[\s\S]{0,260}expectEqual\(secondResult, "UNCHANGED"\)/);
     assert.match(phase05TestSource,
       /Name = "identical render preserves proxy identities without rebuilding"[\s\S]{0,1400}expectEqual\(service:GetRebuildCount\("station_01"\), 1\)/);
+  });
+
+  criterion("Studio regression runs the memory adapter reward saving and saved shelf flow", () => {
+    assert.match(phase05TestSource, /Name = "memory adapter reward saving and saved snapshots rebuild once"/);
+    assert.match(phase05TestSource,
+      /local adapter = MemoryProfileAdapter\.Create\(\)[\s\S]{0,260}local progression = ProgressionService\.Create\(harness\.Service\)/);
+    assert.match(phase05TestSource,
+      /expectEqual\(rewardResult, "RENDERED"\)[\s\S]{0,1800}expectEqual\(savingResult, "UNCHANGED"\)[\s\S]{0,240}expectEqual\(savedResult, "UNCHANGED"\)/);
+    assert.match(phase05TestSource,
+      /MEMORY_SHELF adapter=memory reward=%s saving=%s saved=%s rebuildDelta=1 identitiesStable=true childCountStable=true cleanup=%d/);
   });
 
   criterion("Studio regressions prove profile and structural changes rebuild", () => {
