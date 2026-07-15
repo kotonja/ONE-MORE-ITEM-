@@ -7,8 +7,8 @@
 - **Current branch:** `codex/phase-05-persistent-progression`.
 - **Protected base:** `main` and `origin/main` remain at the accepted Phase 04 squash merge `213f3581bd242523e34601cfefa5b5a74770ddee`.
 - **Previous pull request:** [PR #5 - Phase 04: Multiplayer Arena and Shared Shipment Showcase](https://github.com/kotonja/ONE-MORE-ITEM-/pull/5), merged.
-- **Current draft pull request:** Not yet opened; the Phase 05 branch is initialized and pushed.
-- **Latest Phase 05 implementation SHA:** The branch currently matches the Phase 04 base `213f3581bd242523e34601cfefa5b5a74770ddee`; no Phase 05 implementation commit exists yet.
+- **Current draft pull request:** [PR #6 - Phase 05: Persistent Profiles, Collection, and Packing Rank](https://github.com/kotonja/ONE-MORE-ITEM-/pull/6), draft and unmerged.
+- **Latest Phase 05 working SHA:** `25de677` (`chore: open Phase 05 and correct merged project status`); no Phase 05 implementation commit exists yet.
 - **Documentation record:** This opening correction starts Phase 05 without claiming any Phase 05 persistence or progression result.
 - **Pre-release QA:** [Issue #4 - Pre-release cross-platform and multiplayer integration QA](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open.
 - **Main protection:** Phase 04 is merged; Phase 05 work is isolated to its feature branch and will not be merged during this task.
