@@ -143,6 +143,9 @@ try {
   const roundSource = readText("src/ServerScriptService/ONE_MORE_ITEM_Server/Services/RoundService.luau");
   const bootstrapSource = readText("src/ServerScriptService/ONE_MORE_ITEM_Server/ServerBootstrap.server.luau");
   const roundUiSource = readText("src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/RoundUIController.luau");
+  const shelfSource = readText("src/ServerScriptService/ONE_MORE_ITEM_Server/Services/CollectionShelfService.luau");
+  const profileUiSource = readText("src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/ProfileUIController.luau");
+  const phase05TestSource = readText("src/ServerScriptService/ONE_MORE_ITEM_Server/Dev/Phase05TestSuite.luau");
   const networkTypesSource = readText("src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Net/NetworkTypes.luau");
 
   criterion("profile schema module exists", () => {
@@ -405,6 +408,76 @@ try {
     assertNoScriptDescendants(scriptSteps, templatePath);
   });
 
+  criterion("collection shelf uses the canonical catalog and mastery definitions", () => {
+    assert.match(shelfSource, /require\(Root\.Shared\.Profile\.CollectionDefinitions\)/);
+    assert.match(shelfSource, /require\(Root\.Shared\.Profile\.MasteryDefinitions\)/);
+    for (const member of ["OrderedItemIds", "TotalCount", "GetCatalogIndex", "GetDiscoveredCount"]) {
+      assert.match(shelfSource, new RegExp(`CollectionDefinitions\\.${member}\\b`));
+    }
+    assert.match(shelfSource, /MasteryDefinitions\.GetMasteryTier\(count, true\)/);
+    assert.match(shelfSource, /validateCanonicalCatalog\(\)/);
+  });
+
+  criterion("profile UI maps authored slots from the canonical catalog", () => {
+    assert.match(profileUiSource, /require\(profile:WaitForChild\("CollectionDefinitions"\)\)/);
+    assert.match(profileUiSource, /require\(profile:WaitForChild\("MasteryDefinitions"\)\)/);
+    assert.match(profileUiSource, /validateCollectionAuthoring\(slotsContainer\)/);
+    assert.match(profileUiSource, /for index, itemId in ipairs\(CollectionDefinitions\.OrderedItemIds\)/);
+    assert.match(profileUiSource, /CollectionDefinitions\.GetCatalogIndex\(itemId\)/);
+    assert.match(profileUiSource, /MasteryDefinitions\.GetMasteryProgress\(count, true\)/);
+    assert.match(profileUiSource, /MasteryDefinitions\.Thresholds\.Gold/);
+  });
+
+  criterion("presentation sources contain no duplicated collection total or mastery thresholds", () => {
+    for (const [name, source] of [["CollectionShelfService", shelfSource], ["ProfileUIController", profileUiSource]]) {
+      assert.doesNotMatch(source, /\/\s*8\b|8\s*DISCOVERED/i, `${name} duplicates the canonical collection total`);
+      assert.doesNotMatch(source, /\b(?:5|20|50)\+?\s+SHIPMENTS\b/i, `${name} duplicates a canonical mastery threshold in copy`);
+      assert.doesNotMatch(source, /\bcount\s*(?:>=|>|==)\s*(?:5|20|50)\b/, `${name} duplicates mastery threshold logic`);
+      assert.doesNotMatch(source, /\b(?:Bronze|Silver|Gold)(?:Threshold)?\s*=\s*(?:5|20|50)\b/i,
+        `${name} defines a duplicate mastery threshold`);
+    }
+  });
+
+  criterion("collection shelf render has deterministic idempotence and structural validation", () => {
+    assert.match(shelfSource, /local function presentationFingerprint\(/);
+    assert.match(shelfSource, /local function renderedStructureMatches\(/);
+    assert.match(shelfSource, /cached\.Fingerprint == expected\.Fingerprint/);
+    assert.match(shelfSource, /cached\.OwnerUserId == currentOwnerUserId/);
+    assert.match(shelfSource, /and renderedStructureMatches\(record, expected, self\._template\)/);
+    assert.equal((shelfSource.match(/return true, "UNCHANGED"/g) ?? []).length, 1);
+    assert.equal((shelfSource.match(/return true, "RENDERED"/g) ?? []).length, 1);
+    assert.match(shelfSource, /self\._rebuildCounts\[stationId\][\s\S]{0,120}\+ 1[\s\S]{0,120}return true, "RENDERED"/);
+  });
+
+  criterion("Studio regressions prove identical render is unchanged without rebuilding", () => {
+    assert.match(phase05TestSource, /Name = "identical render preserves proxy identities without rebuilding"/);
+    assert.match(phase05TestSource,
+      /local secondOk, secondResult = service:Render\("station_01", profile\)[\s\S]{0,260}expectEqual\(secondResult, "UNCHANGED"\)/);
+    assert.match(phase05TestSource,
+      /Name = "identical render preserves proxy identities without rebuilding"[\s\S]{0,1400}expectEqual\(service:GetRebuildCount\("station_01"\), 1\)/);
+  });
+
+  criterion("Studio regressions prove profile and structural changes rebuild", () => {
+    assert.match(phase05TestSource, /Name = "mastery ordering is tier count then catalog"/);
+    assert.match(phase05TestSource,
+      /profile\.Collection\.MasteryCounts\.parcel = thresholds\.Gold \+ 1[\s\S]{0,240}expectEqual\(result, "RENDERED"\)/);
+    assert.match(phase05TestSource, /Name = "malformed runtime is rebuilt instead of treated as unchanged"/);
+    assert.match(phase05TestSource,
+      /corruptProxy:SetAttribute\("ItemId", "not_a_catalog_item"\)[\s\S]{0,240}expectEqual\(result, "RENDERED"\)/);
+  });
+
+  criterion("Studio regressions prove clear owner isolation and the six-proxy bound", () => {
+    assert.match(phase05TestSource, /Name = "release clears one shelf only and reassignment starts clean"/);
+    assert.match(phase05TestSource, /Name = "station owner reassignment rebuilds only the reassigned shelf"/);
+    assert.match(phase05TestSource,
+      /stationOne:SetAttribute\("OwnerUserId", 303\)[\s\S]{0,260}expectEqual\(result, "RENDERED"\)/);
+    assert.match(phase05TestSource,
+      /expectEqual\(service:GetRebuildCount\("station_02"\), 1\)[\s\S]{0,180}expectEqual\(featuredInstances\(shelfRuntime\(stations, 2\)\)\[1\], stationTwoProxy\)/);
+    assert.match(shelfSource, /local MAX_FEATURED_ITEMS = 6\b/);
+    assert.match(phase05TestSource, /Name = "maximum six runtime proxies and cleanup returns to baseline"/);
+    assert.match(phase05TestSource, /expectEqual\(service:GetRuntimeCount\("station_01"\), 6\)/);
+  });
+
   const productionLuauFiles = listFilesRecursively(path.join(repositoryRoot, "src"))
     .filter((file) => file.endsWith(".luau") && !file.includes(`${path.sep}Dev${path.sep}`));
   criterion("no runtime permanent profile UI builder exists", () => {
@@ -603,7 +676,7 @@ try {
     for (const field of forbidden) assert.doesNotMatch(requestSection, new RegExp(`\\b${field}\\b`));
   });
 
-  assert.ok(criterionCount >= 44, `Phase 05 validator must retain at least 44 criteria; found ${criterionCount}`);
+  assert.ok(criterionCount >= 63, `Phase 05 validator must retain at least 63 criteria; found ${criterionCount}`);
   console.log(
     `[Phase05PersistentProgression] PASS criteria=${criterionCount} instances=${instanceSteps.length} scripts=${scriptSteps.length} gameplayRemotes=6 profileRemotes=1 shelves=8 collectionSlots=8 deterministic=true prior=true`,
   );

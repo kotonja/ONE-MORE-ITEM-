@@ -1790,6 +1790,19 @@ local function featuredIds(runtime: Folder): { string }
 	return ids
 end
 
+local function featuredInstances(runtime: Folder): { Instance }
+	local children = runtime:GetChildren()
+	table.sort(children, function(left: Instance, right: Instance): boolean return left.Name < right.Name end)
+	return children
+end
+
+local function shelfBillboard(stations: Instance, stationIndex: number): BillboardGui
+	local station = requireChild(stations, string.format("Station_%02d", stationIndex), "Model")
+	local shelf = requireChild(station, "CollectionShelf", "Model")
+	local label = requireChild(shelf, "ShelfLabel", "BasePart")
+	return requireChild(label, "BillboardGui", "BillboardGui") :: BillboardGui
+end
+
 addSuite("Collection shelves", {
 	{
 		Name = "eight authored shelves resolve with six slots and one Runtime",
@@ -1808,11 +1821,116 @@ addSuite("Collection shelves", {
 			withShelfService(function(service: any, stations: Instance)
 				local profile = collectionView({ parcel = true, chair_blockout = true }, { parcel = 2, chair_blockout = 1 })
 				profile.PackingXP = 1_000
-				expect(service:Render("station_01", profile))
-				local shelf = requireChild(requireChild(stations, "Station_01", "Model"), "CollectionShelf", "Model")
-				local billboard = requireChild(requireChild(shelf, "ShelfLabel", "BasePart"), "BillboardGui", "BillboardGui")
+				local ok, result = service:Render("station_01", profile)
+				expect(ok)
+				expectEqual(result, "RENDERED")
+				local billboard = shelfBillboard(stations, 1)
 				expectEqual((requireChild(billboard, "RankName", "TextLabel") :: TextLabel).Text, "SPACE SAVER")
-				expectEqual((requireChild(billboard, "CollectionCount", "TextLabel") :: TextLabel).Text, "2 / 8 DISCOVERED")
+				expectEqual((requireChild(billboard, "CollectionCount", "TextLabel") :: TextLabel).Text,
+					string.format("2 / %d DISCOVERED", CollectionDefinitions.TotalCount))
+				expectArray(featuredIds(shelfRuntime(stations, 1)), { "parcel", "chair_blockout" })
+				expectEqual(service:GetRuntimeCount("station_01"), 2)
+				expectEqual(service:GetRebuildCount("station_01"), 1)
+				expect(type(service:GetRenderFingerprint("station_01")) == "string")
+			end)
+		end,
+	},
+	{
+		Name = "identical render preserves proxy identities without rebuilding",
+		Run = function()
+			withShelfService(function(service: any, stations: Instance)
+				local profile = collectionView({ parcel = true, lamp_blockout = true }, { parcel = 7, lamp_blockout = 3 })
+				local firstOk, firstResult = service:Render("station_01", profile)
+				expect(firstOk)
+				expectEqual(firstResult, "RENDERED")
+				local runtime = shelfRuntime(stations, 1)
+				local firstInstances = featuredInstances(runtime)
+				local fingerprint = service:GetRenderFingerprint("station_01")
+				local secondOk, secondResult = service:Render("station_01", profile)
+				expect(secondOk)
+				expectEqual(secondResult, "UNCHANGED")
+				local secondInstances = featuredInstances(runtime)
+				expectEqual(#secondInstances, #firstInstances)
+				for index, instance in ipairs(firstInstances) do
+					expectEqual(secondInstances[index], instance)
+					expectEqual(instance.Parent, runtime)
+				end
+				expectEqual(service:GetRuntimeCount("station_01"), #firstInstances)
+				expectEqual(service:GetRebuildCount("station_01"), 1)
+				expectEqual(service:GetRenderFingerprint("station_01"), fingerprint)
+			end)
+		end,
+	},
+	{
+		Name = "ten save-state-only refreshes remain unchanged",
+		Run = function()
+			withShelfService(function(service: any, stations: Instance)
+				local profile = collectionView({ parcel = true }, { parcel = 4 })
+				profile.State = "Ready"
+				profile.SaveState = "Saved"
+				profile.Revision = 1
+				local firstOk, firstResult = service:Render("station_01", profile)
+				expect(firstOk)
+				expectEqual(firstResult, "RENDERED")
+				local runtime = shelfRuntime(stations, 1)
+				local original = featuredInstances(runtime)
+				local fingerprint = service:GetRenderFingerprint("station_01")
+				for cycle = 1, 10 do
+					profile.State = if cycle % 2 == 0 then "Ready" else "Saving"
+					profile.SaveState = if cycle % 2 == 0 then "Saved" else "Saving"
+					profile.Revision = cycle + 1
+					local ok, result = service:Render("station_01", profile)
+					expect(ok)
+					expectEqual(result, "UNCHANGED")
+					expectEqual(featuredInstances(runtime)[1], original[1])
+				end
+				expectEqual(service:GetRuntimeCount("station_01"), 1)
+				expectEqual(service:GetRebuildCount("station_01"), 1)
+				expectEqual(service:GetRenderFingerprint("station_01"), fingerprint)
+			end)
+		end,
+	},
+	{
+		Name = "XP changes within one rank do not rebuild",
+		Run = function()
+			withShelfService(function(service: any, stations: Instance)
+				local profile = collectionView({ parcel = true }, { parcel = 1 })
+				profile.PackingXP = 1
+				service:Render("station_01", profile)
+				local runtime = shelfRuntime(stations, 1)
+				local original = featuredInstances(runtime)[1]
+				local fingerprint = service:GetRenderFingerprint("station_01")
+				profile.PackingXP = (PackingRankDefinitions.GetThreshold(2) :: number) - 1
+				local ok, result = service:Render("station_01", profile)
+				expect(ok)
+				expectEqual(result, "UNCHANGED")
+				expectEqual(featuredInstances(runtime)[1], original)
+				expectEqual(service:GetRebuildCount("station_01"), 1)
+				expectEqual(service:GetRenderFingerprint("station_01"), fingerprint)
+			end)
+		end,
+	},
+	{
+		Name = "rank transition rebuilds exactly once and updates its label",
+		Run = function()
+			withShelfService(function(service: any, stations: Instance)
+				local profile = collectionView({ parcel = true }, { parcel = 1 })
+				local secondRankThreshold = PackingRankDefinitions.GetThreshold(2) :: number
+				profile.PackingXP = secondRankThreshold - 1
+				service:Render("station_01", profile)
+				local previousFingerprint = service:GetRenderFingerprint("station_01")
+				profile.PackingXP = secondRankThreshold
+				local ok, result = service:Render("station_01", profile)
+				expect(ok)
+				expectEqual(result, "RENDERED")
+				expect(service:GetRenderFingerprint("station_01") ~= previousFingerprint)
+				expectEqual(service:GetRebuildCount("station_01"), 2)
+				local expectedRank = string.upper(PackingRankDefinitions.GetRankForXP(secondRankThreshold).Name)
+				expectEqual((requireChild(shelfBillboard(stations, 1), "RankName", "TextLabel") :: TextLabel).Text, expectedRank)
+				local unchangedOk, unchangedResult = service:Render("station_01", profile)
+				expect(unchangedOk)
+				expectEqual(unchangedResult, "UNCHANGED")
+				expectEqual(service:GetRebuildCount("station_01"), 2)
 			end)
 		end,
 	},
@@ -1820,9 +1938,16 @@ addSuite("Collection shelves", {
 		Name = "recent discovery ordering is newest first without duplicates",
 		Run = function()
 			withShelfService(function(service: any, stations: Instance)
+				local initial = collectionView({ parcel = true, lamp_blockout = true }, {}, { "parcel", "lamp_blockout" })
+				service:Render("station_01", initial)
+				expectArray(featuredIds(shelfRuntime(stations, 1)), { "lamp_blockout", "parcel" })
 				local discovered = { parcel = true, lamp_blockout = true, chair_blockout = true }
-				service:Render("station_01", collectionView(discovered, {}, { "parcel", "lamp_blockout", "chair_blockout", "chair_blockout" }))
+				local ok, result = service:Render("station_01",
+					collectionView(discovered, {}, { "parcel", "lamp_blockout", "chair_blockout", "chair_blockout" }))
+				expect(ok)
+				expectEqual(result, "RENDERED")
 				expectArray(featuredIds(shelfRuntime(stations, 1)), { "chair_blockout", "lamp_blockout", "parcel" })
+				expectEqual(service:GetRebuildCount("station_01"), 2)
 			end)
 		end,
 	},
@@ -1831,8 +1956,23 @@ addSuite("Collection shelves", {
 		Run = function()
 			withShelfService(function(service: any, stations: Instance)
 				local discovered = { parcel = true, lamp_blockout = true, chair_blockout = true }
-				service:Render("station_01", collectionView(discovered, { parcel = 5, lamp_blockout = 50, chair_blockout = 20 }))
+				local thresholds = MasteryDefinitions.Thresholds
+				local profile = collectionView(discovered, {
+					parcel = thresholds.Bronze,
+					lamp_blockout = thresholds.Gold,
+					chair_blockout = thresholds.Silver,
+				})
+				service:Render("station_01", profile)
 				expectArray(featuredIds(shelfRuntime(stations, 1)), { "lamp_blockout", "chair_blockout", "parcel" })
+				expectEqual(MasteryDefinitions.GetMasteryTier(profile.Collection.MasteryCounts.lamp_blockout, true), "Gold")
+				profile.Collection.MasteryCounts.parcel = thresholds.Gold + 1
+				local ok, result = service:Render("station_01", profile)
+				expect(ok)
+				expectEqual(result, "RENDERED")
+				expectArray(featuredIds(shelfRuntime(stations, 1)), { "parcel", "lamp_blockout", "chair_blockout" })
+				local parcelProxy = featuredInstances(shelfRuntime(stations, 1))[1]
+				expectEqual(parcelProxy:GetAttribute("MasteryCount"), thresholds.Gold + 1)
+				expectEqual(service:GetRebuildCount("station_01"), 2)
 			end)
 		end,
 	},
@@ -1843,10 +1983,45 @@ addSuite("Collection shelves", {
 				local profile = collectionView({ parcel = true }, { parcel = 1 })
 				service:Render("station_01", profile)
 				service:Render("station_02", profile)
+				local releasedProxy = featuredInstances(shelfRuntime(stations, 1))[1]
 				expect(service:Clear("station_01"))
 				expectEqual(service:GetRuntimeCount("station_01"), 0)
 				expectEqual(service:GetRuntimeCount("station_02"), 1)
+				expectEqual(service:GetRenderFingerprint("station_01"), nil)
 				expectArray(featuredIds(shelfRuntime(stations, 2)), { "parcel" })
+				local ok, result = service:Render("station_01", profile)
+				expect(ok)
+				expectEqual(result, "RENDERED")
+				local reassignedProxy = featuredInstances(shelfRuntime(stations, 1))[1]
+				expect(reassignedProxy ~= releasedProxy)
+				expectEqual(releasedProxy.Parent, nil)
+				expectEqual(service:GetRebuildCount("station_01"), 2)
+			end)
+		end,
+	},
+	{
+		Name = "station owner reassignment rebuilds only the reassigned shelf",
+		Run = function()
+			withShelfService(function(service: any, stations: Instance)
+				local stationOne = requireChild(stations, "Station_01", "Model")
+				local stationTwo = requireChild(stations, "Station_02", "Model")
+				stationOne:SetAttribute("OwnerUserId", 101)
+				stationTwo:SetAttribute("OwnerUserId", 202)
+				local profile = collectionView({ parcel = true }, { parcel = 1 })
+				service:Render("station_01", profile)
+				service:Render("station_02", profile)
+				local stationOneProxy = featuredInstances(shelfRuntime(stations, 1))[1]
+				local stationTwoProxy = featuredInstances(shelfRuntime(stations, 2))[1]
+
+				stationOne:SetAttribute("OwnerUserId", 303)
+				local ok, result = service:Render("station_01", profile)
+				expect(ok)
+				expectEqual(result, "RENDERED")
+				expect(stationOneProxy.Parent == nil)
+				expect(featuredInstances(shelfRuntime(stations, 1))[1] ~= stationOneProxy)
+				expectEqual(service:GetRebuildCount("station_01"), 2)
+				expectEqual(service:GetRebuildCount("station_02"), 1)
+				expectEqual(featuredInstances(shelfRuntime(stations, 2))[1], stationTwoProxy)
 			end)
 		end,
 	},
@@ -1854,16 +2029,36 @@ addSuite("Collection shelves", {
 		Name = "eight profiles remain isolated and runtime proxies stay bounded",
 		Run = function()
 			withShelfService(function(service: any, stations: Instance)
+				local profiles: { any } = {}
 				for station = 1, 8 do
 					local itemId = CollectionDefinitions.OrderedItemIds[station]
-					service:Render(string.format("station_%02d", station), collectionView({ [itemId] = true }, { [itemId] = station }))
+					local profile = collectionView({ [itemId] = true }, { [itemId] = station })
+					profiles[station] = profile
+					service:Render(string.format("station_%02d", station), profile)
 				end
 				for station = 1, 8 do
 					expectEqual(service:GetRuntimeCount(string.format("station_%02d", station)), 1)
 					expectArray(featuredIds(shelfRuntime(stations, station)), { CollectionDefinitions.OrderedItemIds[station] })
 				end
+				local stationTwoProxy = featuredInstances(shelfRuntime(stations, 2))[1]
+				local unchangedOk, unchangedResult = service:Render("station_01", profiles[1])
+				expect(unchangedOk)
+				expectEqual(unchangedResult, "UNCHANGED")
+				profiles[1].Collection.MasteryCounts[CollectionDefinitions.OrderedItemIds[1]] += 1
+				local changedOk, changedResult = service:Render("station_01", profiles[1])
+				expect(changedOk)
+				expectEqual(changedResult, "RENDERED")
+				expectEqual(service:GetRebuildCount("station_01"), 2)
+				expectEqual(service:GetRebuildCount("station_02"), 1)
+				expectEqual(featuredInstances(shelfRuntime(stations, 2))[1], stationTwoProxy)
+				expect(service:Clear("station_08"))
+				expectEqual(service:GetRuntimeCount("station_08"), 0)
+				for station = 1, 7 do
+					expectEqual(service:GetRuntimeCount(string.format("station_%02d", station)), 1)
+				end
 				service:ClearAll()
 				for station = 1, 8 do expectEqual(service:GetRuntimeCount(string.format("station_%02d", station)), 0) end
+				for station = 1, 8 do expectEqual(service:GetRenderFingerprint(string.format("station_%02d", station)), nil) end
 			end)
 		end,
 	},
@@ -1878,6 +2073,27 @@ addSuite("Collection shelves", {
 				expectEqual(service:GetRuntimeCount("station_01"), 6)
 				service:ClearAll()
 				expectEqual(service:GetRuntimeCount("station_01"), 0)
+			end)
+		end,
+	},
+	{
+		Name = "malformed runtime is rebuilt instead of treated as unchanged",
+		Run = function()
+			withShelfService(function(service: any, stations: Instance)
+				local profile = collectionView({ parcel = true }, { parcel = 2 })
+				service:Render("station_01", profile)
+				local runtime = shelfRuntime(stations, 1)
+				local corruptProxy = featuredInstances(runtime)[1]
+				corruptProxy:SetAttribute("ItemId", "not_a_catalog_item")
+				local ok, result = service:Render("station_01", profile)
+				expect(ok)
+				expectEqual(result, "RENDERED")
+				local replacement = featuredInstances(runtime)[1]
+				expect(replacement ~= corruptProxy)
+				expectEqual(corruptProxy.Parent, nil)
+				expectEqual(replacement:GetAttribute("ItemId"), "parcel")
+				expectEqual(service:GetRuntimeCount("station_01"), 1)
+				expectEqual(service:GetRebuildCount("station_01"), 2)
 			end)
 		end,
 	},
