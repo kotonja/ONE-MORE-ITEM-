@@ -348,7 +348,7 @@ local function renderedStructureMatches(
 			or proxy.Transparency ~= 0
 			or proxy.Reflectance ~= template.Reflectance
 			or proxy.CastShadow ~= template.CastShadow
-			or proxy.Massless ~= template.Massless
+			or not proxy.Massless
 			or proxy.CFrame ~= expectedCFrame
 			or not proxy.Anchored
 			or proxy.CanCollide
