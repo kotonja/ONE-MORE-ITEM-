@@ -15,6 +15,7 @@ local shared = ReplicatedStorage:WaitForChild("ONE_MORE_ITEM"):WaitForChild("Sha
 local content = shared:WaitForChild("Content")
 local profile = shared:WaitForChild("Profile")
 local DevelopmentItemDefinitions = require(content:WaitForChild("DevelopmentItemDefinitions"))
+local CollectionDefinitions = require(profile:WaitForChild("CollectionDefinitions"))
 local MasteryDefinitions = require(profile:WaitForChild("MasteryDefinitions"))
 local PackingRankDefinitions = require(profile:WaitForChild("PackingRankDefinitions"))
 
@@ -32,6 +33,7 @@ type NumberAnimation = {
 }
 
 type CollectionSlot = {
+	ItemId: string,
 	Button: TextButton,
 	Viewport: ViewportFrame,
 	ItemName: TextLabel,
@@ -176,6 +178,65 @@ local function requireViewport(parent: Instance, name: string): ViewportFrame
 	return child
 end
 
+local function validateCollectionAuthoring(slotsContainer: Frame)
+	assert(
+		#CollectionDefinitions.OrderedItemIds == CollectionDefinitions.TotalCount,
+		string.format(
+			"ProfileUIController catalog order has %d items, expected TotalCount %d",
+			#CollectionDefinitions.OrderedItemIds,
+			CollectionDefinitions.TotalCount
+		)
+	)
+
+	local seenItemIds: { [string]: boolean } = {}
+	local expectedSlotNames: { [string]: boolean } = {}
+	for index, itemId in ipairs(CollectionDefinitions.OrderedItemIds) do
+		assert(not seenItemIds[itemId], string.format("ProfileUIController duplicate catalog item id: %s", itemId))
+		seenItemIds[itemId] = true
+		assert(
+			DevelopmentItemDefinitions.Get(itemId) ~= nil,
+			string.format("ProfileUIController catalog item does not resolve: %s", itemId)
+		)
+		expectedSlotNames[string.format("Slot_%02d", index)] = true
+	end
+
+	local authoredSlotCount = 0
+	local seenSlotNames: { [string]: boolean } = {}
+	for _, child in ipairs(slotsContainer:GetChildren()) do
+		local hasSlotName = string.match(child.Name, "^Slot_%d+$") ~= nil
+		if hasSlotName or child:IsA("TextButton") then
+			authoredSlotCount += 1
+			assert(
+				child:IsA("TextButton"),
+				string.format("ProfileUIController authored collection slot must be a TextButton: %s", child.Name)
+			)
+			assert(
+				expectedSlotNames[child.Name] == true,
+				string.format("ProfileUIController found unexpected authored collection slot: %s", child.Name)
+			)
+			assert(
+				not seenSlotNames[child.Name],
+				string.format("ProfileUIController found duplicate authored collection slot: %s", child.Name)
+			)
+			seenSlotNames[child.Name] = true
+		end
+	end
+	assert(
+		authoredSlotCount == CollectionDefinitions.TotalCount,
+		string.format(
+			"ProfileUIController requires exactly %d authored collection slots, found %d",
+			CollectionDefinitions.TotalCount,
+			authoredSlotCount
+		)
+	)
+	for slotName in pairs(expectedSlotNames) do
+		assert(
+			seenSlotNames[slotName] == true,
+			string.format("ProfileUIController requires authored collection slot: %s", slotName)
+		)
+	end
+end
+
 local function scaledSize(size: UDim2, scale: number): UDim2
 	return UDim2.fromScale(size.X.Scale * scale, size.Y.Scale * scale)
 end
@@ -287,7 +348,7 @@ local function masteryText(count: number, discovered: boolean): (string, string,
 	end
 	local progress = MasteryDefinitions.GetMasteryProgress(count, true)
 	if progress.Tier == "Gold" then
-		return "GOLD", "50+ SHIPMENTS", 1
+		return "GOLD", string.format("%d+ SHIPMENTS", MasteryDefinitions.Thresholds.Gold), 1
 	end
 	local nextThreshold = progress.NextThreshold or count
 	return string.upper(progress.Tier), string.format("%d / %d SHIPMENTS", count, nextThreshold), progress.Fraction
@@ -295,19 +356,23 @@ end
 
 local function renderSlot(self: InternalController, index: number, countOverride: number?)
 	local snapshot = self._profileSnapshot
-	local definition = DevelopmentItemDefinitions.Ordered[index]
 	local slot = self._slots[index]
-	if snapshot == nil or definition == nil or slot == nil then
+	if snapshot == nil or slot == nil then
+		return
+	end
+	local itemId = slot.ItemId
+	local definition = DevelopmentItemDefinitions.Get(itemId)
+	if definition == nil then
 		return
 	end
 	local found = false
 	for _, discoveredId in ipairs(snapshot.DiscoveredItemIds) do
-		if discoveredId == definition.Id then
+		if discoveredId == itemId then
 			found = true
 			break
 		end
 	end
-	local count = math.max(0, math.floor(countOverride or snapshot.MasteryCounts[definition.Id] or 0))
+	local count = math.max(0, math.floor(countOverride or snapshot.MasteryCounts[itemId] or 0))
 	local tierText, countText, fraction = masteryText(count, found)
 	local tierColor = Color3.fromRGB(156, 92, 225)
 	if tierText == "BRONZE" then
@@ -331,10 +396,10 @@ local function renderSlot(self: InternalController, index: number, countOverride
 	slot.Button.Selectable = found
 	slot.Button.AutoButtonColor = found
 	slot.Button.Interactable = found
-	local renderKey = string.format("%s:%s", definition.Id, tostring(found))
+	local renderKey = string.format("%s:%s", itemId, tostring(found))
 	if self._slotRenderKeys[index] ~= renderKey then
 		self._slotRenderKeys[index] = renderKey
-		renderPreview(self, slot.Viewport, definition.Id, found, false)
+		renderPreview(self, slot.Viewport, itemId, found, false)
 	end
 end
 
@@ -371,11 +436,9 @@ local function renderNumber(self: InternalController, key: string, value: number
 	else
 		local itemId = string.match(key, "^Mastery:(.+)$")
 		if itemId ~= nil then
-			for index, definition in ipairs(DevelopmentItemDefinitions.Ordered) do
-				if definition.Id == itemId then
-					renderSlot(self, index, rounded)
-					break
-				end
+			local catalogIndex = CollectionDefinitions.GetCatalogIndex(itemId)
+			if catalogIndex ~= nil then
+				renderSlot(self, catalogIndex, rounded)
 			end
 		end
 	end
@@ -904,6 +967,7 @@ function ProfileUIController.new(root: GuiObject, template: BasePart, callbacks:
 	local _rankProgressBackground = requireFrame(rankProgressBar, "Background")
 	local resultsPanel = requireGui(root, "ResultsPanel")
 	local slotsContainer = requireFrame(collectionPanel, "Slots")
+	validateCollectionAuthoring(slotsContainer)
 
 	local labels: UIReferences = {
 		TapeLabel = requireLabel(metaBar, "TapeLabel"),
@@ -925,10 +989,11 @@ function ProfileUIController.new(root: GuiObject, template: BasePart, callbacks:
 		DiscoverySummary = requireLabel(resultsPanel, "DiscoverySummary"),
 	}
 	local slots: { CollectionSlot } = {}
-	for index = 1, #DevelopmentItemDefinitions.Ordered do
+	for index, itemId in ipairs(CollectionDefinitions.OrderedItemIds) do
 		local button = requireButton(slotsContainer, string.format("Slot_%02d", index))
 		local progress = requireFrame(button, "MasteryProgress")
 		table.insert(slots, {
+			ItemId = itemId,
 			Button = button,
 			Viewport = requireViewport(button, "ItemViewport"),
 			ItemName = requireLabel(button, "ItemName"),
@@ -1042,11 +1107,11 @@ function ControllerMethods.ApplyProfileSnapshot(self: InternalController, snapsh
 	setNumberTarget(self, "PackingXP", snapshot.PackingXP, XP_DURATION)
 	updateProfileCopy(self, snapshot)
 	local discovered = discoveredSet(snapshot)
-	for index, definition in ipairs(DevelopmentItemDefinitions.Ordered) do
-		local key = "Mastery:" .. definition.Id
-		local count = snapshot.MasteryCounts[definition.Id] or 0
-		local changed = previous ~= nil and (previous.MasteryCounts[definition.Id] or 0) ~= count
-		if changed and discovered[definition.Id] then
+	for _, itemId in ipairs(CollectionDefinitions.OrderedItemIds) do
+		local key = "Mastery:" .. itemId
+		local count = snapshot.MasteryCounts[itemId] or 0
+		local changed = previous ~= nil and (previous.MasteryCounts[itemId] or 0) ~= count
+		if changed and discovered[itemId] then
 			setNumberTarget(self, key, count, MASTERY_DURATION)
 		else
 			self._authoritativeNumbers[key] = count
