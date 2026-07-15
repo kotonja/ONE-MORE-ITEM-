@@ -10,13 +10,12 @@ local CharacterController = require(controllers:WaitForChild("CharacterControlle
 local ClientRoundStore = require(controllers:WaitForChild("ClientRoundStore"))
 local InputController = require(controllers:WaitForChild("InputController"))
 local InputModeStore = require(controllers:WaitForChild("InputModeStore"))
-local PlacementController = require(controllers:WaitForChild("PlacementController"))
 local PresentationTokens = require(controllers:WaitForChild("PresentationTokens"))
 local ResponsiveLayout = require(controllers:WaitForChild("ResponsiveLayout"))
 local ResponsiveUIController = require(controllers:WaitForChild("ResponsiveUIController"))
 local RoundUIController = require(controllers:WaitForChild("RoundUIController"))
+local StationContextController = require(controllers:WaitForChild("StationContextController"))
 local ViewportPreviewController = require(controllers:WaitForChild("ViewportPreviewController"))
-local WorldMotionController = require(controllers:WaitForChild("WorldMotionController"))
 
 type Snapshot = ClientRoundStore.Snapshot
 type PlacementResponse = ClientRoundStore.PlacementResponse
@@ -36,14 +35,6 @@ local function requireRemote(parent: Instance, name: string): RemoteEvent
 	local child = requireChild(parent, name)
 	if not child:IsA("RemoteEvent") then
 		error(string.format("ClientBootstrap requires RemoteEvent %s", child:GetFullName()), 2)
-	end
-	return child
-end
-
-local function requireModel(parent: Instance, name: string): Model
-	local child = requireChild(parent, name)
-	if not child:IsA("Model") then
-		error(string.format("ClientBootstrap requires Model %s", child:GetFullName()), 2)
 	end
 	return child
 end
@@ -101,7 +92,6 @@ local placementResponseRemote = requireRemote(net, "PlacementResponse")
 local worldRoot = requireChild(Workspace, "ONE_MORE_ITEM_WORLD")
 local arena = requireChild(worldRoot, "PlaytestArena")
 local stations = requireChild(arena, "Stations")
-local station = requireModel(stations, "Station_01")
 
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 local gameplayGuiInstance = waitForAuthoredChild(playerGui, "ONE_MORE_ITEM_Gameplay")
@@ -154,7 +144,6 @@ end
 local store = ClientRoundStore.new()
 local camera = CameraController.new()
 local character = CharacterController.new()
-local worldMotion = WorldMotionController.new(station)
 local roundUI = RoundUIController.new(gameplayGui, resolveItemName)
 local inputMode: InputMode = "KeyboardMouse"
 local layoutClass: LayoutClass = "Wide"
@@ -180,61 +169,29 @@ local viewportPreview = ViewportPreviewController.new(
 	getItemColor
 )
 
-local inputController: InputController.Controller? = nil
-local placement = PlacementController.new(placeItemRequest, station, cellBlockTemplate, {
-	FitChanged = function(valid: boolean?, x: number?, y: number?, z: number?)
-		roundUI:SetFitState(valid, x, y, z)
-	end,
-	GridFeedback = function(cells: { Cell }, valid: boolean)
-		worldMotion:SetGridFeedback(cells, valid)
-	end,
-	ClearGridFeedback = function()
-		worldMotion:ClearGridFeedback()
-	end,
-	ButtonPressed = function(action: string)
-		roundUI:PlayButtonPress(action)
-		worldMotion:PressButton(action)
-	end,
-	PlacementImpact = function(position: Vector3, heavy: boolean)
-		worldMotion:PlayPlacementImpact(position, heavy)
-		camera:PlayImpulse(if heavy then "HEAVY" else "LIGHT")
-	end,
-	ServerResponse = function(reason: string, _accepted: boolean)
-		roundUI:SetServerResponse(reason)
-	end,
-	Rejected = function()
-		worldMotion:PlayRejected()
-	end,
-	PendingChanged = function(pending: boolean)
-		script:SetAttribute("PlacementPending", pending)
-		local activeInput = inputController
-		if activeInput ~= nil then
-			activeInput:RefreshContext()
-		end
-	end,
-	Observability = function(valid: boolean?, x: number?, y: number?, z: number?)
-		script:SetAttribute("GhostValid", valid)
-		script:SetAttribute("GhostX", x)
-		script:SetAttribute("GhostY", y)
-		script:SetAttribute("GhostZ", z)
-	end,
-})
+local stationContext: StationContextController.Controller? = nil
 
 local decisionSequence = 0
 local restartSequence = 0
-local previousState: string? = nil
-local assigned = false
+local previousLoggedState: string? = nil
+local previousLoggedStation: string? = nil
 local destroyed = false
 local connections: { RBXScriptConnection } = {}
 
 local function requestDecision(choice: string)
 	local snapshot = store:GetSnapshot()
-	if snapshot == nil or snapshot.State ~= "Decision" or (choice ~= "SHIP" and choice ~= "ONE_MORE") then
+	local context = stationContext
+	if snapshot == nil
+		or context == nil
+		or not context:IsAssignedFor(snapshot.StationId)
+		or snapshot.State ~= "Decision"
+		or (choice ~= "SHIP" and choice ~= "ONE_MORE")
+	then
 		return
 	end
 	decisionSequence += 1
 	roundUI:PlayButtonPress(choice)
-	worldMotion:PressButton(choice)
+	context:PressButton(choice)
 	decisionRequest:FireServer({
 		RoundId = snapshot.RoundId,
 		StateVersion = snapshot.StateVersion,
@@ -245,11 +202,17 @@ end
 
 local function requestRestart()
 	local snapshot = store:GetSnapshot()
-	if snapshot == nil or snapshot.State ~= "Results" or snapshot.StationId ~= "station_01" then
+	local context = stationContext
+	if snapshot == nil
+		or context == nil
+		or not context:IsAssignedFor(snapshot.StationId)
+		or snapshot.State ~= "Results"
+	then
 		return
 	end
 	restartSequence += 1
 	roundUI:PlayButtonPress("RESTART")
+	context:PressButton("RESTART")
 	restartRequest:FireServer({
 		RoundId = snapshot.RoundId,
 		StateVersion = snapshot.StateVersion,
@@ -259,21 +222,34 @@ end
 
 local input = InputController.new({
 	Move = function(deltaX: number, deltaZ: number)
-		placement:Move(deltaX, deltaZ)
+		local context = stationContext
+		if context ~= nil then
+			context:Move(deltaX, deltaZ)
+		end
 	end,
 	Rotate = function()
-		placement:RotateClockwise()
+		local context = stationContext
+		if context ~= nil then
+			context:RotateClockwise()
+		end
 	end,
 	Place = function()
-		placement:RequestPlacement()
+		local context = stationContext
+		if context ~= nil then
+			context:RequestPlacement()
+		end
 	end,
 	Decision = requestDecision,
 	Restart = requestRestart,
 	PointerRay = function(ray: Ray)
-		placement:UpdateFromPointerRay(ray)
+		local context = stationContext
+		if context ~= nil then
+			context:UpdateFromPointerRay(ray)
+		end
 	end,
 	IsPlacementPending = function(): boolean
-		return placement:IsPlacementPending()
+		local context = stationContext
+		return context ~= nil and context:IsPlacementPending()
 	end,
 	ModeChanged = function(newMode: InputMode)
 		inputMode = newMode
@@ -294,48 +270,76 @@ local input = InputController.new({
 		script:SetAttribute("SelectedGamepadAction", selectedAction)
 	end,
 }, roundUI:GetButtons(), guiRoot, touchDragSurface)
-inputController = input
+
+stationContext = StationContextController.new({
+	StationsRoot = stations,
+	PlaceItemRequest = placeItemRequest,
+	CellBlockTemplate = cellBlockTemplate,
+	Camera = camera,
+	Character = character,
+	Callbacks = {
+		FitChanged = function(valid: boolean?, x: number?, y: number?, z: number?)
+			roundUI:SetFitState(valid, x, y, z)
+		end,
+		ButtonPressed = function(action: string)
+			roundUI:PlayButtonPress(action)
+		end,
+		ServerResponse = function(reason: string, _accepted: boolean)
+			roundUI:SetServerResponse(reason)
+		end,
+		PendingChanged = function(pending: boolean)
+			script:SetAttribute("PlacementPending", pending)
+			input:RefreshContext()
+		end,
+		Observability = function(valid: boolean?, x: number?, y: number?, z: number?)
+			script:SetAttribute("GhostValid", valid)
+			script:SetAttribute("GhostX", x)
+			script:SetAttribute("GhostY", y)
+			script:SetAttribute("GhostZ", z)
+		end,
+		AssignmentChanged = function(isAssigned: boolean, stationId: string?)
+			input:SetAssigned(isAssigned)
+			script:SetAttribute("StationId", stationId)
+			if not isAssigned then
+				viewportPreview:Clear()
+			end
+		end,
+	},
+})
 
 local unsubscribe = store:Subscribe(function(snapshot: Snapshot)
 	if destroyed then
 		return
 	end
-	local nowAssigned = snapshot.StationId == "station_01"
-	if nowAssigned ~= assigned then
-		assigned = nowAssigned
-		character:SetAssigned(assigned)
-		if assigned then
-			camera:Activate(station)
-		else
-			camera:Deactivate()
-		end
+	local context = stationContext
+	if context == nil then
+		return
 	end
-
-	if snapshot.State ~= previousState then
-		worldMotion:SetState(snapshot.State, previousState)
-		if snapshot.State == "Shipping" then
-			camera:PlayImpulse("SHIPPING")
-		elseif snapshot.State == "Failing" then
-			camera:PlayImpulse("FAILURE")
-		end
+	local nowAssigned = context:ApplySnapshot(snapshot)
+	local activeStationId = context:GetStationId()
+	if snapshot.State ~= previousLoggedState or activeStationId ~= previousLoggedStation then
 		print(string.format(
 			"[ONE_MORE_ITEM][Client] STATE round=%s version=%d state=%s station=%s",
 			tostring(snapshot.RoundId),
 			snapshot.StateVersion,
 			snapshot.State,
-			snapshot.StationId
+			tostring(activeStationId)
 		))
-		previousState = snapshot.State
+		previousLoggedState = snapshot.State
+		previousLoggedStation = activeStationId
 	end
-	roundUI:ApplySnapshot(snapshot)
-	viewportPreview:ApplySnapshot(snapshot)
-	placement:ApplySnapshot(snapshot)
-	input:ApplySnapshot(snapshot)
+	roundUI:ApplySnapshot(snapshot, nowAssigned)
+	if nowAssigned then
+		viewportPreview:ApplySnapshot(snapshot)
+	else
+		viewportPreview:Clear()
+	end
+	input:ApplySnapshot(snapshot, nowAssigned)
 
 	script:SetAttribute("RoundId", snapshot.RoundId)
 	script:SetAttribute("StateVersion", snapshot.StateVersion)
 	script:SetAttribute("RoundState", snapshot.State)
-	script:SetAttribute("StationId", snapshot.StationId)
+	script:SetAttribute("StationId", activeStationId)
 	input:RefreshPointer()
 end)
 
@@ -344,7 +348,10 @@ table.insert(connections, roundSnapshotRemote.OnClientEvent:Connect(function(sna
 end))
 
 table.insert(connections, placementResponseRemote.OnClientEvent:Connect(function(response: PlacementResponse)
-	placement:HandleResponse(response)
+	local context = stationContext
+	if context ~= nil then
+		context:HandleResponse(response)
+	end
 end))
 
 local function cleanup()
@@ -357,12 +364,15 @@ local function cleanup()
 		connection:Disconnect()
 	end
 	table.clear(connections)
+	local context = stationContext
+	stationContext = nil
+	if context ~= nil then
+		context:Destroy()
+	end
 	input:Destroy()
 	responsiveUI:Destroy()
-	placement:Destroy()
 	viewportPreview:Destroy()
 	roundUI:Destroy()
-	worldMotion:Destroy()
 	camera:Destroy()
 	character:Destroy()
 	store:Destroy()
@@ -372,7 +382,7 @@ end
 table.insert(connections, script.Destroying:Connect(cleanup))
 
 script:SetAttribute("Initialized", true)
-script:SetAttribute("ClientVersion", "phase03")
+script:SetAttribute("ClientVersion", "phase04")
 script:SetAttribute("InputMode", inputMode)
 script:SetAttribute("LayoutClass", layoutClass)
 print("[ONE_MORE_ITEM][Client] READY controls=keyboard+mouse+touch+gamepad authority=server")

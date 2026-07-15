@@ -38,7 +38,7 @@ export type ButtonSizes = { [TextButton]: UDim2 }
 export type Controller = {
 	GetButtons: (self: Controller) -> Buttons,
 	SetResponsiveTargets: (self: Controller, panelPositions: PanelPositions, buttonSizes: ButtonSizes) -> (),
-	ApplySnapshot: (self: Controller, snapshot: Snapshot) -> (),
+	ApplySnapshot: (self: Controller, snapshot: Snapshot, assigned: boolean) -> (),
 	SetFitState: (self: Controller, valid: boolean?, x: number?, y: number?, z: number?) -> (),
 	SetServerResponse: (self: Controller, message: string) -> (),
 	PlayButtonPress: (self: Controller, action: string) -> (),
@@ -68,6 +68,7 @@ type InternalController = Controller & {
 	_resultCountKey: string?,
 	_connections: { RBXScriptConnection },
 	_snapshot: Snapshot?,
+	_assigned: boolean,
 	_lastPlacementSecond: number?,
 	_lastDecisionSecond: number?,
 	_resolveItemName: (itemId: string) -> string,
@@ -222,6 +223,15 @@ local function setPanelVisible(self: InternalController, panel: GuiObject, visib
 	tween:Play()
 end
 
+local function hidePanelImmediately(self: InternalController, panel: GuiObject)
+	local state = self._panelMotion[panel]
+	state.TargetVisible = false
+	state.Epoch += 1
+	stopPanelMotion(state)
+	panel.Position = self._originalPositions[panel]
+	panel.Visible = false
+end
+
 local function countDuration(minimum: number, maximum: number, difference: number, fullDurationDifference: number): number
 	local alpha = math.clamp(math.abs(difference) / fullDurationDifference, 0, 1)
 	return minimum + (maximum - minimum) * alpha
@@ -234,13 +244,13 @@ local function renderCountValue(self: InternalController, key: string, value: nu
 	elseif key == "SessionBank" then
 		self._labels.SessionBank.Text = string.format("BANK %d TAPE", rounded)
 		local snapshot = self._snapshot
-		if snapshot ~= nil and snapshot.StationId == "station_01" and snapshot.State == "Results" then
+		if snapshot ~= nil and self._assigned and snapshot.State == "Results" then
 			self._labels.SessionTotal.Text = string.format("SESSION %d TAPE", rounded)
 		end
 	elseif key == "ResultValue" then
 		local snapshot = self._snapshot
 		if snapshot ~= nil
-			and snapshot.StationId == "station_01"
+			and self._assigned
 			and snapshot.State == "Results"
 			and snapshot.ResultLostValue == 0
 		then
@@ -471,6 +481,7 @@ function RoundUIController.new(gui: ScreenGui, resolveItemName: (itemId: string)
 		_resultCountKey = nil,
 		_connections = {},
 		_snapshot = nil,
+		_assigned = false,
 		_lastPlacementSecond = nil,
 		_lastDecisionSecond = nil,
 		_resolveItemName = resolveItemName,
@@ -550,17 +561,18 @@ function ControllerMethods.SetResponsiveTargets(
 	end
 end
 
-function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Snapshot)
+function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Snapshot, assigned: boolean)
 	if self._destroyed then
 		return
 	end
 	self._snapshot = snapshot
+	self._assigned = assigned
 	local state = snapshot.State
-	local hasStation = snapshot.StationId == "station_01"
+	local hasStation = assigned
 	local awaiting = state == "AwaitingPlacement" and hasStation
 	local deciding = state == "Decision" and hasStation
 	local results = state == "Results" and hasStation
-	local spectator = not hasStation
+	local waiting = not hasStation
 	local failedResult = isFailureResult(snapshot)
 	local successfulShipping = state == "Shipping" and hasStation and not failedResult and snapshot.ResultValue > 0
 	local shipmentDisplayTarget = if successfulShipping then snapshot.ResultValue else snapshot.ShipmentValue
@@ -570,7 +582,7 @@ function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Sna
 		"ShipmentValue",
 		shipmentDisplayTarget,
 		deciding or successfulShipping,
-		spectator or state == "Preparing" or state == "Failing" or failedResult,
+		waiting or state == "Preparing" or state == "Failing" or failedResult,
 		SHIPMENT_COUNT_MIN_DURATION,
 		SHIPMENT_COUNT_MAX_DURATION,
 		SHIPMENT_FULL_DURATION_DIFFERENCE
@@ -580,7 +592,7 @@ function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Sna
 		"SessionBank",
 		snapshot.SessionBank,
 		hasStation and (state == "Shipping" or results) and not failedResult,
-		spectator or state == "Preparing" or state == "Failing" or failedResult,
+		waiting or state == "Preparing" or state == "Failing" or failedResult,
 		SESSION_COUNT_MIN_DURATION,
 		SESSION_COUNT_MAX_DURATION,
 		SESSION_FULL_DURATION_DIFFERENCE
@@ -591,17 +603,26 @@ function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Sna
 		clearResultCount(self, snapshot.ResultValue)
 	end
 
-	setPanelVisible(self, self._currentItemCard, awaiting or state == "PresentingItem")
-	setPanelVisible(self, self._shipmentCard, not results)
-	setPanelVisible(self, self._placementControls, awaiting)
-	setPanelVisible(self, self._decisionPanel, deciding)
-	setPanelVisible(self, self._resultsPanel, results or spectator)
+	if waiting then
+		hidePanelImmediately(self, self._currentItemCard)
+		hidePanelImmediately(self, self._shipmentCard)
+		hidePanelImmediately(self, self._placementControls)
+		hidePanelImmediately(self, self._decisionPanel)
+	else
+		setPanelVisible(self, self._currentItemCard, awaiting or state == "PresentingItem")
+		setPanelVisible(self, self._shipmentCard, not results)
+		setPanelVisible(self, self._placementControls, awaiting)
+		setPanelVisible(self, self._decisionPanel, deciding)
+	end
+	setPanelVisible(self, self._resultsPanel, results or waiting)
 
 	updateButtonState(self._buttons.Rotate, awaiting)
 	updateButtonState(self._buttons.Place, awaiting)
 	updateButtonState(self._buttons.Ship, deciding)
 	updateButtonState(self._buttons.OneMore, deciding)
 	updateButtonState(self._buttons.PackAgain, results)
+	self._buttons.PackAgain.Visible = results
+	self._buttons.PackAgain.Selectable = results
 
 	self._labels.ItemName.Text = if snapshot.CurrentItemId ~= nil then self._resolveItemName(snapshot.CurrentItemId) else "WAITING FOR ITEM"
 	self._labels.UnshippedLabel.Text = "UNSHIPPED"
@@ -630,12 +651,12 @@ function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Sna
 		self._statusBanner.Text = ""
 	end
 
-	if spectator then
-		self._statusBanner.Text = "STATION 01 IS IN USE"
+	if waiting then
+		self._statusBanner.Text = "WAITING FOR A PACKING STATION"
 		self._statusBanner.TextColor3 = PresentationTokens.Color.SecondaryText
-		self._labels.ResultTitle.Text = "SPECTATING"
+		self._labels.ResultTitle.Text = "WAITING FOR A PACKING STATION"
 		self._labels.ResultTitle.TextColor3 = PresentationTokens.Color.Cyan
-		self._labels.ResultReason.Text = "STATION 01 IS CURRENTLY ASSIGNED"
+		self._labels.ResultReason.Text = "YOU WILL BE ASSIGNED AUTOMATICALLY"
 		self._labels.ResultValue.Text = ""
 		self._labels.SessionTotal.Text = ""
 	elseif results then
@@ -706,6 +727,7 @@ function ControllerMethods.Destroy(self: InternalController)
 		return
 	end
 	self._destroyed = true
+	self._assigned = false
 	for _, state in pairs(self._panelMotion) do
 		state.Epoch += 1
 		stopPanelMotion(state)

@@ -140,6 +140,7 @@ local function makeRound(): RoundRecord
 		PreviewedNextItemId = nil,
 		PreviewDifficulty = nil,
 		Grid = newGrid(),
+		PlacedItems = {},
 		ItemCount = 0,
 		BaseValueSum = 0,
 		ShipmentValue = 0,
@@ -1005,17 +1006,90 @@ addSuite("World transform", {
 
 local function makeStationsFixture(): (Folder, Model)
 	local root = Instance.new("Folder")
-	local station = Instance.new("Model")
-	station.Name = "Station_01"
-	station:SetAttribute("StationId", "station_01")
-	station:SetAttribute("Active", true)
-	local stand = Instance.new("Part")
-	stand.Name = "PlayerStand"
-	stand.Anchored = true
-	stand.CFrame = CFrame.new(3, 5, 7)
-	stand.Parent = station
-	station.Parent = root
-	return root, station
+
+	local function folder(parent: Instance, name: string): Folder
+		local child = Instance.new("Folder")
+		child.Name = name
+		child.Parent = parent
+		return child
+	end
+
+	local function part(parent: Instance, name: string): Part
+		local child = Instance.new("Part")
+		child.Name = name
+		child.Anchored = true
+		child.Parent = parent
+		return child
+	end
+
+	local stationOne: Model? = nil
+	for stationIndex = 1, 8 do
+		local station = Instance.new("Model")
+		station.Name = string.format("Station_%02d", stationIndex)
+		station:SetAttribute("StationId", string.format("station_%02d", stationIndex))
+		station:SetAttribute("StationIndex", stationIndex)
+		station:SetAttribute("GridWidth", 5)
+		station:SetAttribute("GridHeight", 4)
+		station:SetAttribute("GridDepth", 5)
+		station:SetAttribute("CellSize", 2)
+		station:SetAttribute("Active", true)
+
+		for _, name in ipairs({
+			"StationRoot",
+			"PlayerStand",
+			"CameraAnchor",
+			"CameraAnchorTouchLandscape",
+			"CameraAnchorTouchPortrait",
+			"CameraFocus",
+			"PresentationPoint",
+			"DispatchPort",
+		}) do
+			part(station, name)
+		end
+		local stand = station.PlayerStand :: Part
+		stand.CFrame = CFrame.new(stationIndex * 3, 5, 7)
+
+		local crate = folder(station, "Crate")
+		for _, name in ipairs({ "Base", "GridOrigin", "WallFront", "WallBack", "WallLeft", "WallRight", "Lid", "CrateFocus" }) do
+			part(crate, name)
+		end
+		local gridTiles = folder(crate, "GridTiles")
+		for x = 0, 4 do
+			for z = 0, 4 do
+				part(gridTiles, string.format("Cell_%d_%d", x, z))
+			end
+		end
+
+		local console = folder(station, "ControlConsole")
+		for _, name in ipairs({ "RotateButton", "PlaceButton", "ShipButton", "OneMoreButton" }) do
+			part(console, name)
+		end
+
+		local ownerDisplay = part(station, "OwnerDisplay")
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "BillboardGui"
+		billboard.Parent = ownerDisplay
+		for _, name in ipairs({ "PlayerName", "RoundStatus", "RiskValue", "StationNumber" }) do
+			local label = Instance.new("TextLabel")
+			label.Name = name
+			label.Parent = billboard
+		end
+
+		local riskIndicator = folder(station, "RiskIndicator")
+		local indicatorPart = part(riskIndicator, "IndicatorPart")
+		local light = Instance.new("PointLight")
+		light.Name = "Light"
+		light.Parent = indicatorPart
+		folder(station, "PlacedItems")
+		folder(station, "RuntimePresentation")
+
+		station.Parent = root
+		if stationIndex == 1 then
+			stationOne = station
+		end
+	end
+
+	return root, stationOne :: Model
 end
 
 addSuite("Station assignment", {
@@ -1031,14 +1105,14 @@ addSuite("Station assignment", {
 		end,
 	},
 	{
-		Name = "second simultaneous player cannot own Station 01",
+		Name = "second simultaneous player receives a different station",
 		Run = function()
 			local root = makeStationsFixture()
 			local service = StationService.Create(root)
 			local first = fakePlayer(1)
 			local second = fakePlayer(2)
-			expect(service:AssignPlayer(first).Assigned, "First assignment should pass")
-			expectEqual(service:AssignPlayer(second).Reason, "NO_STATION")
+			expectEqual(service:AssignPlayer(first).StationId, "station_01")
+			expectEqual(service:AssignPlayer(second).StationId, "station_02")
 			service:Destroy()
 			root:Destroy()
 		end,
@@ -1689,25 +1763,19 @@ addSuite("Runtime cleanup", {
 		Name = "placed items clear on reset without persistent growth",
 		Run = function()
 			local root, station = makeStationsFixture()
-			local crate = Instance.new("Folder")
-			crate.Name = "Crate"
-			crate.Parent = station
-			local origin = Instance.new("Part")
-			origin.Name = "GridOrigin"
-			origin.Parent = crate
-			local placed = Instance.new("Folder")
-			placed.Name = "PlacedItems"
-			placed.Parent = station
+			local placed = station.PlacedItems :: Folder
 			local template = Instance.new("Part")
 			local player = fakePlayer(6)
-			local stationContract = ({ GetStationModel = function(_self, _player: Player): Model? return station end } :: any)
-			local service = WorldItemService.Create(template, stationContract)
+			local stationService = StationService.Create(root)
+			stationService:AssignPlayer(player)
+			local service = WorldItemService.Create(template, stationService)
 			for roundIndex = 1, 3 do
 				service:SpawnAcceptedPlacement(player, "parcel", fixturePlacement({ { X = roundIndex, Y = 0, Z = 0 } }))
 				expectEqual(service:GetRuntimeModelCount(player), 1)
 				service:ClearPlayer(player)
 				expectEqual(#placed:GetChildren(), 0)
 			end
+			stationService:Destroy()
 			template:Destroy()
 			root:Destroy()
 		end,

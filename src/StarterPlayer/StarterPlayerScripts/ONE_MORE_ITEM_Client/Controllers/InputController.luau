@@ -52,7 +52,8 @@ export type Buttons = {
 
 export type Controller = {
 	GetMode: (self: Controller) -> InputMode,
-	ApplySnapshot: (self: Controller, snapshot: Snapshot) -> (),
+	ApplySnapshot: (self: Controller, snapshot: Snapshot, assigned: boolean) -> (),
+	SetAssigned: (self: Controller, assigned: boolean) -> (),
 	RefreshContext: (self: Controller) -> (),
 	RefreshPointer: (self: Controller) -> (),
 	Destroy: (self: Controller) -> (),
@@ -364,13 +365,21 @@ function ControllerMethods.GetMode(self: InternalController): InputMode
 	return self._mode
 end
 
-function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Snapshot)
+function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Snapshot, assigned: boolean)
 	if self._destroyed then
 		return
 	end
 	self._snapshot = snapshot
-	self._assigned = snapshot.StationId == "station_01"
+	self._assigned = assigned
 	self._prompt:ApplySnapshot(snapshot)
+	refreshContexts(self)
+end
+
+function ControllerMethods.SetAssigned(self: InternalController, assigned: boolean)
+	if self._destroyed or self._assigned == assigned then
+		return
+	end
+	self._assigned = assigned
 	refreshContexts(self)
 end
 

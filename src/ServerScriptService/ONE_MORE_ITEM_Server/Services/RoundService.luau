@@ -10,10 +10,12 @@ local IntegerValidation = require(Root.Shared.Grid.IntegerValidation)
 local NetworkTypes = require(Root.Shared.Net.NetworkTypes)
 local RoundTypes = require(Root.Shared.Round.RoundTypes)
 local RoundMath = require(Root.Shared.Round.RoundMath)
+local DisplayNameSanitizer = require(Root.Shared.World.DisplayNameSanitizer)
 local SequenceService = require(script.Parent.SequenceService)
 local PlacementService = require(script.Parent.PlacementService)
 local StationServiceModule = require(script.Parent.StationService)
 local WorldItemServiceModule = require(script.Parent.WorldItemService)
+local ShipmentRecordServiceModule = require(script.Parent.ShipmentRecordService)
 
 type RoundRecord = RoundTypes.RoundRecord
 type RoundState = RoundTypes.RoundState
@@ -24,10 +26,52 @@ type PlacementResult = PlacementService.PlacementResult
 type Sequence = SequenceService.Service
 type StationServiceContract = StationServiceModule.Service
 type WorldItemServiceContract = WorldItemServiceModule.Service
+type ShipmentRecordServiceContract = ShipmentRecordServiceModule.Service
+export type ShipmentRecord = ShipmentRecordServiceModule.ShipmentRecord
+type PlacedItemPresentation = RoundTypes.PlacedItemPresentation
 
 type Scheduler = (number, () -> ()) -> ()
 type Clock = () -> number
 type SnapshotSink = (Player, RoundSnapshot) -> ()
+
+export type RoundStateEvent = {
+	PlayerUserId: number,
+	StationId: string,
+	RoundId: number,
+	StateVersion: number,
+	State: RoundState,
+	ItemCount: number,
+	ShipmentValue: number,
+	ResultReason: string?,
+	ResultValue: number,
+	ResultLostValue: number,
+}
+
+export type HighRiskMilestoneEvent = {
+	PlayerUserId: number,
+	PlayerDisplayName: string,
+	StationId: string,
+	RoundId: number,
+	ItemCount: number,
+	ShipmentValue: number,
+}
+
+export type RoundFailureEvent = {
+	PlayerUserId: number,
+	PlayerDisplayName: string,
+	StationId: string,
+	RoundId: number,
+	ItemCount: number,
+	LostValue: number,
+	Reason: string,
+}
+
+export type EventSink = {
+	OnRoundStateChanged: ((Player, RoundStateEvent) -> ())?,
+	OnShipmentCompleted: ((ShipmentRecord) -> ())?,
+	OnHighRiskMilestone: ((HighRiskMilestoneEvent) -> ())?,
+	OnRoundFailed: ((RoundFailureEvent) -> ())?,
+}
 
 export type Service = {
 	GetRound: (self: Service, player: Player) -> RoundRecord?,
@@ -63,7 +107,9 @@ type RoundServiceImpl = Service & {
 	_rounds: { [Player]: RoundRecord },
 	_sequences: { [Player]: Sequence },
 	_sessionBanks: { [Player]: number },
-	_nextRoundId: number,
+	_roundOrdinals: { [number]: number },
+	_eventSink: EventSink,
+	_shipmentRecordService: ShipmentRecordServiceContract,
 }
 
 local RoundService = {}
@@ -85,18 +131,23 @@ function RoundService.Create(
 	worldItemService: WorldItemServiceContract,
 	clock: Clock?,
 	scheduler: Scheduler?,
-	snapshotSink: SnapshotSink?
+	snapshotSink: SnapshotSink?,
+	eventSink: EventSink?,
+	shipmentRecordService: ShipmentRecordServiceContract?
 ): RoundServiceImpl
+	local resolvedClock = clock or defaultClock
 	return setmetatable({
 		_stationService = stationService,
 		_worldItemService = worldItemService,
-		_clock = clock or defaultClock,
+		_clock = resolvedClock,
 		_scheduler = scheduler or defaultScheduler,
 		_snapshotSink = snapshotSink or noSnapshot,
 		_rounds = {},
 		_sequences = {},
 		_sessionBanks = {},
-		_nextRoundId = 0,
+		_roundOrdinals = {},
+		_eventSink = eventSink or {},
+		_shipmentRecordService = shipmentRecordService or ShipmentRecordServiceModule.Create(resolvedClock),
 	}, RoundService) :: RoundServiceImpl
 end
 
@@ -151,6 +202,40 @@ function RoundService.GetSnapshot(self: RoundServiceImpl, player: Player): Round
 	}
 end
 
+local function safeCallback(label: string, callback: (() -> ())?)
+	if callback == nil then
+		return
+	end
+	local ok, failure = pcall(callback)
+	if not ok then
+		warn(string.format("[ONE_MORE_ITEM][RoundEvent] %s callback failed: %s", label, tostring(failure)))
+	end
+end
+
+local function makeRoundStateEvent(round: RoundRecord): RoundStateEvent
+	return table.freeze({
+		PlayerUserId = round.PlayerUserId,
+		StationId = round.StationId,
+		RoundId = round.RoundId,
+		StateVersion = round.StateVersion,
+		State = round.State,
+		ItemCount = round.ItemCount,
+		ShipmentValue = round.ShipmentValue,
+		ResultReason = round.ResultReason,
+		ResultValue = round.ResultValue,
+		ResultLostValue = round.ResultLostValue,
+	}) :: RoundStateEvent
+end
+
+local function notifyRoundState(self: RoundServiceImpl, player: Player, round: RoundRecord)
+	local callback = self._eventSink.OnRoundStateChanged
+	if callback ~= nil then
+		safeCallback("OnRoundStateChanged", function()
+			callback(player, makeRoundStateEvent(round))
+		end)
+	end
+end
+
 function RoundService._emitSnapshot(self: RoundServiceImpl, player: Player)
 	local snapshot = self:GetSnapshot(player)
 	if snapshot then
@@ -166,6 +251,7 @@ function RoundService._transition(self: RoundServiceImpl, player: Player, newSta
 	round.State = newState
 	round.StateVersion += 1
 	self:_emitSnapshot(player)
+	notifyRoundState(self, player, round)
 end
 
 function RoundService._scheduleCurrentState(self: RoundServiceImpl, player: Player, duration: number)
@@ -191,8 +277,8 @@ function RoundService.StartRound(
 		return nil
 	end
 
-	self._nextRoundId += 1
-	local roundId = self._nextRoundId
+	local roundId = (self._roundOrdinals[player.UserId] or 0) + 1
+	self._roundOrdinals[player.UserId] = roundId
 	local firstItem = SequenceService.GetFirstItem()
 	local sequence = SequenceService.Create(SequenceService.StableRoundSeed(player.UserId, roundId))
 	sequence:RecordOffer(firstItem.Id)
@@ -206,6 +292,7 @@ function RoundService.StartRound(
 		PreviewedNextItemId = nil,
 		PreviewDifficulty = nil,
 		Grid = OccupancyGrid.CreateGrid(GameConfig.BOX_WIDTH, GameConfig.BOX_HEIGHT, GameConfig.BOX_DEPTH),
+		PlacedItems = {},
 		ItemCount = 0,
 		BaseValueSum = 0,
 		ShipmentValue = 0,
@@ -221,6 +308,7 @@ function RoundService.StartRound(
 	self._rounds[player] = round
 	self._sequences[player] = sequence
 	self:_emitSnapshot(player)
+	notifyRoundState(self, player, round)
 	local preparationDuration = if preparationMode == "RESTART"
 		then RoundConfig.RESTART_PREPARING_DURATION
 		else RoundConfig.INITIAL_PREPARING_DURATION
@@ -266,6 +354,20 @@ function RoundService._enterShipping(self: RoundServiceImpl, player: Player, rea
 	round.ResultReason = reason
 	round.ResultValue = shipmentValue
 	round.ResultLostValue = 0
+
+	local shipmentRecord: ShipmentRecord? = nil
+	local captureOk, capturedOrFailure, captureReason = pcall(function(): (ShipmentRecord?, string)
+		return self._shipmentRecordService:Capture(player, round)
+	end)
+	if captureOk then
+		shipmentRecord = capturedOrFailure :: ShipmentRecord?
+		if shipmentRecord == nil then
+			warn(string.format("[ONE_MORE_ITEM][Shipment] record skipped reason=%s", tostring(captureReason)))
+		end
+	else
+		warn(string.format("[ONE_MORE_ITEM][Shipment] record capture failed: %s", tostring(capturedOrFailure)))
+	end
+
 	round.BaseValueSum = 0
 	round.ShipmentValue = 0
 	round.CurrentItemId = nil
@@ -275,6 +377,14 @@ function RoundService._enterShipping(self: RoundServiceImpl, player: Player, rea
 	round.DecisionDeadline = nil
 	self:_transition(player, "Shipping")
 	self:_scheduleCurrentState(player, RoundConfig.SHIPPING_PRESENTATION_DURATION)
+
+	local shipmentCallback = self._eventSink.OnShipmentCompleted
+	if shipmentRecord ~= nil and shipmentCallback ~= nil then
+		local completedRecord = shipmentRecord
+		safeCallback("OnShipmentCompleted", function()
+			shipmentCallback(completedRecord)
+		end)
+	end
 end
 
 function RoundService._enterFailure(self: RoundServiceImpl, player: Player, reason: string)
@@ -282,6 +392,15 @@ function RoundService._enterFailure(self: RoundServiceImpl, player: Player, reas
 	if not round then
 		return
 	end
+	local failureEvent = table.freeze({
+		PlayerUserId = round.PlayerUserId,
+		PlayerDisplayName = DisplayNameSanitizer.Sanitize(player.DisplayName),
+		StationId = round.StationId,
+		RoundId = round.RoundId,
+		ItemCount = round.ItemCount,
+		LostValue = round.ShipmentValue,
+		Reason = reason,
+	}) :: RoundFailureEvent
 	round.ResultReason = reason
 	round.ResultValue = 0
 	round.ResultLostValue = round.ShipmentValue
@@ -296,6 +415,12 @@ function RoundService._enterFailure(self: RoundServiceImpl, player: Player, reas
 	round.DecisionDeadline = nil
 	self:_transition(player, "Failing")
 	self:_scheduleCurrentState(player, RoundConfig.FAILURE_PRESENTATION_DURATION)
+	local callback = self._eventSink.OnRoundFailed
+	if callback ~= nil then
+		safeCallback("OnRoundFailed", function()
+			callback(failureEvent)
+		end)
+	end
 end
 
 function RoundService.HandleCapturedTimer(
@@ -357,10 +482,40 @@ function RoundService.HandlePlacement(
 		return { Accepted = false, Reason = "UNKNOWN_ITEM", ClientSequence = result.ClientSequence, Placement = nil }
 	end
 	self._worldItemService:SpawnAcceptedPlacement(player, currentItemId, result.Placement)
+	local origin = result.Placement.Origin
+	local placedItem = table.freeze({
+		ItemId = currentItemId,
+		ShapeId = result.Placement.ShapeId,
+		QuarterTurns = result.Placement.QuarterTurns,
+		OriginX = origin.X,
+		OriginY = origin.Y,
+		OriginZ = origin.Z,
+		ColorR = definition.Color.R,
+		ColorG = definition.Color.G,
+		ColorB = definition.Color.B,
+	}) :: PlacedItemPresentation
+	table.insert(round.PlacedItems, placedItem)
 	round.ItemCount += 1
 	round.BaseValueSum += definition.BaseValue
 	round.ShipmentValue = RoundMath.CalculateShipmentValue(round.BaseValueSum, round.ItemCount)
 	round.PlacementDeadline = nil
+
+	if round.ItemCount == 6 or round.ItemCount == 8 or round.ItemCount == RoundConfig.MAXIMUM_ITEMS then
+		local callback = self._eventSink.OnHighRiskMilestone
+		if callback ~= nil then
+			local milestone = table.freeze({
+				PlayerUserId = player.UserId,
+				PlayerDisplayName = DisplayNameSanitizer.Sanitize(player.DisplayName),
+				StationId = round.StationId,
+				RoundId = round.RoundId,
+				ItemCount = round.ItemCount,
+				ShipmentValue = round.ShipmentValue,
+			}) :: HighRiskMilestoneEvent
+			safeCallback("OnHighRiskMilestone", function()
+				callback(milestone)
+			end)
+		end
+	end
 
 	if round.ItemCount >= RoundConfig.MAXIMUM_ITEMS then
 		self:_enterShipping(player, RoundConfig.MAXIMUM_ITEMS_REASON)

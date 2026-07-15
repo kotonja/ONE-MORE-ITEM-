@@ -45,6 +45,13 @@ local function clearRuntime(frame: ViewportFrame)
 	frame.CurrentCamera = nil
 end
 
+local function disconnectRevealConnections(self: InternalController)
+	for connection in pairs(self._revealConnections) do
+		connection:Disconnect()
+	end
+	table.clear(self._revealConnections)
+end
+
 local function bounds(cells: { Cell }): (Vector3, Vector3)
 	local minimum = Vector3.new(math.huge, math.huge, math.huge)
 	local maximum = Vector3.new(-math.huge, -math.huge, -math.huge)
@@ -180,6 +187,7 @@ end
 function ControllerMethods.Clear(self: InternalController)
 	self._currentKey = nil
 	self._nextKey = nil
+	disconnectRevealConnections(self)
 	clearRuntime(self._currentViewport)
 	clearRuntime(self._nextViewport)
 end
@@ -189,10 +197,6 @@ function ControllerMethods.Destroy(self: InternalController)
 		return
 	end
 	self._destroyed = true
-	for connection in pairs(self._revealConnections) do
-		connection:Disconnect()
-	end
-	table.clear(self._revealConnections)
 	self:Clear()
 end
 

@@ -116,3 +116,64 @@ Initial geometry applies immediately. A viewport change cancels and retargets in
 An assigned client leases PlayerModule controls and suppresses movement/jump with high-priority ContextActionService fallbacks. It records whether controls were enabled and the exact prior Humanoid `AutoRotate` value. Unassignment or destruction restores only state changed by the lease. Respawn and late Humanoid replacement reapply suppression while assignment remains active. Spectators retain ordinary controls.
 
 The complete mappings, responsive matrix, safe-area contract, tests, verified evidence, and pending acceptance gates are documented in `docs/PHASE03_CROSS_PLATFORM.md`.
+
+## Phase 04 permanent arena authoring
+
+The historically named `studio/phase02.manifest.json` remains the sole canonical owner of every Phase 02-04 permanent path. Its `stationPlacements` array defines eight ordered descriptors. `tools/build_phase02_blueprint.mjs` validates that exact order and expands the complete Station_01 subtree into eight explicit, independently auditable final station paths. Expansion is deterministic, parent-first, idempotent, and conflict safe; it never clones stations at runtime and never silently replaces a wrong-class object.
+
+Stations occupy a 38-stud ring at 45-degree intervals. Their local negative Z axis points toward the arena center. The authored transforms are:
+
+| Station | Direction | X | Z | Yaw |
+| --- | --- | ---: | ---: | ---: |
+| `station_01` | North | `0` | `-38` | `180` |
+| `station_02` | North-east | `26.8701` | `-26.8701` | `135` |
+| `station_03` | East | `38` | `0` | `90` |
+| `station_04` | South-east | `26.8701` | `26.8701` | `45` |
+| `station_05` | South | `0` | `38` | `0` |
+| `station_06` | South-west | `-26.8701` | `26.8701` | `-45` |
+| `station_07` | West | `-38` | `0` | `-90` |
+| `station_08` | North-west | `-26.8701` | `-26.8701` | `-135` |
+
+Every station carries a unique `StationId`/`StationIndex`, the same `5 x 5 x 4` integer grid with two-stud cells, all three responsive camera anchors, the complete crate/console/owner/risk contract, and separate `PlacedItems` and `RuntimePresentation` containers. `GridWorldTransform` composes each authored `GridOrigin` transform with logical integer offsets, so station yaw changes presentation without changing placement authority.
+
+The center arena is also permanent Edit-mode content: `CenterDispatch` contains the lift, entry, arena announcement, and server-best display; `ShowcaseLoop.PathNodes` contains exactly 16 indexed, non-physical path Parts on a 25-stud radius at height 19; and `ReplicatedStorage.ONE_MORE_ITEM.Assets.Development.ShowcaseCrateTemplate` is a script-free source template. `ShowcaseLoop.Runtime` is the empty destination for temporary server clones.
+
+## Phase 04 station registry and assignment
+
+`StationDefinitions` is the immutable allowlist and deterministic order for `station_01` through `station_08`. At startup, `StationService` discovers the authored Models, validates attributes and required direct/descendant paths, rejects duplicate IDs/indexes and unexpected active Models, sorts by index, and requires exactly eight valid stations before gameplay begins.
+
+Assignment is server authoritative. The first eight eligible players receive the lowest free indexes. Additional players enter one FIFO waiting list in join order. Removal releases ownership and station-scoped world state; the oldest still-eligible waiter receives the exact released station and a fresh authoritative snapshot. Respawn rebinds the existing owner to the same `PlayerStand` rather than allocating a new station. No client request contains or chooses station ownership.
+
+## Phase 04 client station lifecycle
+
+`StationContextController` resolves only allowlisted snapshot station IDs. Binding constructs one station-scoped placement controller and world-motion controller, activates the station's responsive camera anchors, and applies the reversible character-control lease. Unbinding invalidates callback epochs first, clears fit/pending/observability state, destroys station-scoped controllers, deactivates the camera, restores character controls, and leaves the shared round UI/input-mode controller intact. Reassignment always unbinds before resolving and binding the new authored Model, preventing old camera, ghost, placed-item, pointer, touch, or gamepad state from leaking.
+
+A nil, empty, or invalid station assignment enters waiting/spectator behavior: station-dependent placement calls become no-ops, the station camera is inactive, character controls are restored, touch placement is disabled, and gamepad selection is cleared by the coordinating input layer. Production assignment does not special-case `station_01`.
+
+## Phase 04 concurrent round isolation
+
+`RoundService` continues to own authoritative state, but each player record carries its validated station ID and an independent occupancy grid, round/version identity, deadlines, sequence state, placed-item presentation, shipment value, and session-only Tape bank. `PlacementService` resolves the calling player's owned station; `WorldItemService` tracks temporary accepted-item Models by station and player and parents them only under that station's `PlacedItems` folder. Restart, failure, shipping, release, and destruction clear only the affected station. One player's input cannot name or mutate another station.
+
+The network surface remains the same six authored Phase 02 RemoteEvents. Station assignment travels only in server snapshots; no Phase 04 remote, client-authored placement result, or persistent progression channel was added.
+
+## Phase 04 shipment and showcase pipeline
+
+`ShipmentRecordService` captures a successful authoritative round once using `PlayerUserId:RoundId` as the shipment ID. It verifies player/round ownership, station presence, and placed-item count, then deep-copies and freezes every placed-item presentation and the record. The immutable record contains display-safe player identity, station/round IDs, item/value/multiplier totals, copied placed items, creation time, and perfect-shipment status. Duplicate capture is rejected before any presentation consumer runs.
+
+`ShowcaseService` consumes records independently of reward authority. Accepted records receive monotonically increasing receipt sequences and enter a stable FIFO queue. At most three showcases are active and at most sixteen are pending; a seventeenth pending cosmetic request is rejected without modifying the gameplay shipment. Launches are spaced by 1.25 seconds. Each clone is non-colliding, non-touching, non-queryable, anchored, and script-free, and contains at most ten coarse item bounding-box proxies.
+
+The overflow path records `OverflowCount`, returns `QUEUE_FULL`, and emits exactly one concise Studio warning per service lifetime. The warning sink is injectable for deterministic tests; the production default uses `warn`. Repeated overflow cannot spam Output and cannot change the authoritative shipment or Tape.
+
+One conditional Heartbeat connection accumulates fixed `1/30`-second steps while showcases are active. Each model lifts for `0.60s`, follows the 16-node loop for `9.0s`, exits/fades over `0.40s`, and is destroyed. When the active set drains, the connection stops and `ShowcaseLoop.Runtime` returns to zero children. Destroying the service disconnects the loop, clears pending state, and removes all temporary models.
+
+`ServerBestService` is session-only and deduplicates shipment IDs. Higher ShipmentValue wins; ItemCount breaks value ties; an exact tie preserves the earlier record. `StationDisplayService` sanitizes owner names, exposes round state and risk value, and uses amber at six items, red at eight, and gold at ten. `ArenaAnnouncementService` applies priority/epoch guards so a lower-priority event cannot overwrite an active higher-priority high-risk, failure, perfect-shipment, or server-best message.
+
+## Phase 04 performance boundaries
+
+- Eight stations can hold at most 80 accepted item Models at the ten-item round cap. Using the largest nine-cell development shape as a conservative upper bound gives 720 detailed placed-item cell Parts across the arena.
+- The showcase holds at most three active clones. The authored crate contributes seven BaseParts and each clone adds at most ten item proxies, for a conservative maximum of 51 active showcase BaseParts.
+- Pending showcase records are data only and are capped at sixteen.
+- Showcase motion uses one shared 30 Hz update connection only while active; it does not create per-part or per-player frame loops.
+- Completed, failed, restarted, released, and drained state is explicitly destroyed so temporary runtime containers return to baseline.
+
+The complete hierarchy, operational limits, tests, current live evidence, and unfinished acceptance gates are documented in `docs/PHASE04_MULTIPLAYER_ARENA.md`.

@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-07-14 - Phase 04 implementation complete and accepted
+
+- Reopened the original private place directly from Roblox after a complete Studio close without running repository synchronization. The reopened place passed `672/672` managed-path parity, comprising 617 non-script instances and `55/55` exact Luau sources, with eight permanent stations, 25 authored grid tiles per station, 16 showcase path nodes, and exactly six remotes.
+- Re-ran every Studio suite after reopen: Foundation `69/69`, Phase 02 `94/94`, Phase 03 `65/65`, and Phase 04 `119/119` passed.
+- Re-ran all four dependency-free Node 24 validations successfully: Phase 01 `16` checks, Phase 02 `28` criteria, Phase 03 `31` criteria across `65` layout cases, and Phase 04 `42` criteria.
+- Completed the verified five-client Station_05 integration flow and final cleanup. Integrated shipment receipts remained unique; the first tied server-best record remained `-5:4` with value `15` and item count `1`; final showcase observability was `Runtime=0 Active=0 Pending=0 Overflow=0 Loop=false`; and fresh game-owned warnings/errors were zero.
+- Accepted the Phase 04 implementation while preserving the remaining extended QA honestly. No Station_07 completion, full cross-platform multiplayer matrix, physical-device result, published `MaxPlayers` value, or visible 12-shipment soak is claimed; those checks remain open in issue #4.
+- Kept draft PR #5 open and unmerged, left `main` at `014ff3964eb63f22f8527894067cddb1b4f98070`, kept issue #4 open, and did not begin Phase 05.
+
+## 2026-07-14 - Phase 04 multiplayer arena implementation and partial acceptance
+
+- Expanded the historical `studio/phase02.manifest.json` as the sole canonical permanent-instance owner with eight complete authored stations on a deterministic 38-stud ring, a center dispatch, 16-node showcase path, arena announcement, server-best board, per-station owner/risk displays, and a script-free showcase crate template.
+- Generalized production client and server code from one station to the allowlisted `station_01` through `station_08` set. The server validates the authored station contract, assigns the lowest free index, preserves ownership across respawn, maintains a FIFO waiting queue, and releases/reassigns stations without accepting client-supplied ownership.
+- Added focused station-context lifecycle, per-station world-item isolation, immutable/idempotent shipment capture, a stable FIFO showcase with three active and sixteen pending visual slots, one conditional 30 Hz movement loop, session-only server-best rules, and shared arena/station display updates.
+- Added the required one-shot showcase-overflow warning while preserving reward authority: over-capacity requests reject only the newest cosmetic copy, increment observability, and never remove the shipment or Tape. An injected warning sink makes the exact non-spamming contract deterministic in Studio tests.
+- Preserved the existing six RemoteEvents, server-authoritative round/placement/Tape boundary, permanent authored UI, and Phase 01-03 behavior. Persistent progression, DataStores, monetization, final art/audio/VFX, and Phase 05 systems were not added.
+- Added 13 Phase 04 Studio suites with 119 tests and a dependency-free 42-criterion Phase 04 Node gate. Fresh Studio Output passed Foundation `69/69`, Phase 02 `94/94`, Phase 03 `65/65`, and Phase 04 `119/119`; all four local Node 24 validations passed.
+- Reapplied the 616-instance/45-script Phase 02-04 blueprint twice at the final source state; Phase 01 was unchanged and both Phase 02-04 applies reported `Created=0`, `Updated=661`, `Failed=0`. Before saving, the combined live tree matched 672 managed nodes and all 55 canonical Luau sources.
+- Recorded partial live evidence honestly: Play Solo shipped one item for `+15 TAPE`, reached Results, and used Pack Again; a rotated Station_03 client shipped, accepted One More, and later failed; four clients received unique Station_01 through Station_04 assignments; a replacement client inherited released Station_02; and an eight-client graphical attempt assigned Station_01 through Station_08 without a crash. Station_05/Station_07 were inspected in legitimate rotated views, but the prescribed three-mode cross-platform multiplayer matrix and visible 12-shipment stress remain incomplete.
+- Saved the original private cloud place successfully after the final double synchronization and closed every Studio process. Direct no-resync reopen is still incomplete because Roblox Studio updated to `0.730.0.7300790` and requires the account holder to sign in before the cloud place can be opened; no repository synchronization has been run in the new Studio session.
+- Kept draft PR #5 unmerged, left `main` at the Phase 03 merge `014ff3964eb63f22f8527894067cddb1b4f98070`, and kept pre-release QA issue #4 open.
+
 ## 2026-07-14 — Phase 03 implementation acceptance
 
 - Accepted the Phase 03 cross-platform implementation with zero known production blockers.
