@@ -2,47 +2,56 @@
 
 ## Current phase and Git state
 
-- **Phase result:** **Implemented and substantially verified; not yet accepted.** Phase 05 code, deterministic tests, normal Play, controlled failure fixtures, and two-session Studio-test persistence passed. The final queue `StateVersion` correction passed all five suites in an offline recovery copy but is not yet synchronized or saved to the cloud place. Cloud apply/save/close/direct-reopen parity and manual phone/gamepad collection-panel gates remain incomplete.
+- **Phase result:** **Implementation complete and accepted.** Every non-waived Phase 05 implementation gate passed, including the final shelf correction, canonical cloud synchronization, direct no-sync reopen, bounded parity audit, post-reopen Studio suites, current-code persistence, and focused touch/gamepad Collection acceptance.
 - **Current phase:** Phase 05 - Persistent Player Profiles, Tape, Collection, and Packing Rank.
 - **Current branch:** `codex/phase-05-persistent-progression`.
 - **Protected base:** `main` and `origin/main` remain at the accepted Phase 04 squash merge `213f3581bd242523e34601cfefa5b5a74770ddee`.
-- **Current pull request:** [Draft PR #6 - Phase 05: Persistent Profiles, Collection, and Packing Rank](https://github.com/kotonja/ONE-MORE-ITEM-/pull/6), draft and unmerged.
-- **Latest implementation SHA:** `bf144fc3cb478823a80ceadaafc28cb78298bf12` (`test: harden Phase 05 acceptance verification`), pushed to the Phase 05 branch. Its green code-head runs are recorded below; the containing documentation commit and exact-head runs are recorded externally in PR #6 and the final handoff to avoid a self-referential tracked status.
-- **Pre-release QA:** [Issue #4 - Pre-release cross-platform and multiplayer integration QA](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open. No Phase 05 acceptance comment has been added.
-- **Main protection:** Phase 05 remains isolated to its feature branch. Keep PR #6 open as a draft during this task; Phase 06 has not begun.
+- **Current pull request:** [Draft PR #6 - Phase 05: Persistent Profiles, Collection, and Packing Rank](https://github.com/kotonja/ONE-MORE-ITEM-/pull/6), open, draft, and unmerged pending final review.
+- **Latest implementation SHA:** `07d887a11c4ff5256ee663f6f306e9ca41cfbedf`, pushed to the Phase 05 branch. The final documentation commit and its exact-head runs are recorded externally in PR #6 and the final handoff rather than self-referenced here.
+- **Pre-release QA:** [Issue #4 - Pre-release cross-platform and multiplayer integration QA](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open; its [Phase 05 persistence QA additions](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4#issuecomment-4983229288) list the explicitly deferred and unpassed work.
+- **Scope:** Phase 06 has not begun. No Phase 06 system, monetization, production-store rollout, or unrelated redesign was added.
 
 ## Phase 04 protected baseline
 
-Phase 04 is complete and merged at `213f3581bd242523e34601cfefa5b5a74770ddee`. Its accepted cloud proof remains historical evidence: `672/672` managed paths, 617 non-script instances, `55/55` exact canonical sources, eight authored stations, 16 showcase path nodes, exactly six gameplay remotes, zero duplicate/wrong-class managed paths, Foundation `69/69`, Phase 02 `94/94`, Phase 03 `65/65`, Phase 04 `119/119`, a verified five-client Station_05 integration, final showcase cleanup, and zero fresh game-owned warnings/errors after direct no-sync reopen.
-
-Phase 05 extends but does not weaken that baseline. It adds no gameplay remote, client-authoritative progression, monetization, later-phase system, or final asset dependency.
+Phase 04 remains complete and merged at `213f3581bd242523e34601cfefa5b5a74770ddee`. Phase 05 extends that baseline without adding a gameplay remote, client-authoritative progression, or final-asset dependency. The existing six server-authoritative gameplay remotes and eight-station arena remain intact.
 
 ## Phase 05 implementation result
 
-The working implementation now includes:
+The accepted implementation includes:
 
-- strict shared catalog, rank, mastery, progression, and profile-network types;
-- server-only Version 1 migration/schema, adapter contract, guarded DataStore adapter, deterministic memory adapter, profile lifecycle/scheduler, snapshot builder, and progression service;
-- load-before-assignment, per-player monotonic waiting-snapshot versions across Loading/queued Ready/Unavailable at `RoundId=0`, canonical persistent Tape, server-created OutcomeIds, reward-before-cosmetic ordering, bounded receipts, lock-aware release, and shutdown integration;
+- strict shared collection, mastery, rank, progression, and profile-network definitions;
+- server-only Version 1 schema/migration, guarded DataStore adapter, deterministic memory adapter, lock-aware lifecycle, scheduler/autosave, snapshots, and deterministic progression;
+- load-before-assignment, server-created OutcomeIds, exact-once receipts, persistent Tape/XP/statistics/discovery/mastery, and bounded release/shutdown behavior;
 - one permanent server-to-client `ReplicatedStorage.ONE_MORE_ITEM.ProfileNet.ProfileSnapshot` event while retaining exactly six gameplay remotes;
-- independent client profile storage/presentation, permanent MetaBar/DataStatus/CollectionPanel/eight slots/discovery/rank/results UI, and responsive collection controls;
-- eight permanent station collection shelves plus one script-free development proxy template; and
+- permanently authored MetaBar, DataStatus, CollectionPanel/eight slots, discovery/rank/results presentation, eight station shelves, and one script-free development shelf proxy template; and
 - `studio/phase02.manifest.json` as the sole permanent-instance owner for Phase 02-05.
 
-The full canonical Phase 01 plus Phase 02-05 target contains 909 unique managed paths: 834 non-script instances and 75 Luau sources. The Phase 02-05 blueprint itself contains 898 operations and 65 sources.
+The canonical target remains 909 unique managed paths: 834 non-script instances and 75 Luau sources. The Phase 02-05 blueprint remains 898 operations and 65 sources.
 
-## Profile storage and safety
+## Final shelf and catalog correction
 
-| Contract | Verified result |
+`CollectionShelfService` now derives its rank label, valid discoveries, canonical mastery counts, recent order, and featured item list before calculating a stable presentation fingerprint. Lifecycle state, SaveState, snapshot revision, session identifiers, receipts, undisplayed statistics, Tape, and XP that does not change displayed rank are excluded.
+
+- A valid matching runtime returns `true, "UNCHANGED"`, preserves proxy identities/count, and rewrites no unchanged label.
+- Changed presentation or malformed runtime clears and rebuilds once, stores the new fingerprint, and returns `true, "RENDERED"`.
+- `Clear`/`ClearAll` invalidate cached presentation. Release leaves Runtime empty, `ProfileRendered=false`, `FeaturedItemCount=0`, and no owner cache; an identical replacement owner therefore gets fresh proxies.
+- The six-proxy maximum and station isolation remain enforced. No shelf loop, remote, or persistence responsibility was added.
+- `CollectionDefinitions.OrderedItemIds`, `CollectionDefinitions.TotalCount`, and catalog indexes are canonical for shelves and collection slots. `MasteryDefinitions.GetMasteryTier` owns tier thresholds; shelf code no longer duplicates 5/20/50.
+- `ProfileUIController` maps authored slots from canonical catalog order, resolves display data through `DevelopmentItemDefinitions`, validates exact slot/catalog count and uniqueness at startup, and creates no runtime slots.
+
+Focused regressions cover first/identical/save-only/in-rank-XP rendering, rank/discovery/mastery changes, clear/reassignment, eight-station isolation, malformed recovery, ten identical cycles, and a memory-adapter reward -> Saving -> Saved lifecycle. The focused memory lifecycle produced one progression rebuild, stable proxy identities/count through Saving/Saved, and cleanup back to zero.
+
+## Profile storage and fixture safety
+
+| Contract | Accepted result |
 | --- | --- |
-| Schema version | Version `1`; defaults, normalization, Version 0 migration, Version 1 copy, and future-version rejection passed deterministic tests. |
-| Production configuration | `ONE_MORE_ITEM_PlayerProfiles_v1` for non-Studio servers. **No production-store access, test, rollout, or result is claimed.** |
-| Normal Studio persistence | `ONE_MORE_ITEM_PlayerProfiles_StudioTest_v1` only; Session A/B and the last normal pre-queue-correction cloud Studio run used this isolated store. |
-| Deterministic/failure storage | Injected `MemoryProfileAdapter`; network-free and not persistence evidence. |
-| Normal writes | Guarded `UpdateAsync` with synchronous non-yielding transforms; retries/budget waits occur outside transforms. |
-| Bounds | 128 OutcomeIds, 12 recent discoveries, 60-second heartbeat/autosave, 180-second stale lock, at most 8 concurrent saves, 25-second shutdown deadline. |
+| Schema | Version `1`; deterministic defaults, Version 0 migration, Version 1 normalization/copy, and future-version rejection. |
+| Production configuration | `ONE_MORE_ITEM_PlayerProfiles_v1` outside Studio. **No production-store access, test, or rollout is claimed.** |
+| Normal Studio persistence | `ONE_MORE_ITEM_PlayerProfiles_StudioTest_v1` only. Memory fixtures were not used as persistence proof. |
+| Deterministic/failure storage | Injected `MemoryProfileAdapter`; network-free behavior evidence only. |
+| Writes and bounds | Guarded `UpdateAsync` with non-yielding transforms; bounded retries, locks, receipts, scheduler concurrency, and shutdown. |
 
-The Studio-only failure acceptance fixture is disabled by default. It reads these attributes from `ServerScriptService.ONE_MORE_ITEM_Server`:
+The three Studio-only acceptance attributes were `nil`, `nil`, `nil` before synchronization, before cloud save, and after direct reopen:
 
 ```text
 ONE_MORE_ITEM_Phase05AcceptanceMode
@@ -50,23 +59,11 @@ ONE_MORE_ITEM_Phase05AcceptanceTargetUserId
 ONE_MORE_ITEM_Phase05AcceptanceExpiresAt
 ```
 
-Allowed modes are `Unavailable`, `SaveDelayed`, and `Conflict`. Expiry must be an integer in the future and no more than 600 seconds ahead; target is optional and otherwise selects the first joining player. A valid fixture selects one `MemoryProfileAdapter` for the **entire test server**, while the target controls which player receives the injected condition. Invalid/expired arming is rejected.
-
-All three attributes were cleared before the last normal pre-queue-correction Studio-test run and save. They must remain absent before every normal Studio-test persistence run, cloud save, or cloud reopen. Never save or publish the place while a fixture is armed, and never cite memory-fixture evidence as a substitute for Session A/B.
-
-## Persistent progression result
-
-- A successful shipment grants `ShipmentValue` Tape exactly once, XP from the documented formula, discovery/mastery per valid shipped occurrence, and shipment statistics.
-- Failure grants only bounded consolation XP and the failed-round statistic; it grants no Tape, discovery, or mastery.
-- Rank thresholds and mastery tiers are derived, deterministic status with no gameplay power.
-- Outcome IDs use `{UserId}:{ServerSessionId}:{RoundId}` and are server created. Bounded receipt deduplication prevents reward replay.
-- The profile snapshot copies presentation-safe values only and exposes no store key, lock token, heartbeat, receipt list, or internal profile table.
-
-Session A/B and controlled SaveDelayed recovery both demonstrated exact-once reward behavior. No client-authoritative result or profile-mutation remote was added.
+No place save or publish occurred while a fixture was armed. The useful default-off fixture remains in source for controlled `Unavailable`, `SaveDelayed`, and `Conflict` checks.
 
 ## Local Node 24 validation
 
-Fresh local output passed all five gates:
+Fresh local output passed all five dependency-free gates:
 
 ```text
 [StudioSyncSmoke] PASS checks=16 folders=7 scripts=10 deterministic=true
@@ -74,109 +71,107 @@ Fresh local output passed all five gates:
 [Phase03LayoutMatrix] PASS viewports=13 insetProfiles=5 cases=65 desktopCompatible=true safeContainment=true
 [Phase03CrossPlatformSmoke] PASS criteria=31 viewports=13 insetProfiles=5 layoutCases=65 remotes=6 deterministic=true phase01=true phase02=true
 [Phase04MultiplayerArena] PASS criteria=42 instances=833 scripts=65 stations=8 pathNodes=16 remotes=6 deterministic=true prior=true
-[Phase05PersistentProgression] PASS criteria=56 instances=833 scripts=65 gameplayRemotes=6 profileRemotes=1 shelves=8 collectionSlots=8 deterministic=true prior=true
+[Phase05PersistentProgression] PASS criteria=64 instances=833 scripts=65 gameplayRemotes=6 profileRemotes=1 shelves=8 collectionSlots=8 deterministic=true prior=true
 ```
 
-`git diff --check` passes for the corrected documentation tree.
+`git diff --check` passes for the corrected source/documentation tree.
 
-## Automated Studio suites
+## Post-reopen Studio suites
 
-Studio evidence is split honestly between the last normal cloud run and the post-correction offline recovery-copy run. Both passed these deterministic suite totals:
+All five suites passed in the directly reopened cloud place:
 
-| Suite | Result | Determinism evidence |
-| --- | ---: | --- |
-| Foundation | `69/69` | fuzz seed `24012026`, 1,000 cases |
-| Phase 02 | `94/94` | seed `24022026` |
-| Phase 03 | `65/65` | seed `13072026` |
-| Phase 04 | `119/119` | seed `14072026` |
-| Phase 05 | `123/123` | seed `15072026`, adapter `memory` for the deterministic suite |
+| Suite | Suites/tests | Failed | Seed and timing |
+| --- | ---: | ---: | --- |
+| Foundation | `15 / 69/69` | `0` | fuzz seed `24012026`, 1,000 cases, `0.256185s`; benchmark `0.115899s` non-gating |
+| Phase 02 | `11 / 94/94` | `0` | seed `24022026`, `6.280816s` |
+| Phase 03 | `8 / 65/65` | `0` | seed `13072026`, `0.004279s` |
+| Phase 04 | `13 / 119/119` | `0` | seed `14072026`, `0.687169s` |
+| Phase 05 | `16 / 130/130` | `0` | seed `15072026`, `0.341500s`, deterministic adapter `memory` |
 
-The last normal cloud server, before the queue correction, reported `profileStore=StudioTest`, not memory. It loaded the same Studio user into Station_01 with profile `Ready`, save state `Saved`, Tape `30`, XP `30`, and profile revision `5`. Normal stop logged profile shutdown `successes=1 failures=0 skipped=0`, followed by zero actionable game-owned errors or warnings. After commit `bf144fc3cb478823a80ceadaafc28cb78298bf12` added the monotonic waiting-snapshot contract, a fresh offline recovery-copy Play run again passed Foundation `69/69`, Phase 02 `94/94`, Phase 03 `65/65`, Phase 04 `119/119`, and Phase 05 `123/123`. That local file is not attached to the cloud experience, so its server emitted the expected `Profile store unavailable for StudioTest` error; the run proves the corrected suites only and is not new persistence or zero-Output evidence.
+The Phase 05 suite's injected memory adapter is deterministic test isolation only. The normal Play server separately used the Studio-test store. After unsaved acceptance observers were removed, the final clean verification contained zero fresh game-owned warnings/errors; unrelated Studio/plugin diagnostics are not represented as game-owned failures.
 
-## Play and multiplayer evidence
+## Canonical cloud synchronization, save, and reopen
 
-| Gate | Verified result |
+- A recovery copy was kept outside Git; no place file, recovery path, log, screenshot, or generated cache is tracked.
+- With acceptance attributes absent, the Phase 02-05 apply ran at `2026-07-15T15:33:38Z` and again at `2026-07-15T15:36:21Z`. Each pass reported `Updated=898`, `Created=0`, `Skipped=0`, `Failed=0`, `Warnings=0`, with 65 script backups.
+- Save to Roblox completed normally with `Saving to Roblox...` followed by `Saved new changes in "ONE MORE ITEM!" to Roblox.`
+- Every Studio process closed and the process count reached `0`.
+- Roblox Studio build `0.730.0.7300790` reopened the original private place through the normal signed-in route. The observed reopened process count was `2` (the editor plus a Studio-owned renderer/helper process), the place was in Edit mode, and the expected place/game identifiers matched.
+- No repository synchronization ran after reopen.
+- The earlier TLS/no-join-snapshot incident remains preserved as historical evidence in `CHANGELOG.md`; it is not rewritten as though the correction had been cloud-saved before this successful pass.
+
+## Post-reopen parity audit
+
+The read-only audit passed the helper's bounded observable projection:
+
+```text
+managed=909/909
+uniqueLive=909
+classes=909/909
+properties=5660/5660
+sources=75/75
+missing=0
+unexpected=0
+duplicate=0
+wrongClass=0
+propertyMismatch=0
+sourceDivergence=0
+structureFailure=0
+```
+
+Structural proof additionally reported `shelves=8/8`, `shelfSlots=48/48`, `emptyRuntime=8/8`, `collectionSlots=8/8`, `gameplayRemotes=6/6`, and `profileRemotes=1/1`, with no client-to-server profile mutation remote. MetaBar, DataStatus, CollectionPanel, DiscoveryReveal, RankUpBanner, Results progression fields, and `CollectionShelfItemTemplate` were present.
+
+Parity coverage reported `authored=5567`, `compared=5660`, and `helperUnobservable=383`. Accordingly, `properties=5660/5660` means every bridge-observable comparison passed; it is not a claim that the helper independently read back the 383 unsupported keys/attributes. Exact canonical source comparison was `75/75` using UTF-8 SHA-256.
+
+## Current-code profile persistence
+
+Current synchronized source received a fresh Session C/D confirmation against the normal Studio-test store. Sanitized evidence only is recorded; no player identifier, store key, lock token, OutcomeId value, or full profile payload appears here.
+
+| Evidence | Accepted result |
 | --- | --- |
-| Loading before station | Play Solo showed `LOADING YOUR PROFILE` before Station_01 and did not assign reward-bearing gameplay early. |
-| Successful shipment | A one-Parcel shipment granted exactly `+15` Tape and `+14` XP, discovered Parcel, and incremented mastery/statistics once. |
-| Failure consolation | A deliberate one-item failure granted `+2` XP with no Tape/discovery/mastery; incidental zero-item failures granted zero XP. |
-| Persistent presentation | Tape, XP, collection count, mastery, Rookie rank, Results, DataStatus, and the owner shelf reflected authoritative state. Desktop collection presentation was exercised. |
-| Two-player isolation | In the controlled memory run, Player1/Station_01 and Player2/Station_02 had distinct user/session/revision state. The target reached Tape `30`/XP `28` from two shipments while the unaffected player remained Tape `0`/XP `0`; no cross-player reward contamination was observed. |
-| Player leave | One test client was forcibly terminated to simulate abrupt departure. Automated suites cover release/isolation, but no explicit manual shelf-release log was captured from that termination, so that visual/manual detail is not claimed. |
-| Manual device collection | **Incomplete.** Desktop passed; a gamepad prompt displayed `C/Y`, but opening/closing Collection with ButtonY/ButtonB was not completed, and phone/touch collection opening was not manually exercised. Deterministic 65-case layout/input coverage remains green but does not replace these manual checks. |
+| Session C baseline | Ready/Saved, Rookie Packer, Tape `588`, XP `97`, Parcel mastery `5`, discovered `5`, successful shipments `5`, total items `10`, total Tape earned `588`, receipt count `27`, five shelf proxies. Previously saved progression loaded without reward replay or duplicate Tape/XP; station assignment followed Ready. |
+| Session C one-Parcel result | Tape `603` (`+15`), XP `111` (`+14`), Parcel mastery `6` (`+1`), successful shipments `6` (`+1`), total items `11` (`+1`), total Tape earned `603` (`+15`), discovered count unchanged at `5`, receipt count `28` (`+1`), one reward reveal. |
+| Session C save behavior | Snapshot order included Loading -> Saved -> Saving -> Saved and settled Ready/Saved. The progression change caused exactly one physical five-proxy replacement cycle; Saving/Saved preserved the replacement proxy identities and child count and did not replay the reward. |
+| Session D direct second Play | Loaded Tape `603`, XP `111`, Rookie Packer, Parcel mastery `6`, discovered `5`, successful shipments `6`, total items `11`, total Tape earned `603`, and receipt count `28`; Ready/Saved, five shelf proxies, no prior reward replay, and no gameplay request at load. |
 
-## Controlled data-failure evidence
+This supplements rather than erases the earlier Session A/B proof, which remains valid historical evidence from the isolated Studio-test store. Controlled memory-fixture wallets were never substituted for either proof.
 
-The following runs used the explicitly armed Studio-only `MemoryProfileAdapter` fixture, never a real DataStore outage:
+## Focused touch and gamepad Collection acceptance
 
-| Fixture | Verified result |
-| --- | --- |
-| `Unavailable` | Bounded load ended after 5 attempts; the target retained normal movement, had no station/round, and visibly saw `DATA UNAVAILABLE` / `REJOIN TO RETRY`. |
-| `SaveDelayed` | The target outcome first reached SaveDelayed, preserved its in-memory progression fingerprint, then recovered to Ready/Saved after save attempt 4. Stored progression matched memory, OutcomeId stayed stable, and the adapter contained exactly one receipt for the checked outcome. The transient amber `SAVE DELAYED` visual was not captured, so only hook logs and final Saved presentation are claimed. |
-| `Conflict` | Target progression stopped; hook evidence reported `roundCleared=true`, `stationReleased=true`, `shelfRuntime=0`, and final state Conflict. The target visibly saw `PROFILE OPEN ELSEWHERE` / `CLOSE THE OTHER SESSION AND REJOIN`; the unaffected Player2 remained Saved at Station_02. |
-| Eight-profile deterministic coverage | Independent defaults/locks, eight mutations/saves, isolated failure/conflict, and bounded shutdown passed in the Phase 05 suite. |
+The touch check used Studio Device Emulator with an iPhone XR profile, first portrait and then landscape (`896x414` reported in landscape). It does **not** claim a physical phone. The Collection button and panel stayed within the Roblox-reported safe area, one tap opened once, all eight authored slots were reachable/readable with correct locked/discovered treatment and readable mastery progress, panel interception prevented underlying Results/gameplay activation, one close tap closed cleanly, no active placement touch remained, and open/close produced no gameplay-remote delta.
 
-These fixtures validate behavior only. Because arming replaces the adapter for the entire test server, none of their wallets or saves are evidence about `ONE_MORE_ITEM_PlayerProfiles_StudioTest_v1`.
+The gamepad check used Studio Controller Emulator with the Xbox One virtual controller. It does **not** claim a physical controller. In Results, the normal gamepad trace showed three bound actions, `RESTART`, and Pack Again selected. ButtonY changed the panel to open once, selected the first discovered slot, and suppressed bindings to zero with no selected gameplay action. Locked slots remained non-selectable/non-interactable; ButtonA on the discovered slot sent no gameplay or profile mutation; ButtonB closed the panel and cleared focus. The emulator's clickable overlay changed PreferredInput back to KeyboardMouse before closure, so the state-appropriate closed value was zero/nil; the trace does not fabricate a gamepad restore while mouse input is preferred. No binding duplication or gameplay-remote delta occurred.
 
-## Two-session Studio-test profile persistence
+## Controlled failure and earlier persistence evidence
 
-Only `ONE_MORE_ITEM_PlayerProfiles_StudioTest_v1` was used. Sanitized evidence:
+Controlled default-off memory fixtures previously passed bounded Unavailable loading, SaveDelayed retry/recovery without reward loss or replay, Conflict station/round/shelf cleanup, unaffected-player isolation, and deterministic eight-profile capacity/shutdown. The transient amber Save Delayed frame and a forced-leave shelf cleanup log were not manually captured; these are non-blocking presentation/soak items, not claims of failure.
 
-| Evidence | Result |
-| --- | --- |
-| Session A baseline | Tape `0`, XP `0`, Parcel mastery `0`, discovered `0`, successful shipments `0`. |
-| Session A post-play | Tape `15`, XP `16`, Parcel mastery `1`, discovered `1/8`, successful shipments `1`, failed rounds `7`, total Tape earned `15`. The extra `2` XP came from the deliberate one-item failure. |
-| Session A stop | Saved/clean result; shutdown `successes=1 failures=0 skipped=0`. Every Studio process then closed. |
-| Session B direct no-sync reopen | The same private cloud place reopened without repository synchronization and loaded exactly Tape `15`, XP `16`, Parcel mastery `1`, discovered `1`, successful shipments `1`. |
-| Session B second shipment | Applied exactly `+15` Tape and `+14` XP, incremented Parcel mastery to `2`, kept discovery at `1`, and incremented successful shipments to `2`; no Session A reward replay occurred. |
-| Session B final state | Tape `30`, XP `30`, Parcel mastery `2`, discovered `1/8`, successful shipments `2`, failed rounds `10`, total Tape earned `30`, Saved; shutdown `successes=1 failures=0 skipped=0`. |
-
-This completes the required real two-session Studio-test profile persistence proof. It predates the acceptance-hook/UI synchronization and queue correction, so it does **not** complete the later final-place cloud apply/save/reopen/parity gate.
+Earlier real Session A/B Studio-test-store proof remains documented in the Phase 05 contract: Session A persisted Tape `15`, XP `16`, Parcel mastery `1`, and one shipment; a complete close/direct no-sync reopen loaded those values; Session B applied a second reward once and persisted Tape `30`, XP `30`, Parcel mastery `2`, and two shipments. The later blocked cloud-reopen incident and offline recovery-copy limitation remain preserved in the changelog as historical sequence.
 
 ## GitHub Actions
 
-- **Workflow name:** `Phase 01–05 Node Validation`.
-- **Runtime/actions:** Node 24, `actions/checkout@v7`, `actions/setup-node@v6`.
-- **Permissions/configuration:** `contents: read`, package-manager cache disabled, no package install, no third-party dependency.
+- **Workflow:** `Phase 01–05 Node Validation`; Node 24; `actions/checkout@v7`; `actions/setup-node@v6`; `contents: read`; no dependency install or third-party package.
 - **Triggers:** pull requests targeting `main`, pushes to `main`, and pushes to `codex/**`.
-- **Pushed implementation head:** `bf144fc3cb478823a80ceadaafc28cb78298bf12`.
-- **Branch-push run:** `29398524215`, job `87297461413`, success; every Phase 01-05 step succeeded.
-- **Draft-PR run:** `29398526422`, job `87297468905`, success; every Phase 01-05 step succeeded.
-- **Documentation head:** the containing commit and its exact-head branch/PR runs are recorded in PR #6 and the final handoff rather than self-referenced by this tracked document.
-
-## Cloud place persistence
-
-| Gate | Current Phase 05 result |
-| --- | --- |
-| Recovery copy | Saved outside Git; 261,264 bytes; SHA-256 `18C06C0874C256A58E30E33882812A77D9FACB3A26A4A283514A1EC673BBAFF2`. The personal filesystem path is intentionally omitted. |
-| Canonical synchronization | Rebuilt the Phase 02-05 blueprint and applied all 898 operations twice at the then-current pre-queue-correction source state. Both passes reported `Created=0 Updated=898 Failed=0`; 65 script backups were taken. |
-| Fixture cleanup | Acceptance attributes printed as cleared (`nil nil nil`) before the last normal pre-queue-correction Studio-test run and save. |
-| Normal pre-save proof | At that pre-queue-correction state, all five Studio suites passed; the normal StudioTest profile loaded Tape `30`/XP `30`; shutdown succeeded; zero fresh actionable game-owned Output remained. |
-| Cloud save | Completed normally after cleanup for the pre-queue-correction state; the Studio tab had no unsaved marker. Commit `bf144fc3cb478823a80ceadaafc28cb78298bf12` is not yet synchronized or saved there. |
-| Complete close | Passed; Roblox Studio process count reached zero. |
-| Final direct reopen | **Blocked, not passed.** Two direct protocol opens returned `Studio is unable to connect. Check your network connection and try again.` Two later signed-in Studio Home opens reached the correct PlaceId, universe, and Team Create server but stalled before the editor received a join snapshot. |
-| Blocker evidence | The protocol-attempt log reports `HttpError: TlsVerificationFail` and OpenSSL `unable to get local issuer certificate (20)` while Roblox API requests pass through Avast HTTPS interception. The latest Home-route log has zero TLS-verification failures and records the correct Team Create endpoint, but no completed join/editor. This is an external Studio/network failure, not a game-owned Output failure. |
-| Post-reopen managed/source parity | **Not run because the cloud place cannot reopen.** No `909/909`, `75/75`, duplicate/wrong-class, UI/shelf/remote, or post-reopen suite claim is made. |
-
-The earlier successful Session B no-sync reopen proves the Studio-test profile persisted between Sessions A and B. It does not prove that the last pre-queue-correction cloud synchronization survived its later close, and it does not prove that the repository queue correction reached the cloud place.
-
-## Performance and cleanup accounting
-
-- Observed loaded profiles: one in Play Solo, two in controlled Local Server, eight in deterministic capacity coverage.
-- One shared due-save scheduler handles debounce, autosave, and heartbeat; there is no per-profile frame loop.
-- Save concurrency is bounded at 8; receipts at 128; recent discoveries at 12.
-- Shelf runtime is bounded at six simplified proxies per occupied station, 48 total. Conflict evidence returned the target shelf runtime to `0`.
-- Existing showcase bounds remain three active clones, sixteen pending records, and one conditional shared 30 Hz loop.
-- The last normal pre-queue-correction cloud shutdown reported one successful release and zero failures/skips; fresh actionable game-owned Output was zero. The post-correction offline recovery run is suite-only evidence and emitted the expected unavailable Studio-test-store error.
+- **Implementation head:** `07d887a11c4ff5256ee663f6f306e9ca41cfbedf`.
+- **Branch-push:** run `29428471528`, job `87396972732`, success.
+- **Draft PR:** run `29428474234`, job `87396981747`, success.
+- Both implementation-head runs completed setup, checkout, Node setup, Phase 01, Phase 02, Phase 03, Phase 04, Phase 05, post steps, and workflow completion successfully.
+- The final documentation commit and its exact-head branch/PR runs are recorded in PR #6 and the final handoff.
 
 ## Known issues and deferred pre-release QA
 
-- **Acceptance blocker:** repair the local Roblox Studio/Avast network path so PlaceId `134193642444044` completes an editor join; synchronize the repository queue correction; save normally; close every Studio process; reopen directly without synchronization; then prove all 909 managed paths, all 75 sources, zero duplicates/wrong classes, permanent profile UI/eight shelves, exactly six gameplay remotes plus one ProfileSnapshot remote, all five Studio suites, and zero fresh actionable game-owned Output.
-- **Manual input gap:** phone/touch and gamepad collection open/close were not completed. No physical phone or controller result is claimed.
-- **SaveDelayed visual gap:** exact hook logs and recovery passed, but the transient amber Save Delayed state was not visually captured.
-- [Issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open for extended controller, hybrid, Station_07, multiplayer-soak, physical-device, and integration QA. Do not add the Phase 05 acceptance comment until Phase 05 is fully accepted.
-- No production DataStore, production rollout, current published `MaxPlayers`, or lower-end-device result is claimed.
-- Development geometry and text-only iconography remain non-final.
+There is no known Phase 05 implementation blocker. The following remain unpassed in open [issue #4's Phase 05 persistence QA additions](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4#issuecomment-4983229288); they do not weaken the accepted deterministic, Studio-test persistence, cloud-save/reopen, or bounded parity evidence:
+
+- eight-player production DataStore request-budget observation;
+- long-session autosave and lock-heartbeat soak;
+- abrupt-server-shutdown, stale-lock, and rapid-reconnect recovery;
+- production-store rollout rehearsal and Data Stores Manager inspection;
+- low-connectivity Save Delayed presentation;
+- physical phone and physical controller Collection testing;
+- extended profile-entry/receipt-memory observation; and
+- extended station-release and shelf-cleanup soak.
+
+No production DataStore rollout, current published `MaxPlayers`, lower-end-device result, or final-art result is claimed. Development geometry and text-only iconography remain non-final.
 
 ## Deferred by design
 
@@ -184,4 +179,4 @@ Daily challenges, starter missions, offline income, cosmetics/ownership/store, R
 
 ## Exact next phase recommendation
 
-Do not begin Phase 06. First resolve the local Roblox Studio/Avast network blocker so the private place editor opens; synchronize the repository queue correction; save; close every Studio process; reopen directly without synchronization; complete managed/source/UI/shelf/remote parity, all five post-reopen Studio suites, and fresh Output; manually open/close Collection on phone/touch and gamepad; and confirm the final branch/PR CI recorded in PR #6. Only after every remaining gate is documented may Phase 05 be accepted, issue #4 receive its concise Phase 05 follow-up, and Phase 06 be recommended.
+PR #6 is complete and ready for final review, but it must remain draft and unmerged until that review is intentionally concluded. Keep issue #4 open for the deferred pre-release QA above. Do not begin Phase 06 in this task.
