@@ -7,8 +7,8 @@
 - **Current branch:** `codex/phase-06-onboarding-starter-missions`.
 - **Protected base:** `main` and `origin/main` are the accepted Phase 05 squash merge `d644411b48e20cd9bb256d3d2c55a647efc2adfd`.
 - **Phase 05 merge:** [PR #6 - Phase 05: Persistent Profiles, Collection, and Packing Rank](https://github.com/kotonja/ONE-MORE-ITEM-/pull/6) is merged as `d644411b48e20cd9bb256d3d2c55a647efc2adfd`.
-- **Current pull request:** pending the opening branch commit and initial push; one Phase 06 draft PR will be created from `codex/phase-06-onboarding-starter-missions` and must remain unmerged.
-- **Latest implementation SHA:** no Phase 06 implementation commit exists yet; the opening status-correction commit starts the branch history.
+- **Current pull request:** [Draft PR #7 - Phase 06: Onboarding, Starter Missions, and Retention Analytics](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7), open, draft, and unmerged.
+- **Latest implementation SHA:** no Phase 06 implementation commit exists yet; opening status-correction commit `eab6daf` starts the branch history.
 - **Pre-release QA:** [Issue #4 - Pre-release cross-platform and multiplayer integration QA](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open; its [Phase 05 persistence QA additions](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4#issuecomment-4983229288) list the explicitly deferred and unpassed work.
 - **Scope:** Phase 06 has begun. No Phase 07 system, monetization, production-store rollout, final asset work, or unrelated redesign is authorized.
 

@@ -19,7 +19,7 @@ Phase 02 is complete and merged through PR #2 at `73b3428c5ff0068f1e57f89d2150ff
 - Phase 03 was squash-merged through PR #3 at `014ff3964eb63f22f8527894067cddb1b4f98070`.
 - Phase 04 was squash-merged through PR #5 at `213f3581bd242523e34601cfefa5b5a74770ddee`.
 - Phase 05 was squash-merged through PR #6 at `d644411b48e20cd9bb256d3d2c55a647efc2adfd` after its synchronized cloud-place and direct-reopen acceptance.
-- Phase 06 is active on `codex/phase-06-onboarding-starter-missions`; one draft PR will be opened from that branch and must remain unmerged until Phase 06 acceptance.
+- Phase 06 is active on `codex/phase-06-onboarding-starter-missions` in [draft PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7), which must remain unmerged until Phase 06 acceptance.
 - Pull before editing, never force-push, and keep every meaningful Studio/code change committed and pushed.
 - `docs/DEVELOPMENT_STATUS.md` is updated on every task.
 - GitHub Actions workflow `Phase 01–05 Node Validation` uses Node 24 with `actions/checkout@v7` and `actions/setup-node@v6`. It runs five dependency-free validations on pull requests targeting `main` and pushes to `main` or `codex/**`. Implementation head `07d887a11c4ff5256ee663f6f306e9ca41cfbedf` passed branch-push run `29428471528` / job `87396972732` and draft-PR run `29428474234` / job `87396981747`. The containing documentation commit and its exact-head runs are recorded in PR #6 and the final handoff rather than self-referenced by this tracked file.
