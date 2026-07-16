@@ -306,3 +306,57 @@ Studio uses only the memory analytics adapter. Published analytics verification 
 
 Phase 06 excludes daily challenges/rewards, login streaks, offline income, additional catalog objects, final models/assets, cosmetics/ownership/store, Robux products, monetization, trading, pets, rebirths, multiple worlds, co-op packing, cheer reactions, persistent/global/OrderedDataStore leaderboards, experiments, quests beyond the five starter missions, final sound/music/VFX, haptics, functional mission/rank/mastery bonuses, and every Phase 07 system.
 
+## Current acceptance evidence - partial (2026-07-16)
+
+Phase 06 production implementation is complete, but the attachment's complete acceptance contract is not. The pull request remains draft and unmerged and Phase 07 has not begun.
+
+### Automated evidence
+
+All six local Node gates passed at the implemented 914-instance, 79-source target:
+
+```text
+[StudioSyncSmoke] PASS checks=16 folders=7 scripts=10 deterministic=true
+[Phase02StudioSyncSmoke] PASS criteria=28 instances=914 scripts=79 remotes=6 deterministic=true phase01=true
+[Phase03LayoutMatrix] PASS viewports=13 insetProfiles=5 cases=65 desktopCompatible=true safeContainment=true
+[Phase03CrossPlatformSmoke] PASS criteria=31 viewports=13 insetProfiles=5 layoutCases=65 remotes=6 deterministic=true phase01=true phase02=true
+[Phase04MultiplayerArena] PASS criteria=42 instances=914 scripts=79 stations=8 pathNodes=16 remotes=6 deterministic=true prior=true
+[Phase05PersistentProgression] PASS criteria=64 instances=914 scripts=79 gameplayRemotes=6 profileRemotes=1 shelves=8 collectionSlots=8 deterministic=true prior=true
+[Phase06OnboardingMissionsAnalytics] PASS criteria=69 instances=914 scripts=79 gameplayRemotes=6 profileRemotes=1 onboardingRemotes=1 onboardingSteps=5 starterMissions=5 missionTape=295 missionXP=210 deterministic=true prior=true
+```
+
+Fresh pre-cloud-save Studio Output passed Foundation `69/69`, Phase 02 `94/94`, Phase 03 `65/65`, Phase 04 `119/119`, Phase 05 `130/130`, and Phase 06 `58/58`. The Phase 06 conflict case initially exposed a clean-profile test-fixture mistake; the fixture was corrected to dirty both sessions and assert the real conflict path, after which `58/58` passed. No production source defect was found.
+
+At implementation head `4fe9c97a1ab5eeef4e18c34a6a584e2ed1ec8701`, branch-push run `29526402031` and pull-request run `29526404937` both passed all six Node validations. A later evidence commit requires fresh exact-head checks.
+
+### Manual and persistence evidence
+
+| Gate | Result | Evidence and limitation |
+| --- | --- | --- |
+| Established-profile Version 1-to-2 migration | Partial pass | The accepted Phase 05 Studio-test profile migrated, preserved the recorded Tape/XP/rank/collection/statistics, and reached Ready/Saved. Complete pre-migration mastery and receipt values were not captured, so full field-by-field preservation is not claimed. |
+| Desktop onboarding | Partial pass | Failure/retry stayed guided; steps, first accepted placement, first shipment, completion, overlay hide, normal timing, and mission presentation were exercised. This was the established profile, not the prescribed truly fresh profile. |
+| Starter path | Pass for core service/profile result | The profile reached 5/5 with 295 mission Tape and 210 mission XP. `first_fit` and `one_more` were rewarded through live play; `first_shipment`, `collector_three`, and `five_item_box` reconciled from authoritative historical statistics. A later successful shipment completed onboarding without replaying `first_shipment`. No reward replay was observed before close. |
+| Touch emulator | Partial | Phone portrait and landscape showed the recorded safe-area containment, touch-only copy, working drag/place/Pack Again, and preserved durable progress. The complete Ship, SkipButton/mission-card safe-area, starter-panel, and underlying-drag suppression matrix remains unpassed. No physical-phone claim is made. |
+| Gamepad emulator | Partial | Controller movement copy, `[X]`, `[A]`, `[L1]`, and gamepad focus were visible. Hold-B cancel/complete, the complete L1/B panel flow, and binding-duplication checks remain unpassed. |
+| Skip | Partial | Deterministic coverage verifies validation, no reward, and exact-once state. The two-player memory test verified UI isolation. Dedicated mouse/touch, hold-B gamepad, rejoin persistence, next-round timing, analytics-once, and duplicate no-op acceptance remain incomplete. |
+| Two-player Local Server | Partial | Two memory clients had distinct `O1`/`O2` state. Skipping Player B hid only B's overlay and exposed only B's mission card while Player A remained onboarding. The complete required isolation matrix remains unpassed. |
+| Integrated analytics memory trace | Pending | Deterministic Studio tests pass event, ordering, privacy, cleanup, and failure-isolation coverage, but one separately captured integrated interactive fresh-player sink trace is absent. |
+| Session E | Partial pass | Version 2 reached Saved and the test server shut down cleanly. The full pre-migration mastery/receipt ledger was not captured. |
+| Session F | Pending with a current-state blocker | Direct reload did not complete. Session E ended with the durable profile at 5/5, leaving no defined new starter mission for the requested additional same-profile reward. A user-approved recovery or alternate proof is required. |
+| Cloud save and full close | Pass | Fixture attributes printed `nil nil nil`; the private place reported a successful normal Roblox save; every Studio process then closed. |
+| Direct cloud reopen and parity | Pending | Two no-sync attempts fetched the correct place/universe, completed preloading, connected to the edit server, initialized schema, and assigned a peer, but Studio remained at `Connecting to server...`. Post-reopen parity, suites, persistence, and Output are not claimed. |
+
+### Session F current-state blocker
+
+Session E ended with the same durable Studio-test profile at every one of the five defined missions rewarded. Applying any existing mission event must correctly produce no new reward. Rewinding a `Rewarded` flag, adding a sixth mission/path reward, editing the DataStore key, or silently substituting a different profile would violate this contract. Same-profile reload/no-replay remains a valid pending proof, and exact one-reward behavior is separately proven with deterministic memory integration, but completing Session F now requires a user-approved recovery or alternate evidence route.
+
+### Remaining technical acceptance
+
+- Run the prescribed truly fresh-profile desktop path.
+- Finish the full gamepad hold-B and starter-panel control matrix.
+- Finish the complete two-player timing/gameplay/reward/analytics/shelf/revision/conflict matrix.
+- Capture the prescribed integrated analytics-memory sequence.
+- Resolve the direct Studio cloud-join blocker, then run post-reopen hierarchy/source parity, all six Studio suites, Session F reload/no-replay, any user-approved alternate one-reward proof, and fresh game-owned Output review.
+- Resolve the Session F current-state evidence route explicitly.
+- Refresh documentation, PR evidence, and exact-head branch/PR checks.
+
+Issue #4 remains open and unchanged. Its Phase 06 QA comment is intentionally withheld until technical acceptance. Phase 07 is the only next phase, but it must not begin until these Phase 06 gates are resolved.

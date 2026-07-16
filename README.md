@@ -6,7 +6,11 @@ ONE MORE ITEM! is a premium, mobile-first Roblox packing game built around fitti
 
 ## Current development phase
 
-Phase 06 — First-Time Player Experience, Starter Missions, and Retention Analytics: **active on `codex/phase-06-onboarding-starter-missions`, not yet accepted.** Phase 06 remains unaccepted until its own deterministic tests, Studio playtests, profile-migration persistence, cloud save/direct-reopen parity, cross-platform checks, and exact-head CI pass.
+Phase 06 — First-Time Player Experience, Starter Missions, and Retention Analytics: **implementation complete on `codex/phase-06-onboarding-starter-missions`; acceptance partial.** All six Node 24 gates are green, and the fresh pre-cloud Studio suites passed Foundation `69/69`, Phase 02 `94/94`, Phase 03 `65/65`, Phase 04 `119/119`, Phase 05 `130/130`, and Phase 06 `58/58`. Established-profile migration, onboarding including failure/retry, the 5/5 starter-path profile result, and limited portrait/landscape touch checks are recorded.
+
+Phase 06 is not yet accepted.
+
+The remaining Phase 06 gates are not claimed as passed. Touch and skip acceptance are partial. Gamepad evidence currently covers prompts and focus only; hold-B skip and the complete ButtonL1/ButtonB flow remain pending. A two-player Local Server reached O1/O2 and proved one-player skip isolation, but the full matrix remains pending. The normal private-cloud save and complete Studio close succeeded, while two direct reopen attempts fetched the correct place and connected/assigned a peer but left the UI on `Connecting`; direct reopen, parity, and Session F therefore remain unpassed. Because Session E ended with the current durable Studio-test profile already at `5/5`, Session F has no remaining defined starter mission for its required new reward; completing that evidence now requires a user-approved recovery or alternate proof that preserves exact-once behavior. [Draft PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7) remains draft and unmerged, the Phase 06 comment on [issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) has intentionally not been posted before acceptance, and Phase 07 has not begun. See [`docs/PHASE06_ONBOARDING_MISSIONS_ANALYTICS.md`](docs/PHASE06_ONBOARDING_MISSIONS_ANALYTICS.md) for the contract and evidence boundary.
 
 Phase 05 was accepted and squash-merged through [PR #6](https://github.com/kotonja/ONE-MORE-ITEM-/pull/6) at `d644411b48e20cd9bb256d3d2c55a647efc2adfd`. Open [GitHub issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) retains the explicitly unpassed Phase 04 and Phase 05 pre-release QA; no physical-device or production-store result is claimed.
 
@@ -19,10 +23,10 @@ Phase 02 is complete and merged through PR #2 at `73b3428c5ff0068f1e57f89d2150ff
 - Phase 03 was squash-merged through PR #3 at `014ff3964eb63f22f8527894067cddb1b4f98070`.
 - Phase 04 was squash-merged through PR #5 at `213f3581bd242523e34601cfefa5b5a74770ddee`.
 - Phase 05 was squash-merged through PR #6 at `d644411b48e20cd9bb256d3d2c55a647efc2adfd` after its synchronized cloud-place and direct-reopen acceptance.
-- Phase 06 is active on `codex/phase-06-onboarding-starter-missions` in [draft PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7), which must remain unmerged until Phase 06 acceptance.
+- Phase 06 implementation is complete and acceptance is partial on `codex/phase-06-onboarding-starter-missions` in [draft PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7), which must remain unmerged until the outstanding Phase 06 gates pass.
 - Pull before editing, never force-push, and keep every meaningful Studio/code change committed and pushed.
 - `docs/DEVELOPMENT_STATUS.md` is updated on every task.
-- GitHub Actions workflow `Phase 01–06 Node Validation` uses Node 24 with `actions/checkout@v7` and `actions/setup-node@v6`. It runs six dependency-free validations on pull requests targeting `main` and pushes to `main` or `codex/**`. Phase 06 exact-head run evidence is recorded in `docs/DEVELOPMENT_STATUS.md` after the implementation and documentation heads pass.
+- GitHub Actions workflow `Phase 01–06 Node Validation` uses Node 24 with `actions/checkout@v7` and `actions/setup-node@v6`. It runs six dependency-free validations on pull requests targeting `main` and pushes to `main` or `codex/**`. Implementation-head evidence is recorded in `docs/DEVELOPMENT_STATUS.md`; final documentation-head evidence is recorded in the draft PR and final handoff.
 
 ## Studio source workflow
 
