@@ -154,6 +154,8 @@ local function makeRound(): RoundRecord
 		ResultValue = 0,
 		ResultLostValue = 0,
 		ShipmentBanked = false,
+		GuidedOnboarding = false,
+		StartedAt = 100,
 	}
 end
 
@@ -858,6 +860,7 @@ local function makeClientSnapshot(roundId: number, stateVersion: number): Client
 		SessionBank = 0,
 		PlacementDeadline = 130,
 		DecisionDeadline = nil,
+		GuidedOnboarding = false,
 		ResultReason = nil,
 		ResultValue = 0,
 		ResultLostValue = 0,

@@ -8,6 +8,8 @@ export type Statistics = {
 	PerfectShipments: number,
 	TotalFailedRounds: number,
 	TotalTapeEarned: number,
+	TotalMissionTapeEarned: number,
+	TotalStarterMissionsCompleted: number,
 }
 
 export type CollectionState = {
@@ -46,6 +48,22 @@ export type ProgressionReward = {
 	NewDiscoveries: { string },
 	MasteryChanges: { MasteryChange },
 	UpdatedStats: Statistics,
+	Duplicate: boolean,
+}
+
+export type StarterMissionReward = {
+	RewardId: string,
+	MissionId: string,
+	MissionIndex: number,
+	TapeDelta: number,
+	XPDelta: number,
+	PreviousTape: number,
+	NewTape: number,
+	PreviousXP: number,
+	NewXP: number,
+	PreviousRank: RankPresentation,
+	NewRank: RankPresentation,
+	PathCompleted: boolean,
 	Duplicate: boolean,
 }
 

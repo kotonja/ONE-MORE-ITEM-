@@ -486,9 +486,9 @@ try {
     assert.ok(gitFiles.every((file) => !/\.(?:rbxl|rbxlx|tmp|bak)$/i.test(file)));
   });
 
-  criterion("workflow runs the five Node 24 gates", () => {
+  criterion("workflow runs the six Node 24 gates", () => {
     const workflow = readText(".github/workflows/phase01-node-validation.yml");
-    assert.match(workflow, /^name:\s*Phase 01(?:–|-)05 Node Validation/m);
+    assert.match(workflow, /^name:\s*Phase 01(?:–|-)06 Node Validation/m);
     assert.match(workflow, /actions\/checkout@v7/);
     assert.match(workflow, /actions\/setup-node@v6/);
     assert.match(workflow, /node-version:\s*24/);
@@ -499,6 +499,7 @@ try {
       "node tools/test_phase03_cross_platform.mjs",
       "node tools/test_phase04_multiplayer_arena.mjs",
       "node tools/test_phase05_persistent_progression.mjs",
+      "node tools/test_phase06_onboarding_missions_analytics.mjs",
     ]) assert.match(workflow, new RegExp(command.replaceAll("/", "\\/")));
   });
 

@@ -85,6 +85,8 @@ local function copyStats(stats: Statistics): Statistics
 		PerfectShipments = stats.PerfectShipments,
 		TotalFailedRounds = stats.TotalFailedRounds,
 		TotalTapeEarned = stats.TotalTapeEarned,
+		TotalMissionTapeEarned = stats.TotalMissionTapeEarned,
+		TotalStarterMissionsCompleted = stats.TotalStarterMissionsCompleted,
 	}
 end
 
@@ -289,6 +291,8 @@ function ProgressionService.ApplyShipmentToProfile(
 		PerfectShipments = perfectShipments,
 		TotalFailedRounds = previousStats.TotalFailedRounds,
 		TotalTapeEarned = totalTapeEarned,
+		TotalMissionTapeEarned = previousStats.TotalMissionTapeEarned,
+		TotalStarterMissionsCompleted = previousStats.TotalStarterMissionsCompleted,
 	}
 
 	local previousXP = profile.PackingXP

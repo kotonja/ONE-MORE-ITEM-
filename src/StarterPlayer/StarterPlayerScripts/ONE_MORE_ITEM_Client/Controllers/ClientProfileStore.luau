@@ -8,6 +8,9 @@ local ProfileNetworkTypes = require(shared:WaitForChild("Profile"):WaitForChild(
 export type Snapshot = ProfileNetworkTypes.ProfileSnapshot
 export type Statistics = ProfileNetworkTypes.Statistics
 export type ProgressionReward = ProfileNetworkTypes.ProgressionReward
+export type OnboardingPresentation = ProfileNetworkTypes.OnboardingPresentation
+export type StarterMissionsPresentation = ProfileNetworkTypes.StarterMissionsPresentation
+export type MissionRewardPresentation = ProfileNetworkTypes.MissionRewardPresentation
 
 type Listener = (snapshot: Snapshot) -> ()
 
@@ -54,7 +57,62 @@ local function copyStatistics(stats: Statistics): Statistics
 		PerfectShipments = stats.PerfectShipments,
 		TotalFailedRounds = stats.TotalFailedRounds,
 		TotalTapeEarned = stats.TotalTapeEarned,
+		TotalMissionTapeEarned = stats.TotalMissionTapeEarned,
+		TotalStarterMissionsCompleted = stats.TotalStarterMissionsCompleted,
 	}) :: Statistics
+end
+
+local function copyOnboarding(onboarding: OnboardingPresentation): OnboardingPresentation
+	return table.freeze({
+		Status = onboarding.Status,
+		HighestStep = onboarding.HighestStep,
+		Completed = onboarding.Completed,
+	}) :: OnboardingPresentation
+end
+
+local function copyStarterMissions(missions: StarterMissionsPresentation): StarterMissionsPresentation
+	return table.freeze({
+		Progress = copyNumberMap(missions.Progress),
+		CompletedMissionIds = copyStringArray(missions.CompletedMissionIds),
+		RewardedMissionIds = copyStringArray(missions.RewardedMissionIds),
+		CurrentMissionId = missions.CurrentMissionId,
+		CompletedCount = missions.CompletedCount,
+		TotalCount = missions.TotalCount,
+		PathCompleted = missions.PathCompleted,
+	}) :: StarterMissionsPresentation
+end
+
+local function copyMissionReward(reward: MissionRewardPresentation): MissionRewardPresentation
+	return table.freeze({
+		RewardId = reward.RewardId,
+		MissionId = reward.MissionId,
+		MissionIndex = reward.MissionIndex,
+		TapeDelta = reward.TapeDelta,
+		XPDelta = reward.XPDelta,
+		PreviousTape = reward.PreviousTape,
+		NewTape = reward.NewTape,
+		PreviousXP = reward.PreviousXP,
+		NewXP = reward.NewXP,
+		PreviousRank = table.freeze({
+			Index = reward.PreviousRank.Index,
+			Name = reward.PreviousRank.Name,
+			Threshold = reward.PreviousRank.Threshold,
+		}),
+		NewRank = table.freeze({
+			Index = reward.NewRank.Index,
+			Name = reward.NewRank.Name,
+			Threshold = reward.NewRank.Threshold,
+		}),
+		PathCompleted = reward.PathCompleted,
+	}) :: MissionRewardPresentation
+end
+
+local function copyMissionRewards(rewards: { MissionRewardPresentation }): { MissionRewardPresentation }
+	local copied: { MissionRewardPresentation } = {}
+	for _, reward in ipairs(rewards) do
+		table.insert(copied, copyMissionReward(reward))
+	end
+	return table.freeze(copied)
 end
 
 local function copyReward(reward: ProgressionReward?): ProgressionReward?
@@ -101,6 +159,7 @@ end
 
 local function copySnapshot(snapshot: Snapshot): Snapshot
 	return table.freeze({
+		SchemaVersion = snapshot.SchemaVersion,
 		ProfileSessionId = snapshot.ProfileSessionId,
 		Revision = snapshot.Revision,
 		State = snapshot.State,
@@ -119,6 +178,9 @@ local function copySnapshot(snapshot: Snapshot): Snapshot
 		CollectionTotalCount = snapshot.CollectionTotalCount,
 		Stats = copyStatistics(snapshot.Stats),
 		LastReward = copyReward(snapshot.LastReward),
+		Onboarding = copyOnboarding(snapshot.Onboarding),
+		StarterMissions = copyStarterMissions(snapshot.StarterMissions),
+		LastMissionRewards = copyMissionRewards(snapshot.LastMissionRewards),
 	}) :: Snapshot
 end
 

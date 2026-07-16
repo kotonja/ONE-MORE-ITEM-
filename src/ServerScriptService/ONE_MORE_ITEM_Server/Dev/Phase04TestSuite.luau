@@ -288,6 +288,8 @@ local function roundRecord(userId: number, roundId: number, stationId: string, i
 		ResultValue = #resolvedItems * 25,
 		ResultLostValue = 0,
 		ShipmentBanked = true,
+		GuidedOnboarding = false,
+		StartedAt = 0,
 	}
 end
 
@@ -339,6 +341,7 @@ local function clientSnapshot(stationId: string?, roundId: number?, stateVersion
 		SessionBank = 0,
 		PlacementDeadline = nil,
 		DecisionDeadline = nil,
+		GuidedOnboarding = false,
 		ResultReason = nil,
 		ResultValue = 0,
 		ResultLostValue = 0,

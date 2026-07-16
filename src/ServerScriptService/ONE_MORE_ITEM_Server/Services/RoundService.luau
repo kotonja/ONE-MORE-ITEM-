@@ -91,11 +91,53 @@ export type RoundFailureEvent = {
 	Reason: string,
 }
 
+export type RoundStartedEvent = {
+	PlayerUserId: number,
+	StationId: string,
+	RoundId: number,
+	StartedAt: number,
+	GuidedOnboarding: boolean,
+}
+
+export type PlacementAcceptedEvent = {
+	PlayerUserId: number,
+	StationId: string,
+	RoundId: number,
+	ItemId: string,
+	ItemCount: number,
+}
+
+export type DecisionAcceptedEvent = {
+	PlayerUserId: number,
+	StationId: string,
+	RoundId: number,
+	Choice: "SHIP" | "ONE_MORE",
+	ItemCount: number,
+	Difficulty: string?,
+}
+
+export type RoundEndedEvent = {
+	PlayerUserId: number,
+	StationId: string,
+	RoundId: number,
+	Phase: "ship" | "fail",
+	DurationSeconds: number,
+	ItemCount: number,
+	Reason: string,
+	TapeDelta: number,
+	NewTape: number,
+}
+
 export type EventSink = {
 	OnRoundStateChanged: ((Player, RoundStateEvent) -> ())?,
 	OnShipmentCompleted: ((ShipmentRecord) -> ())?,
 	OnHighRiskMilestone: ((HighRiskMilestoneEvent) -> ())?,
 	OnRoundFailed: ((RoundFailureEvent) -> ())?,
+	OnRoundStarted: ((Player, RoundStartedEvent) -> ())?,
+	OnPlacementAccepted: ((Player, PlacementAcceptedEvent) -> ())?,
+	OnDecisionAccepted: ((Player, DecisionAcceptedEvent) -> ())?,
+	OnShipmentProgressionApplied: ((Player, ShipmentRecord, ProgressionReward) -> ())?,
+	OnRoundEnded: ((Player, RoundEndedEvent) -> ())?,
 }
 
 export type Options = {
@@ -107,6 +149,7 @@ export type Options = {
 	ProfileService: ProfileServiceContract,
 	ProgressionService: ProgressionServiceContract,
 	ServerSessionId: string,
+	IsGuidedOnboarding: ((Player) -> boolean)?,
 }
 
 export type Service = {
@@ -148,6 +191,7 @@ type RoundServiceImpl = Service & {
 	_profileService: ProfileServiceContract,
 	_progressionService: ProgressionServiceContract,
 	_serverSessionId: string,
+	_isGuidedOnboarding: (Player) -> boolean,
 }
 
 local RoundService = {}
@@ -162,6 +206,10 @@ local function defaultScheduler(duration: number, callback: () -> ())
 end
 
 local function noSnapshot(_player: Player, _snapshot: RoundSnapshot)
+end
+
+local function notGuided(_player: Player): boolean
+	return false
 end
 
 function RoundService.Create(
@@ -190,6 +238,7 @@ function RoundService.Create(
 		_profileService = options.ProfileService,
 		_progressionService = options.ProgressionService,
 		_serverSessionId = options.ServerSessionId,
+		_isGuidedOnboarding = options.IsGuidedOnboarding or notGuided,
 	}, RoundService) :: RoundServiceImpl
 end
 
@@ -246,6 +295,7 @@ function RoundService.GetSnapshot(self: RoundServiceImpl, player: Player): Round
 		ResultReason = round.ResultReason,
 		ResultValue = round.ResultValue,
 		ResultLostValue = round.ResultLostValue,
+		GuidedOnboarding = round.GuidedOnboarding,
 	}
 end
 
@@ -357,11 +407,26 @@ function RoundService.StartRound(
 		ResultValue = 0,
 		ResultLostValue = 0,
 		ShipmentBanked = false,
+		GuidedOnboarding = self._isGuidedOnboarding(player),
+		StartedAt = self._clock(),
 	}
 	self._rounds[player] = round
 	self._sequences[player] = sequence
 	self:_emitSnapshot(player)
 	notifyRoundState(self, player, round)
+	local startedCallback = self._eventSink.OnRoundStarted
+	if startedCallback ~= nil then
+		local startedEvent = table.freeze({
+			PlayerUserId = player.UserId,
+			StationId = stationId,
+			RoundId = roundId,
+			StartedAt = round.StartedAt,
+			GuidedOnboarding = round.GuidedOnboarding,
+		}) :: RoundStartedEvent
+		safeCallback("OnRoundStarted", function()
+			startedCallback(player, startedEvent)
+		end)
+	end
 	local preparationDuration = if preparationMode == "RESTART"
 		then RoundConfig.RESTART_PREPARING_DURATION
 		else RoundConfig.INITIAL_PREPARING_DURATION
@@ -392,9 +457,12 @@ function RoundService._enterAwaitingPlacement(self: RoundServiceImpl, player: Pl
 		return
 	end
 	round.DecisionDeadline = nil
-	round.PlacementDeadline = self._clock() + RoundConfig.PLACEMENT_DURATION
+	local placementDuration = if round.GuidedOnboarding
+		then RoundConfig.GUIDED_PLACEMENT_DURATION
+		else RoundConfig.PLACEMENT_DURATION
+	round.PlacementDeadline = self._clock() + placementDuration
 	self:_transition(player, "AwaitingPlacement")
-	self:_scheduleCurrentState(player, RoundConfig.PLACEMENT_DURATION)
+	self:_scheduleCurrentState(player, placementDuration)
 end
 
 function RoundService._enterShipping(self: RoundServiceImpl, player: Player, reason: string)
@@ -455,6 +523,32 @@ function RoundService._enterShipping(self: RoundServiceImpl, player: Player, rea
 	round.ResultReason = reason
 	round.ResultValue = reward.TapeDelta
 	round.ResultLostValue = 0
+	local shipmentProgressionCallback = self._eventSink.OnShipmentProgressionApplied
+	if shipmentProgressionCallback ~= nil then
+		local completedRecord = shipmentRecord :: ShipmentRecord
+		safeCallback("OnShipmentProgressionApplied", function()
+			shipmentProgressionCallback(player, completedRecord, reward :: ProgressionReward)
+		end)
+	end
+	local authoritativeTape = self._profileService:GetTape(player.UserId) or reward.NewTape
+	round.SessionBank = authoritativeTape
+	local roundEndedCallback = self._eventSink.OnRoundEnded
+	if roundEndedCallback ~= nil then
+		local endedEvent = table.freeze({
+			PlayerUserId = player.UserId,
+			StationId = round.StationId,
+			RoundId = round.RoundId,
+			Phase = "ship",
+			DurationSeconds = math.max(0, self._clock() - round.StartedAt),
+			ItemCount = round.ItemCount,
+			Reason = reason,
+			TapeDelta = reward.TapeDelta,
+			NewTape = authoritativeTape,
+		}) :: RoundEndedEvent
+		safeCallback("OnRoundEnded", function()
+			roundEndedCallback(player, endedEvent)
+		end)
+	end
 
 	round.BaseValueSum = 0
 	round.ShipmentValue = 0
@@ -517,6 +611,23 @@ function RoundService._enterFailure(self: RoundServiceImpl, player: Player, reas
 	round.ResultReason = reason
 	round.ResultValue = 0
 	round.ResultLostValue = lostValue
+	local roundEndedCallback = self._eventSink.OnRoundEnded
+	if roundEndedCallback ~= nil then
+		local endedEvent = table.freeze({
+			PlayerUserId = player.UserId,
+			StationId = round.StationId,
+			RoundId = round.RoundId,
+			Phase = "fail",
+			DurationSeconds = math.max(0, self._clock() - round.StartedAt),
+			ItemCount = round.ItemCount,
+			Reason = reason,
+			TapeDelta = 0,
+			NewTape = reward.NewTape,
+		}) :: RoundEndedEvent
+		safeCallback("OnRoundEnded", function()
+			roundEndedCallback(player, endedEvent)
+		end)
+	end
 	round.BaseValueSum = 0
 	round.ShipmentValue = 0
 	round.CurrentItemId = nil
@@ -611,6 +722,19 @@ function RoundService.HandlePlacement(
 	round.BaseValueSum += definition.BaseValue
 	round.ShipmentValue = RoundMath.CalculateShipmentValue(round.BaseValueSum, round.ItemCount)
 	round.PlacementDeadline = nil
+	local placementCallback = self._eventSink.OnPlacementAccepted
+	if placementCallback ~= nil then
+		local placementEvent = table.freeze({
+			PlayerUserId = player.UserId,
+			StationId = round.StationId,
+			RoundId = round.RoundId,
+			ItemId = currentItemId,
+			ItemCount = round.ItemCount,
+		}) :: PlacementAcceptedEvent
+		safeCallback("OnPlacementAccepted", function()
+			placementCallback(player, placementEvent)
+		end)
+	end
 
 	if round.ItemCount == 6 or round.ItemCount == 8 or round.ItemCount == RoundConfig.MAXIMUM_ITEMS then
 		local callback = self._eventSink.OnHighRiskMilestone
@@ -647,9 +771,12 @@ function RoundService.HandlePlacement(
 
 	round.PreviewedNextItemId = candidate.Item.Id
 	round.PreviewDifficulty = candidate.Difficulty
-	round.DecisionDeadline = self._clock() + RoundConfig.DECISION_DURATION
+	local decisionDuration = if round.GuidedOnboarding
+		then RoundConfig.GUIDED_DECISION_DURATION
+		else RoundConfig.DECISION_DURATION
+	round.DecisionDeadline = self._clock() + decisionDuration
 	self:_transition(player, "Decision")
-	self:_scheduleCurrentState(player, RoundConfig.DECISION_DURATION)
+	self:_scheduleCurrentState(player, decisionDuration)
 	return result
 end
 
@@ -694,15 +821,44 @@ function RoundService.HandleDecision(self: RoundServiceImpl, player: Player, pay
 	local choice = request.Choice
 	if choice == "SHIP" then
 		round.LastClientSequences.Decision = sequenceValue :: number
+		local decisionCallback = self._eventSink.OnDecisionAccepted
+		if decisionCallback ~= nil then
+			local decisionEvent = table.freeze({
+				PlayerUserId = player.UserId,
+				StationId = round.StationId,
+				RoundId = round.RoundId,
+				Choice = "SHIP",
+				ItemCount = round.ItemCount,
+				Difficulty = round.PreviewDifficulty,
+			}) :: DecisionAcceptedEvent
+			safeCallback("OnDecisionAccepted", function()
+				decisionCallback(player, decisionEvent)
+			end)
+		end
 		self:_enterShipping(player, "PLAYER_SHIPPED")
 		return if round.State == "Shipping" then true else false,
 			if round.State == "Shipping" then "SHIPPING" else (round.ResultReason or "PROFILE_REWARD_FAILED")
 	elseif choice == "ONE_MORE" and round.PreviewedNextItemId then
+		local acceptedDifficulty = round.PreviewDifficulty
 		round.LastClientSequences.Decision = sequenceValue :: number
 		round.CurrentItemId = round.PreviewedNextItemId
 		round.PreviewedNextItemId = nil
 		round.PreviewDifficulty = nil
 		round.DecisionDeadline = nil
+		local decisionCallback = self._eventSink.OnDecisionAccepted
+		if decisionCallback ~= nil then
+			local decisionEvent = table.freeze({
+				PlayerUserId = player.UserId,
+				StationId = round.StationId,
+				RoundId = round.RoundId,
+				Choice = "ONE_MORE",
+				ItemCount = round.ItemCount,
+				Difficulty = acceptedDifficulty,
+			}) :: DecisionAcceptedEvent
+			safeCallback("OnDecisionAccepted", function()
+				decisionCallback(player, decisionEvent)
+			end)
+		end
 		self:_enterPresentingItem(player)
 		return true, "ONE_MORE_ACCEPTED"
 	end

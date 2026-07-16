@@ -257,7 +257,7 @@ local function shipmentRecord(
 end
 
 local function profileSnapshot(profile: any, revision: number, sessionId: string?, reward: any?): any
-	return ProfileSnapshotBuilder.Build(profile, "Ready", "Saved", revision, sessionId or "profile:test", reward)
+	return ProfileSnapshotBuilder.Build(profile, "Ready", "Saved", revision, sessionId or "profile:test", reward, nil)
 end
 
 local function roundSnapshot(roundId: number, version: number, state: string, outcomeId: string?): any
@@ -289,13 +289,16 @@ end
 
 addSuite("Schema defaults", {
 	{
-		Name = "nil becomes schema Version 1 with exact defaults",
+		Name = "nil becomes schema Version 2 while retaining Phase 05 defaults",
 		Run = function()
 			local profile, code = ProfileSchema.Migrate(nil, 1234)
-			expect(profile ~= nil and code == "CREATED_V1")
-			expectEqual(profile.SchemaVersion, 1)
+			expect(profile ~= nil and code == "CREATED_V2")
+			expectEqual(profile.SchemaVersion, 2)
 			expectEqual(profile.Tape, 0)
 			expectEqual(profile.PackingXP, 0)
+			expectEqual(profile.Onboarding.Status, "NotStarted")
+			expectEqual(profile.Onboarding.HighestStep, 0)
+			expectEqual(profile.StarterMissions.PathCompleted, false)
 			expectEqual(profile.CreatedAt, 1234)
 			expectEqual(profile.UpdatedAt, 1234)
 			expectEqual(profile.Session, nil)
@@ -308,6 +311,7 @@ addSuite("Schema defaults", {
 			for _, key in ipairs({
 				"TotalSuccessfulShipments", "TotalItemsShipped", "HighestItemsInShipment",
 				"BestShipmentValue", "PerfectShipments", "TotalFailedRounds", "TotalTapeEarned",
+				"TotalMissionTapeEarned", "TotalStarterMissionsCompleted",
 			}) do
 				expectEqual(stats[key], 0, key .. " must default to zero")
 			end
@@ -321,9 +325,13 @@ addSuite("Schema defaults", {
 			left.Collection.Discovered.parcel = true
 			table.insert(left.Collection.RecentDiscoveries, "parcel")
 			table.insert(left.Receipts.ProcessedOutcomeIds, "receipt")
+			left.Onboarding.HighestStep = 3
+			left.StarterMissions.Progress.first_fit = 1
 			expectEqual(right.Collection.Discovered.parcel, nil)
 			expectEqual(#right.Collection.RecentDiscoveries, 0)
 			expectEqual(#right.Receipts.ProcessedOutcomeIds, 0)
+			expectEqual(right.Onboarding.HighestStep, 0)
+			expectEqual(right.StarterMissions.Progress.first_fit, nil)
 		end,
 	},
 	{
@@ -331,7 +339,12 @@ addSuite("Schema defaults", {
 		Run = function()
 			local raw = { SchemaVersion = 1, Tape = -5, PackingXP = 9, Collection = { RecentDiscoveries = { "parcel" } } }
 			local originalRecent = raw.Collection.RecentDiscoveries
-			ProfileSchema.Migrate(raw, 100)
+			local migrated, code = ProfileSchema.Migrate(raw, 100)
+			expect(migrated ~= nil and code == "MIGRATED_V1_TO_V2")
+			expectEqual(migrated.SchemaVersion, 2)
+			expectEqual(migrated.PackingXP, 9)
+			expectEqual(migrated.Onboarding.Status, "NotStarted")
+			expectEqual(migrated.StarterMissions.PathCompleted, false)
 			expectEqual(raw.Tape, -5)
 			expect(raw.Collection.RecentDiscoveries == originalRecent)
 		end,
@@ -349,10 +362,11 @@ addSuite("Schema defaults", {
 
 addSuite("Migration", {
 	{
-		Name = "Version 0 fixture migrates",
+		Name = "Version 0 fixture migrates through Version 1 to Version 2",
 		Run = function()
 			local profile, code = ProfileSchema.Migrate({ SchemaVersion = 0, Tape = 42, PackingXP = 300, DiscoveredItems = { "parcel" } }, 700)
-			expect(profile ~= nil and code == "MIGRATED_V0_TO_V1")
+			expect(profile ~= nil and code == "MIGRATED_V0_TO_V2")
+			expectEqual(profile.SchemaVersion, 2)
 			expectEqual(profile.Tape, 42)
 			expect(profile.Collection.Discovered.parcel == true)
 		end,
@@ -370,7 +384,7 @@ addSuite("Migration", {
 	{
 		Name = "future version rejects",
 		Run = function()
-			local profile, code = ProfileSchema.Migrate({ SchemaVersion = 2 }, 900)
+			local profile, code = ProfileSchema.Migrate({ SchemaVersion = 3 }, 900)
 			expectEqual(profile, nil)
 			expectEqual(code, "UNSUPPORTED_FUTURE_SCHEMA")
 		end,
@@ -779,7 +793,7 @@ addSuite("Memory adapter", {
 			local adapter = MemoryProfileAdapter.Create()
 			local result = adapter:LoadAndLock(41, claim("A", 100))
 			expect(result.Success and result.Code == "Loaded")
-			expectEqual(result.Profile.SchemaVersion, 1)
+			expectEqual(result.Profile.SchemaVersion, 2)
 			expectEqual(result.Profile.Session.Token, "A")
 		end,
 	},
@@ -2348,7 +2362,7 @@ addSuite("Client presentation", {
 		Name = "Loading Unavailable and Conflict states are explicit",
 		Run = function()
 			withProfileUI(function(controller: any, root: Frame)
-				local loading = ProfileSnapshotBuilder.Build(nil, "Loading", "Loading", 1, "states", nil)
+				local loading = ProfileSnapshotBuilder.Build(nil, "Loading", "Loading", 1, "states", nil, nil)
 				controller:ApplyProfileSnapshot(loading)
 				local meta = requireChild(root, "MetaBar", "Frame")
 				local status = requireChild(meta, "DataStatus", "TextLabel") :: TextLabel
@@ -2362,11 +2376,11 @@ addSuite("Client presentation", {
 			withProfileUI(function(controller: any, root: Frame)
 				local meta = requireChild(root, "MetaBar", "Frame") :: Frame
 				local status = requireChild(meta, "DataStatus", "TextLabel") :: TextLabel
-				controller:ApplyProfileSnapshot(ProfileSnapshotBuilder.Build(nil, "Loading", "Loading", 1, "states", nil))
+				controller:ApplyProfileSnapshot(ProfileSnapshotBuilder.Build(nil, "Loading", "Loading", 1, "states", nil, nil))
 				expectEqual(status.Text, "LOADING PROFILE")
-				controller:ApplyProfileSnapshot(ProfileSnapshotBuilder.Build(nil, "Unavailable", "Unavailable", 2, "states", nil))
+				controller:ApplyProfileSnapshot(ProfileSnapshotBuilder.Build(nil, "Unavailable", "Unavailable", 2, "states", nil, nil))
 				expectEqual(status.Text, "DATA UNAVAILABLE")
-				controller:ApplyProfileSnapshot(ProfileSnapshotBuilder.Build(nil, "Conflict", "Conflict", 3, "states", nil))
+				controller:ApplyProfileSnapshot(ProfileSnapshotBuilder.Build(nil, "Conflict", "Conflict", 3, "states", nil, nil))
 				expectEqual(status.Text, "PROFILE OPEN ELSEWHERE")
 			end)
 		end,
