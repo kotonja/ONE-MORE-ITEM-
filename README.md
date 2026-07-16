@@ -6,9 +6,9 @@ ONE MORE ITEM! is a premium, mobile-first Roblox packing game built around fitti
 
 ## Current development phase
 
-Phase 05 — Persistent Player Profiles, Tape, Collection, and Packing Rank: **implementation complete and accepted on `codex/phase-05-persistent-progression`.**
+Phase 06 — First-Time Player Experience, Starter Missions, and Retention Analytics: **active on `codex/phase-06-onboarding-starter-missions`, not yet accepted.** Phase 06 remains unaccepted until its own deterministic tests, Studio playtests, profile-migration persistence, cloud save/direct-reopen parity, cross-platform checks, and exact-head CI pass.
 
-Draft [PR #6](https://github.com/kotonja/ONE-MORE-ITEM-/pull/6) remains open and unmerged for final review; `main` remains the accepted Phase 04 baseline at `213f3581bd242523e34601cfefa5b5a74770ddee`. The final source-quality pass made shelf presentation idempotent and catalog-driven, added deterministic regression coverage, synchronized the canonical source twice, saved the private cloud place, fully closed Studio, and reopened the place through the normal signed-in route without post-reopen synchronization. The reopened place passed the bounded bridge-observable parity projection, all five Studio suites, a current-code two-session Studio-test-store persistence check, and focused touch/gamepad Collection checks in Studio emulators. Acceptance fixtures remained absent, and the final clean verification had zero fresh game-owned warnings/errors. Open [GitHub issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) now includes the [Phase 05 persistence QA additions](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4#issuecomment-4983229288) and continues to track those explicitly unpassed checks; no physical-device or production-store result is claimed.
+Phase 05 was accepted and squash-merged through [PR #6](https://github.com/kotonja/ONE-MORE-ITEM-/pull/6) at `d644411b48e20cd9bb256d3d2c55a647efc2adfd`. Open [GitHub issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) retains the explicitly unpassed Phase 04 and Phase 05 pre-release QA; no physical-device or production-store result is claimed.
 
 Phase 02 is complete and merged through PR #2 at `73b3428c5ff0068f1e57f89d2150ffb8dccfdf20`; its deterministic grid, authored single station, permanent HUD/remotes, desktop presentation, and server-authoritative session-only round loop remain the protected baseline. Phase 03 is limited to responsive safe-area UI, touch, gamepad, dynamic input prompts, responsive camera anchors, and mid-round local input-mode switching.
 
@@ -18,8 +18,8 @@ Phase 02 is complete and merged through PR #2 at `73b3428c5ff0068f1e57f89d2150ff
 - Phase 02 was merged through PR #2 at `73b3428c5ff0068f1e57f89d2150ffb8dccfdf20`.
 - Phase 03 was squash-merged through PR #3 at `014ff3964eb63f22f8527894067cddb1b4f98070`.
 - Phase 04 was squash-merged through PR #5 at `213f3581bd242523e34601cfefa5b5a74770ddee`.
-- Phase 05 is accepted on `codex/phase-05-persistent-progression`; implementation head `07d887a11c4ff5256ee663f6f306e9ca41cfbedf` is synchronized to the private cloud place and verified after direct no-sync reopen.
-- Draft PR #6 remains open; `main` is unchanged.
+- Phase 05 was squash-merged through PR #6 at `d644411b48e20cd9bb256d3d2c55a647efc2adfd` after its synchronized cloud-place and direct-reopen acceptance.
+- Phase 06 is active on `codex/phase-06-onboarding-starter-missions`; one draft PR will be opened from that branch and must remain unmerged until Phase 06 acceptance.
 - Pull before editing, never force-push, and keep every meaningful Studio/code change committed and pushed.
 - `docs/DEVELOPMENT_STATUS.md` is updated on every task.
 - GitHub Actions workflow `Phase 01–05 Node Validation` uses Node 24 with `actions/checkout@v7` and `actions/setup-node@v6`. It runs five dependency-free validations on pull requests targeting `main` and pushes to `main` or `codex/**`. Implementation head `07d887a11c4ff5256ee663f6f306e9ca41cfbedf` passed branch-push run `29428471528` / job `87396972732` and draft-PR run `29428474234` / job `87396981747`. The containing documentation commit and its exact-head runs are recorded in PR #6 and the final handoff rather than self-referenced by this tracked file.

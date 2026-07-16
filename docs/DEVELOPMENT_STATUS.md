@@ -2,14 +2,15 @@
 
 ## Current phase and Git state
 
-- **Phase result:** **Implementation complete and accepted.** Every non-waived Phase 05 implementation gate passed, including the final shelf correction, canonical cloud synchronization, direct no-sync reopen, bounded parity audit, post-reopen Studio suites, current-code persistence, and focused touch/gamepad Collection acceptance.
-- **Current phase:** Phase 05 - Persistent Player Profiles, Tape, Collection, and Packing Rank.
-- **Current branch:** `codex/phase-05-persistent-progression`.
-- **Protected base:** `main` and `origin/main` remain at the accepted Phase 04 squash merge `213f3581bd242523e34601cfefa5b5a74770ddee`.
-- **Current pull request:** [Draft PR #6 - Phase 05: Persistent Profiles, Collection, and Packing Rank](https://github.com/kotonja/ONE-MORE-ITEM-/pull/6), open, draft, and unmerged pending final review.
-- **Latest implementation SHA:** `07d887a11c4ff5256ee663f6f306e9ca41cfbedf`, pushed to the Phase 05 branch. The final documentation commit and its exact-head runs are recorded externally in PR #6 and the final handoff rather than self-referenced here.
+- **Phase result:** **Phase 06 active; not yet accepted.** Phase 05 is complete and merged, while every Phase 06 implementation, Studio, persistence, cloud-reopen, cross-platform, analytics, and exact-head CI gate remains pending until freshly verified.
+- **Current phase:** Phase 06 - First-Time Player Experience, Starter Missions, and Retention Analytics.
+- **Current branch:** `codex/phase-06-onboarding-starter-missions`.
+- **Protected base:** `main` and `origin/main` are the accepted Phase 05 squash merge `d644411b48e20cd9bb256d3d2c55a647efc2adfd`.
+- **Phase 05 merge:** [PR #6 - Phase 05: Persistent Profiles, Collection, and Packing Rank](https://github.com/kotonja/ONE-MORE-ITEM-/pull/6) is merged as `d644411b48e20cd9bb256d3d2c55a647efc2adfd`.
+- **Current pull request:** pending the opening branch commit and initial push; one Phase 06 draft PR will be created from `codex/phase-06-onboarding-starter-missions` and must remain unmerged.
+- **Latest implementation SHA:** no Phase 06 implementation commit exists yet; the opening status-correction commit starts the branch history.
 - **Pre-release QA:** [Issue #4 - Pre-release cross-platform and multiplayer integration QA](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open; its [Phase 05 persistence QA additions](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4#issuecomment-4983229288) list the explicitly deferred and unpassed work.
-- **Scope:** Phase 06 has not begun. No Phase 06 system, monetization, production-store rollout, or unrelated redesign was added.
+- **Scope:** Phase 06 has begun. No Phase 07 system, monetization, production-store rollout, final asset work, or unrelated redesign is authorized.
 
 ## Phase 04 protected baseline
 
