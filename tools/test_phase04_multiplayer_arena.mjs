@@ -515,11 +515,15 @@ try {
     assert.match(docs, /PR #3[^\n]*merged|merged[^\n]*PR #3/i);
   });
 
-  criterion("Phase 04 merged baseline and Phase 05 active branch are recorded", () => {
+  criterion("Phase 04 and Phase 05 merged baselines plus Phase 06 active branch are recorded", () => {
     const docs = `${readText("README.md")}\n${readText("docs/DEVELOPMENT_STATUS.md")}`;
     assert.match(docs, /213f3581bd242523e34601cfefa5b5a74770ddee/);
     assert.match(docs, /PR #5[^\n]*merged|merged[^\n]*PR #5/i);
-    assert.match(docs, /codex\/phase-05-persistent-progression/);
+    assert.match(docs, /d644411b48e20cd9bb256d3d2c55a647efc2adfd/);
+    assert.match(docs, /PR #6[^\n]*merged|merged[^\n]*PR #6/i);
+    assert.match(docs, /codex\/phase-06-onboarding-starter-missions/);
+    assert.match(docs, /pull\/7|PR #7/);
+    assert.match(docs, /draft[^\n]*(?:unmerged|not merged)|(?:unmerged|not merged)[^\n]*draft/i);
   });
 
   criterion("phase02 manifest remains the sole Phase 02 through 04 owner", () => {
