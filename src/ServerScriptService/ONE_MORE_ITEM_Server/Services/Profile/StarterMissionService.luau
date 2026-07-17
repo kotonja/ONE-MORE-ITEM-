@@ -26,6 +26,8 @@ export type MissionMutationResult = {
 	PathJustCompleted: boolean,
 }
 
+export type AnalyticsEmitter = () -> boolean
+
 type ProfileServiceContract = {
 	ApplyMutationWithMissionRewards: (
 		self: ProfileServiceContract,
@@ -48,6 +50,12 @@ type Options = {
 
 export type Service = {
 	ApplyEvent: (self: Service, player: Player, eventName: MissionEventName, eventData: MissionEventData?) -> (MissionMutationResult?, string),
+	ApplyEventDeferredAnalytics: (
+		self: Service,
+		player: Player,
+		eventName: MissionEventName,
+		eventData: MissionEventData?
+	) -> (MissionMutationResult?, string, AnalyticsEmitter?),
 	Reconcile: (self: Service, player: Player) -> (MissionMutationResult?, string),
 	StartCurrentSpotlight: (self: Service, player: Player) -> boolean,
 }
@@ -308,36 +316,32 @@ function StarterMissionService.Create(
 	}, StarterMissionService) :: any
 end
 
-function StarterMissionService.ApplyEvent(
-	self: ServiceImpl,
-	player: Player,
-	eventName: MissionEventName,
-	eventData: MissionEventData?
-): (MissionMutationResult?, string)
-	local payload, code = self._profileService:ApplyMutationWithMissionRewards(
-		player.UserId,
-		function(draft: PersistedProfile): (boolean, any?, { StarterMissionReward }?, string?)
-			return StarterMissionService.ApplyEventToProfile(draft, eventName, eventData, self._clock())
-		end
-	)
-	local mutationResult = payload :: MissionMutationResult?
-	if mutationResult == nil or not mutationResult.Changed then
-		return mutationResult, code
-	end
+local function safelyEmitAnalytics(callback: () -> boolean)
+	pcall(callback)
+end
 
+local function emitMissionAnalytics(
+	analytics: AnalyticsContract,
+	player: Player,
+	mutationResult: MissionMutationResult
+)
 	for _, reward in ipairs(mutationResult.Rewards) do
-		pcall(function()
-			if reward.TapeDelta > 0 then
-				self._analytics:LogEconomySource(
+		if reward.TapeDelta > 0 then
+			safelyEmitAnalytics(function(): boolean
+				return analytics:LogEconomySource(
 					player,
 					"StarterMission",
 					reward.TapeDelta,
 					reward.NewTape,
 					"starter:" .. reward.MissionId
 				)
-			end
-			self._analytics:LogProgressionComplete(player, reward.MissionId)
-			self._analytics:LogStarterMission(player, reward.MissionId, "completed")
+			end)
+		end
+		safelyEmitAnalytics(function(): boolean
+			return analytics:LogProgressionComplete(player, reward.MissionId)
+		end)
+		safelyEmitAnalytics(function(): boolean
+			return analytics:LogStarterMission(player, reward.MissionId, "completed")
 		end)
 	end
 	if mutationResult.PathJustCompleted then
@@ -347,15 +351,58 @@ function StarterMissionService.ApplyEvent(
 				completingMissionId = reward.MissionId
 			end
 		end
-		pcall(function()
-			self._analytics:LogStarterMission(player, completingMissionId, "path_completed")
+		safelyEmitAnalytics(function(): boolean
+			return analytics:LogStarterMission(player, completingMissionId, "path_completed")
 		end)
 	end
 	for _, missionId in ipairs(mutationResult.StartedMissionIds) do
-		pcall(function()
-			self._analytics:LogProgressionStart(player, missionId)
-			self._analytics:LogStarterMission(player, missionId, "started")
+		safelyEmitAnalytics(function(): boolean
+			return analytics:LogProgressionStart(player, missionId)
 		end)
+		safelyEmitAnalytics(function(): boolean
+			return analytics:LogStarterMission(player, missionId, "started")
+		end)
+	end
+end
+
+function StarterMissionService.ApplyEventDeferredAnalytics(
+	self: ServiceImpl,
+	player: Player,
+	eventName: MissionEventName,
+	eventData: MissionEventData?
+): (MissionMutationResult?, string, AnalyticsEmitter?)
+	local payload, code = self._profileService:ApplyMutationWithMissionRewards(
+		player.UserId,
+		function(draft: PersistedProfile): (boolean, any?, { StarterMissionReward }?, string?)
+			return StarterMissionService.ApplyEventToProfile(draft, eventName, eventData, self._clock())
+		end
+	)
+	local mutationResult = payload :: MissionMutationResult?
+	if mutationResult == nil or not mutationResult.Changed then
+		return mutationResult, code, nil
+	end
+
+	local emitted = false
+	local function emitOnce(): boolean
+		if emitted then
+			return false
+		end
+		emitted = true
+		emitMissionAnalytics(self._analytics, player, mutationResult)
+		return true
+	end
+	return mutationResult, code, emitOnce
+end
+
+function StarterMissionService.ApplyEvent(
+	self: ServiceImpl,
+	player: Player,
+	eventName: MissionEventName,
+	eventData: MissionEventData?
+): (MissionMutationResult?, string)
+	local mutationResult, code, emitAnalytics = self:ApplyEventDeferredAnalytics(player, eventName, eventData)
+	if emitAnalytics ~= nil then
+		emitAnalytics()
 	end
 	return mutationResult, code
 end

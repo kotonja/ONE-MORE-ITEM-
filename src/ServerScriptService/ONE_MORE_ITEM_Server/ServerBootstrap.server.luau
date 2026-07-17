@@ -535,8 +535,14 @@ local eventSink: RoundService.EventSink = {
 		end
 	end,
 	OnShipmentProgressionApplied = function(player: Player, record: ShipmentRecord, reward: any)
+		local missionAnalyticsEmitter: (() -> boolean)? = nil
 		runIntegration("ShipmentMissions", function()
-			starterMissionService:ApplyEvent(player, "SuccessfulShipment", { ItemCount = record.ItemCount })
+			local _missionResult, _missionCode, emitter = starterMissionService:ApplyEventDeferredAnalytics(
+				player,
+				"SuccessfulShipment",
+				{ ItemCount = record.ItemCount }
+			)
+			missionAnalyticsEmitter = emitter
 		end)
 		runIntegration("ShipmentOnboarding", function()
 			onboardingService:Advance(player, 5)
@@ -546,10 +552,16 @@ local eventSink: RoundService.EventSink = {
 				player,
 				"Shipment",
 				reward.TapeDelta,
-				profileService:GetTape(player.UserId) or reward.NewTape,
+				reward.NewTape,
 				"shipment"
 			)
 		end)
+		local emitter = missionAnalyticsEmitter
+		if emitter ~= nil then
+			runIntegration("ShipmentMissionAnalytics", function()
+				emitter()
+			end)
+		end
 	end,
 	OnRoundEnded = function(player: Player, event: RoundEndedEvent)
 		runIntegration("RoundEndAnalytics", function()
