@@ -42,6 +42,7 @@ export type Controller = {
 	SetLayoutClass: (self: Controller, layoutClass: LayoutClass) -> (),
 	SetPanelOpen: (self: Controller, isOpen: boolean) -> (),
 	IsPanelOpen: (self: Controller) -> boolean,
+	SetPresentationBlocked: (self: Controller, blocked: boolean) -> (),
 	Destroy: (self: Controller) -> (),
 }
 
@@ -78,6 +79,8 @@ type InternalController = Controller & {
 	_rewardWorkerActive: boolean,
 	_rewardEpoch: number,
 	_bannerTween: Tween?,
+	_bannerRestPosition: UDim2,
+	_presentationBlocked: boolean,
 	_profileSessionId: string?,
 	_roundGeneration: number,
 	_destroyed: boolean,
@@ -164,6 +167,16 @@ function StarterMissionUIController.PathProgress(
 	local total = math.max(0, math.floor(totalCount))
 	local completed = math.clamp(math.max(math.floor(completedCount), math.floor(rewardedCount)), 0, total)
 	return completed, total
+end
+
+function StarterMissionUIController.ShouldDeferRewardPresentation(
+	missionId: string,
+	onboardingStatus: string?,
+	presentationBlocked: boolean
+): boolean
+	return presentationBlocked
+		or (missionId == "first_shipment"
+			and (onboardingStatus == "NotStarted" or onboardingStatus == "InProgress"))
 end
 
 local function profileUsable(snapshot: ProfileSnapshot?): boolean
@@ -348,8 +361,26 @@ local function cancelBanner(self: InternalController)
 	self._rewardEpoch += 1
 	self._bannerTween = cancelTween(self._bannerTween)
 	self._banner.Visible = false
+	self._banner.Position = self._bannerRestPosition
 	self._rewardWorkerActive = false
 	table.clear(self._rewardQueue)
+end
+
+local function pauseBanner(self: InternalController)
+	self._rewardEpoch += 1
+	self._bannerTween = cancelTween(self._bannerTween)
+	self._banner.Visible = false
+	self._banner.Position = self._bannerRestPosition
+	self._rewardWorkerActive = false
+end
+
+local function rewardWaitsForOnboarding(self: InternalController, reward: MissionReward): boolean
+	local profile = self._profileSnapshot
+	return StarterMissionUIController.ShouldDeferRewardPresentation(
+		reward.MissionId,
+		if profile ~= nil then profile.Onboarding.Status else nil,
+		self._presentationBlocked
+	)
 end
 
 local function playBanner(self: InternalController, reward: MissionReward, epoch: number): boolean
@@ -372,6 +403,7 @@ local function playBanner(self: InternalController, reward: MissionReward, epoch
 	end
 	self._bannerPathProgress.Text = string.format("%d / %d", completedCount, totalCount)
 	local target = self._banner.Position
+	self._bannerRestPosition = target
 	self._banner.Position = UDim2.fromScale(target.X.Scale, math.max(0.01, target.Y.Scale - 0.04))
 	self._banner.Visible = true
 	local enter = TweenService:Create(
@@ -417,7 +449,14 @@ local function playBanner(self: InternalController, reward: MissionReward, epoch
 end
 
 local function startRewardWorker(self: InternalController)
-	if self._rewardWorkerActive or #self._rewardQueue == 0 then
+	if self._rewardWorkerActive
+		or self._presentationBlocked
+		or not profileUsable(self._profileSnapshot)
+		or #self._rewardQueue == 0
+	then
+		return
+	end
+	if rewardWaitsForOnboarding(self, self._rewardQueue[1]) then
 		return
 	end
 	self._rewardWorkerActive = true
@@ -425,10 +464,17 @@ local function startRewardWorker(self: InternalController)
 	local epoch = self._rewardEpoch
 	task.spawn(function()
 		while not self._destroyed and epoch == self._rewardEpoch and #self._rewardQueue > 0 do
-			local reward = table.remove(self._rewardQueue, 1)
+			if self._presentationBlocked then
+				break
+			end
+			local reward = self._rewardQueue[1]
+			if rewardWaitsForOnboarding(self, reward) then
+				break
+			end
 			if not playBanner(self, reward, epoch) then
 				break
 			end
+			table.remove(self._rewardQueue, 1)
 		end
 		if not self._destroyed and epoch == self._rewardEpoch then
 			self._rewardWorkerActive = false
@@ -541,6 +587,8 @@ function StarterMissionUIController.new(root: GuiObject, callbacks: Callbacks): 
 		_rewardWorkerActive = false,
 		_rewardEpoch = 0,
 		_bannerTween = nil,
+		_bannerRestPosition = banner.Position,
+		_presentationBlocked = false,
 		_profileSessionId = nil,
 		_roundGeneration = 0,
 		_destroyed = false,
@@ -644,6 +692,21 @@ end
 
 function ControllerMethods.IsPanelOpen(self: InternalController): boolean
 	return self._panelOpen
+end
+
+function ControllerMethods.SetPresentationBlocked(self: InternalController, blocked: boolean)
+	if self._destroyed or self._presentationBlocked == blocked then
+		return
+	end
+	self._presentationBlocked = blocked
+	if blocked then
+		-- The active reward remains at the head of the queue. Pausing invalidates
+		-- the worker without consuming it, so completion guidance can take visual
+		-- priority and the reward resumes exactly once afterward.
+		pauseBanner(self)
+	else
+		startRewardWorker(self)
+	end
 end
 
 function ControllerMethods.Destroy(self: InternalController)

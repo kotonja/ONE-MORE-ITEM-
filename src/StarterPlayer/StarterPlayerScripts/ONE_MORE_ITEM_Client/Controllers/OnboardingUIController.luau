@@ -1,6 +1,7 @@
 --!strict
 
 local ContextActionService = game:GetService("ContextActionService")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local ClientProfileStore = require(script.Parent.ClientProfileStore)
@@ -20,6 +21,20 @@ export type Copy = {
 	InputHint: string,
 }
 
+export type CompletionPresentationPhase = "Idle" | "Pending" | "Showing" | "Consumed"
+export type CompletionPresentationState = {
+	ProfileSessionId: string?,
+	LastStatus: string?,
+	Phase: CompletionPresentationPhase,
+	RoundId: number?,
+	Count: number,
+}
+
+export type Options = {
+	CompletionPresentationChanged: ((active: boolean) -> ())?,
+	Schedule: ((delaySeconds: number, callback: () -> ()) -> ())?,
+}
+
 export type Controller = {
 	ApplyProfileSnapshot: (self: Controller, snapshot: ProfileSnapshot) -> (),
 	ApplyRoundSnapshot: (self: Controller, snapshot: RoundSnapshot, assigned: boolean) -> (),
@@ -28,6 +43,7 @@ export type Controller = {
 	SetInputMode: (self: Controller, mode: InputMode) -> (),
 	SetLayoutClass: (self: Controller, layoutClass: LayoutClass) -> (),
 	SetModalBlocked: (self: Controller, blocked: boolean) -> (),
+	GetCompletionPresentationState: (self: Controller) -> CompletionPresentationState,
 	Destroy: (self: Controller) -> (),
 }
 
@@ -60,6 +76,10 @@ type InternalController = Controller & {
 	_skipTween: Tween?,
 	_skipSequence: number,
 	_skipRequestSent: boolean,
+	_completionState: CompletionPresentationState,
+	_completionSequence: number,
+	_completionPresentationChanged: (active: boolean) -> (),
+	_schedule: (delaySeconds: number, callback: () -> ()) -> (),
 	_destroyed: boolean,
 }
 
@@ -70,14 +90,45 @@ ControllerMethods.__index = ControllerMethods
 local SKIP_ACTION = "ONE_MORE_ITEM_OnboardingSkip"
 local SKIP_PRIORITY = Enum.ContextActionPriority.High.Value + 120
 local SKIP_HOLD_SECONDS = 1.0
+local COMPLETION_HOLD_SECONDS = 0.95
 local GUIDANCE_ATTRIBUTE = "ONE_MORE_ITEM_OnboardingGuided"
 local INPUT_FOCUS_ATTRIBUTE = "ONE_MORE_ITEM_InputFocused"
+local SUCCESSFUL_COMPLETION_REASONS: { [string]: boolean } = table.freeze({
+	PLAYER_SHIPPED = true,
+	DECISION_TIMEOUT = true,
+	MAX_ITEMS = true,
+	BOX_FULL = true,
+})
 local FAILURE_RESULT_REASONS: { [string]: boolean } = table.freeze({
 	DUPLICATE_OUTCOME = true,
 	PLACEMENT_TIMEOUT = true,
 	PROFILE_REWARD_FAILED = true,
 	SHIPMENT_RECORD_FAILED = true,
 })
+
+local function noCompletionPresentationChanged(_active: boolean)
+	-- Optional integration seam used to coordinate other local presentation queues.
+end
+
+local function schedule(delaySeconds: number, callback: () -> ())
+	task.delay(delaySeconds, callback)
+end
+
+local function completionState(
+	profileSessionId: string?,
+	lastStatus: string?,
+	phase: CompletionPresentationPhase,
+	roundId: number?,
+	count: number
+): CompletionPresentationState
+	return table.freeze({
+		ProfileSessionId = profileSessionId,
+		LastStatus = lastStatus,
+		Phase = phase,
+		RoundId = roundId,
+		Count = count,
+	}) :: CompletionPresentationState
+end
 
 local function requireFrame(parent: Instance, name: string): Frame
 	local child = parent:WaitForChild(name, 10)
@@ -121,6 +172,148 @@ end
 
 function OnboardingUIController.ShouldShow(status: string): boolean
 	return status ~= "Completed" and status ~= "Skipped"
+end
+
+function OnboardingUIController.ProfileStateUsable(state: string): boolean
+	return state == "Ready" or state == "Saving" or state == "SaveDelayed"
+end
+
+function OnboardingUIController.NewCompletionPresentationState(): CompletionPresentationState
+	return completionState(nil, nil, "Idle", nil, 0)
+end
+
+function OnboardingUIController.IsCompletionPresentationActive(state: CompletionPresentationState): boolean
+	return state.Phase == "Pending" or state.Phase == "Showing"
+end
+
+function OnboardingUIController.IsSuccessfulCompletionRound(
+	state: string?,
+	resultLostValue: number,
+	resultReason: string?
+): boolean
+	if resultLostValue > 0 or resultReason == nil or SUCCESSFUL_COMPLETION_REASONS[resultReason] ~= true then
+		return false
+	end
+	return state == "Shipping" or state == "Results"
+end
+
+function OnboardingUIController.ShouldShowOverlay(
+	profileState: string,
+	onboardingStatus: string,
+	assigned: boolean,
+	completionActive: boolean
+): boolean
+	return OnboardingUIController.ProfileStateUsable(profileState)
+		and assigned
+		and (OnboardingUIController.ShouldShow(onboardingStatus) or completionActive)
+end
+
+function OnboardingUIController.ShouldOfferSkip(
+	profileState: string,
+	onboardingStatus: string,
+	assigned: boolean
+): boolean
+	return OnboardingUIController.ProfileStateUsable(profileState)
+		and assigned
+		and OnboardingUIController.ShouldShow(onboardingStatus)
+end
+
+function OnboardingUIController.ReduceCompletionProfile(
+	state: CompletionPresentationState,
+	profileSessionId: string,
+	profileState: string,
+	onboardingStatus: string,
+	assigned: boolean,
+	roundId: number?,
+	roundState: string?,
+	resultLostValue: number,
+	resultReason: string?
+): CompletionPresentationState
+	if state.ProfileSessionId ~= profileSessionId then
+		local baselinePhase: CompletionPresentationPhase = if OnboardingUIController.ShouldShow(onboardingStatus)
+			then "Idle"
+			else "Consumed"
+		return completionState(profileSessionId, onboardingStatus, baselinePhase, nil, 0)
+	end
+
+	if onboardingStatus == "Skipped" then
+		return completionState(profileSessionId, onboardingStatus, "Consumed", nil, state.Count)
+	end
+	if not OnboardingUIController.ProfileStateUsable(profileState) then
+		local phase: CompletionPresentationPhase = if OnboardingUIController.IsCompletionPresentationActive(state)
+			then "Consumed"
+			else state.Phase
+		return completionState(profileSessionId, onboardingStatus, phase, if phase == "Consumed" then nil else state.RoundId, state.Count)
+	end
+
+	local previousWasNonterminal = state.LastStatus ~= nil and OnboardingUIController.ShouldShow(state.LastStatus)
+	if previousWasNonterminal and onboardingStatus == "Completed" then
+		if not assigned then
+			return completionState(profileSessionId, onboardingStatus, "Consumed", nil, state.Count)
+		end
+		if roundState == "Failing"
+			or (roundState == "Results"
+				and not OnboardingUIController.IsSuccessfulCompletionRound(roundState, resultLostValue, resultReason))
+		then
+			return completionState(profileSessionId, onboardingStatus, "Consumed", nil, state.Count)
+		end
+		if roundId ~= nil
+			and OnboardingUIController.IsSuccessfulCompletionRound(roundState, resultLostValue, resultReason)
+		then
+			return completionState(profileSessionId, onboardingStatus, "Showing", roundId, state.Count + 1)
+		end
+		return completionState(profileSessionId, onboardingStatus, "Pending", roundId, state.Count)
+	end
+
+	return completionState(profileSessionId, onboardingStatus, state.Phase, state.RoundId, state.Count)
+end
+
+function OnboardingUIController.ReduceCompletionRound(
+	state: CompletionPresentationState,
+	profileState: string,
+	onboardingStatus: string,
+	assigned: boolean,
+	roundId: number,
+	roundState: string,
+	resultLostValue: number,
+	resultReason: string?
+): CompletionPresentationState
+	if not OnboardingUIController.IsCompletionPresentationActive(state) then
+		return state
+	end
+	if not assigned
+		or not OnboardingUIController.ProfileStateUsable(profileState)
+		or onboardingStatus ~= "Completed"
+	then
+		return completionState(state.ProfileSessionId, onboardingStatus, "Consumed", nil, state.Count)
+	end
+
+	local targetRoundId = state.RoundId or roundId
+	if targetRoundId ~= roundId then
+		return completionState(state.ProfileSessionId, onboardingStatus, "Consumed", nil, state.Count)
+	end
+	if roundState == "Failing"
+		or (roundState == "Results"
+			and not OnboardingUIController.IsSuccessfulCompletionRound(roundState, resultLostValue, resultReason))
+	then
+		return completionState(state.ProfileSessionId, onboardingStatus, "Consumed", nil, state.Count)
+	end
+	if state.Phase == "Pending"
+		and OnboardingUIController.IsSuccessfulCompletionRound(roundState, resultLostValue, resultReason)
+	then
+		return completionState(state.ProfileSessionId, onboardingStatus, "Showing", roundId, state.Count + 1)
+	end
+	return completionState(state.ProfileSessionId, onboardingStatus, state.Phase, targetRoundId, state.Count)
+end
+
+function OnboardingUIController.FinishCompletionPresentation(
+	state: CompletionPresentationState,
+	roundId: number
+): CompletionPresentationState
+	if state.Phase ~= "Showing" or state.RoundId ~= roundId then
+		return state
+	end
+	return completionState(state.ProfileSessionId, state.LastStatus, "Consumed", nil, state.Count)
 end
 
 function OnboardingUIController.ResolveStage(
@@ -188,13 +381,6 @@ function OnboardingUIController.CopyForMode(mode: InputMode, stage: Stage): Copy
 	}) :: Copy
 end
 
-local function profileUsable(snapshot: ProfileSnapshot?): boolean
-	if snapshot == nil then
-		return false
-	end
-	return snapshot.State == "Ready" or snapshot.State == "Saving" or snapshot.State == "SaveDelayed"
-end
-
 local function currentStage(self: InternalController): Stage
 	local snapshot = self._roundSnapshot
 	if snapshot == nil then
@@ -212,7 +398,21 @@ end
 
 local function overlayShouldShow(self: InternalController): boolean
 	local snapshot = self._profileSnapshot
-	return profileUsable(snapshot) and snapshot ~= nil and OnboardingUIController.ShouldShow(snapshot.Onboarding.Status)
+	return snapshot ~= nil and OnboardingUIController.ShouldShowOverlay(
+		snapshot.State,
+		snapshot.Onboarding.Status,
+		self._assigned,
+		OnboardingUIController.IsCompletionPresentationActive(self._completionState)
+	)
+end
+
+local function ordinaryGuidanceShouldShow(self: InternalController): boolean
+	local snapshot = self._profileSnapshot
+	return snapshot ~= nil and OnboardingUIController.ShouldOfferSkip(
+		snapshot.State,
+		snapshot.Onboarding.Status,
+		self._assigned
+	)
 end
 
 local function cancelSkipTween(self: InternalController)
@@ -234,7 +434,7 @@ local function unbindSkip(self: InternalController)
 end
 
 local function sendSkip(self: InternalController)
-	if self._destroyed or self._skipRequestSent or not overlayShouldShow(self) or self._modalBlocked then
+	if self._destroyed or self._skipRequestSent or not ordinaryGuidanceShouldShow(self) or self._modalBlocked then
 		return
 	end
 	self._skipRequestSent = true
@@ -292,7 +492,7 @@ local function bindSkip(self: InternalController)
 	ContextActionService:BindActionAtPriority(
 		SKIP_ACTION,
 		function(_actionName: string, inputState: Enum.UserInputState, _input: InputObject): Enum.ContextActionResult
-			if self._destroyed or not overlayShouldShow(self) or self._modalBlocked then
+			if self._destroyed or not ordinaryGuidanceShouldShow(self) or self._modalBlocked then
 				return Enum.ContextActionResult.Pass
 			end
 			if inputState == Enum.UserInputState.Begin then
@@ -310,7 +510,7 @@ local function bindSkip(self: InternalController)
 end
 
 local function refreshSkipBinding(self: InternalController)
-	if overlayShouldShow(self) and self._inputMode == "Gamepad" and not self._modalBlocked then
+	if ordinaryGuidanceShouldShow(self) and self._inputMode == "Gamepad" and not self._modalBlocked then
 		bindSkip(self)
 	else
 		unbindSkip(self)
@@ -413,19 +613,39 @@ local function applyInternalLayout(self: InternalController)
 	end
 end
 
+local function publishCompletionObservability(self: InternalController)
+	if not RunService:IsStudio() then
+		return
+	end
+	local state = self._completionState
+	self._overlay:SetAttribute("CompletionPresentationPending", state.Phase == "Pending")
+	self._overlay:SetAttribute("CompletionPresentationShown", state.Phase == "Showing")
+	self._overlay:SetAttribute("CompletionPresentationCount", state.Count)
+end
+
 local function render(self: InternalController)
 	if self._destroyed then
 		return
 	end
 	local visible = overlayShouldShow(self)
+	local ordinaryGuidance = ordinaryGuidanceShouldShow(self)
+	local completionActive = OnboardingUIController.IsCompletionPresentationActive(self._completionState)
+	local completionShowing = self._completionState.Phase == "Showing"
 	self._overlay.Visible = visible
+	self._skipButton.Visible = visible and ordinaryGuidance
 	if not visible then
 		self._pointer.Visible = false
 		updateHighlights(self, "Move")
 		refreshSkipBinding(self)
 		return
 	end
-	local stage = currentStage(self)
+	local stage: Stage = if completionShowing then "Shipment" else currentStage(self)
+	if stage == "Shipment" and not completionShowing then
+		-- A Shipping RoundSnapshot may beat the Completed ProfileSnapshot. The
+		-- approved terminal copy belongs to the local completion presentation,
+		-- never to an arrival-order-dependent ordinary render.
+		stage = "Decision"
+	end
 	local copy = OnboardingUIController.CopyForMode(self._inputMode, stage)
 	self._prompt.Text = copy.Prompt
 	self._instruction.Text = copy.Instruction
@@ -433,12 +653,60 @@ local function render(self: InternalController)
 	local snapshot = self._profileSnapshot :: ProfileSnapshot
 	self._stepProgress.Text = string.format("STEP %d / 5", math.clamp(snapshot.Onboarding.HighestStep + 1, 1, 5))
 	self._skipButton.Text = if self._inputMode == "Gamepad" then "HOLD [B] TO SKIP" else "SKIP TUTORIAL"
-	updateHighlights(self, stage)
-	updatePointer(self, stage)
+	if completionActive then
+		updateHighlights(self, "Move")
+		self._pointer.Visible = false
+	else
+		updateHighlights(self, stage)
+		updatePointer(self, stage)
+	end
 	refreshSkipBinding(self)
 end
 
-function OnboardingUIController.new(root: GuiObject, onboardingActionRequest: RemoteEvent): Controller
+local applyCompletionTransition: (self: InternalController, nextState: CompletionPresentationState) -> ()
+
+local function scheduleCompletionHold(self: InternalController)
+	self._completionSequence += 1
+	local sequence = self._completionSequence
+	local roundId = self._completionState.RoundId
+	if roundId == nil then
+		return
+	end
+	self._schedule(COMPLETION_HOLD_SECONDS, function()
+		if self._destroyed or self._completionSequence ~= sequence then
+			return
+		end
+		applyCompletionTransition(
+			self,
+			OnboardingUIController.FinishCompletionPresentation(self._completionState, roundId)
+		)
+	end)
+end
+
+applyCompletionTransition = function(self: InternalController, nextState: CompletionPresentationState)
+	local previous = self._completionState
+	local wasActive = OnboardingUIController.IsCompletionPresentationActive(previous)
+	local isActive = OnboardingUIController.IsCompletionPresentationActive(nextState)
+	local enteredShowing = nextState.Phase == "Showing"
+		and (previous.Phase ~= "Showing" or previous.RoundId ~= nextState.RoundId)
+	if wasActive and (not isActive or previous.RoundId ~= nextState.RoundId) then
+		self._completionSequence += 1
+	end
+	self._completionState = nextState
+	publishCompletionObservability(self)
+	if isActive and not wasActive then
+		self._completionPresentationChanged(true)
+	end
+	render(self)
+	if wasActive and not isActive then
+		self._completionPresentationChanged(false)
+	end
+	if enteredShowing then
+		scheduleCompletionHold(self)
+	end
+end
+
+function OnboardingUIController.new(root: GuiObject, onboardingActionRequest: RemoteEvent, options: Options?): Controller
 	local overlay = requireFrame(root, "OnboardingOverlay")
 	local placementControls = requireFrame(root, "PlacementControls")
 	local decisionPanel = requireFrame(root, "DecisionPanel")
@@ -446,6 +714,18 @@ function OnboardingUIController.new(root: GuiObject, onboardingActionRequest: Re
 	local placeButton = requireButton(placementControls, "PlaceButton")
 	local shipButton = requireButton(decisionPanel, "ShipButton")
 	local oneMoreButton = requireButton(decisionPanel, "OneMoreButton")
+	local completionPresentationChanged: (active: boolean) -> () = noCompletionPresentationChanged
+	local scheduleCallback: (delaySeconds: number, callback: () -> ()) -> () = schedule
+	if options ~= nil then
+		local configuredPresentationChanged = options.CompletionPresentationChanged
+		if configuredPresentationChanged ~= nil then
+			completionPresentationChanged = configuredPresentationChanged
+		end
+		local configuredSchedule = options.Schedule
+		if configuredSchedule ~= nil then
+			scheduleCallback = configuredSchedule
+		end
+	end
 	local self: InternalController = setmetatable({
 		_root = root,
 		_overlay = overlay,
@@ -479,12 +759,17 @@ function OnboardingUIController.new(root: GuiObject, onboardingActionRequest: Re
 		_skipTween = nil,
 		_skipSequence = 0,
 		_skipRequestSent = false,
+		_completionState = OnboardingUIController.NewCompletionPresentationState(),
+		_completionSequence = 0,
+		_completionPresentationChanged = completionPresentationChanged,
+		_schedule = scheduleCallback,
 		_destroyed = false,
 	}, ControllerMethods) :: InternalController
 
 	overlay.Visible = false
 	self._pointer.Visible = false
 	self._skipProgress.Visible = false
+	publishCompletionObservability(self)
 	applyInternalLayout(self)
 	table.insert(self._connections, self._skipButton.Activated:Connect(function()
 		if self._inputMode ~= "Gamepad" then
@@ -506,11 +791,29 @@ function ControllerMethods.ApplyProfileSnapshot(self: InternalController, snapsh
 	if self._destroyed then
 		return
 	end
+	local previousSessionId = if self._profileSnapshot ~= nil then self._profileSnapshot.ProfileSessionId else nil
 	self._profileSnapshot = snapshot
+	if previousSessionId ~= snapshot.ProfileSessionId and OnboardingUIController.ShouldShow(snapshot.Onboarding.Status) then
+		self._skipRequestSent = false
+	end
 	if not OnboardingUIController.ShouldShow(snapshot.Onboarding.Status) then
 		self._skipRequestSent = true
 	end
-	render(self)
+	local round = self._roundSnapshot
+	applyCompletionTransition(
+		self,
+		OnboardingUIController.ReduceCompletionProfile(
+			self._completionState,
+			snapshot.ProfileSessionId,
+			snapshot.State,
+			snapshot.Onboarding.Status,
+			self._assigned,
+			if round ~= nil then round.RoundId else nil,
+			if round ~= nil then round.State else nil,
+			if round ~= nil then round.ResultLostValue else 0,
+			if round ~= nil then round.ResultReason else nil
+		)
+	)
 end
 
 function ControllerMethods.ApplyRoundSnapshot(self: InternalController, snapshot: RoundSnapshot, assigned: boolean)
@@ -523,7 +826,20 @@ function ControllerMethods.ApplyRoundSnapshot(self: InternalController, snapshot
 		self._fitValid = nil
 		self._placementPending = false
 	end
-	render(self)
+	local profile = self._profileSnapshot
+	applyCompletionTransition(
+		self,
+		OnboardingUIController.ReduceCompletionRound(
+			self._completionState,
+			if profile ~= nil then profile.State else "",
+			if profile ~= nil then profile.Onboarding.Status else "",
+			assigned,
+			snapshot.RoundId,
+			snapshot.State,
+			snapshot.ResultLostValue,
+			snapshot.ResultReason
+		)
+	)
 end
 
 function ControllerMethods.SetFitState(self: InternalController, valid: boolean?)
@@ -562,11 +878,16 @@ function ControllerMethods.SetModalBlocked(self: InternalController, blocked: bo
 	end
 end
 
+function ControllerMethods.GetCompletionPresentationState(self: InternalController): CompletionPresentationState
+	return self._completionState
+end
+
 function ControllerMethods.Destroy(self: InternalController)
 	if self._destroyed then
 		return
 	end
 	self._destroyed = true
+	self._completionSequence += 1
 	unbindSkip(self)
 	for _, connection in ipairs(self._connections) do
 		connection:Disconnect()
@@ -577,6 +898,9 @@ function ControllerMethods.Destroy(self: InternalController)
 	end
 	self._overlay.Visible = false
 	self._pointer.Visible = false
+	if OnboardingUIController.IsCompletionPresentationActive(self._completionState) then
+		self._completionPresentationChanged(false)
+	end
 end
 
 return table.freeze(OnboardingUIController)

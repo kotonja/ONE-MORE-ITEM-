@@ -204,6 +204,7 @@ local destroyed = false
 local connections: { RBXScriptConnection } = {}
 local onboardingUIForInput: OnboardingUIController.Controller? = nil
 local starterMissionUIForInput: StarterMissionUIController.Controller? = nil
+local starterMissionUIForOnboardingPresentation: StarterMissionUIController.Controller? = nil
 
 local function requestDecision(choice: string)
 	local snapshot = store:GetSnapshot()
@@ -306,11 +307,20 @@ local input = InputController.new({
 	end,
 }, roundUI:GetButtons(), guiRoot, touchDragSurface)
 
-local onboardingUI = OnboardingUIController.new(guiRoot, onboardingActionRequest)
+local onboardingUI = OnboardingUIController.new(guiRoot, onboardingActionRequest, {
+	CompletionPresentationChanged = function(active: boolean)
+		script:SetAttribute("OnboardingCompletionPresentationActive", active)
+		local missionUI = starterMissionUIForOnboardingPresentation
+		if missionUI ~= nil then
+			missionUI:SetPresentationBlocked(active)
+		end
+	end,
+})
 onboardingUIForInput = onboardingUI
 onboardingUIForLayout = onboardingUI
 onboardingUI:SetInputMode(inputMode)
 onboardingUI:SetLayoutClass(layoutClass)
+script:SetAttribute("OnboardingCompletionPresentationActive", false)
 
 local modalStates = {
 	Collection = false,
@@ -352,6 +362,10 @@ local starterMissionUI = StarterMissionUIController.new(guiRoot, {
 starterMissionUIForInput = starterMissionUI
 starterMissionUIForLayout = starterMissionUI
 starterMissionUIForModal = starterMissionUI
+starterMissionUIForOnboardingPresentation = starterMissionUI
+starterMissionUI:SetPresentationBlocked(
+	OnboardingUIController.IsCompletionPresentationActive(onboardingUI:GetCompletionPresentationState())
+)
 starterMissionUI:SetInputMode(inputMode)
 starterMissionUI:SetLayoutClass(layoutClass)
 
@@ -499,6 +513,7 @@ local function cleanup()
 	starterMissionUIForInput = nil
 	starterMissionUIForLayout = nil
 	starterMissionUIForModal = nil
+	starterMissionUIForOnboardingPresentation = nil
 	starterMissionUI:Destroy()
 	onboardingUIForInput = nil
 	onboardingUIForLayout = nil
