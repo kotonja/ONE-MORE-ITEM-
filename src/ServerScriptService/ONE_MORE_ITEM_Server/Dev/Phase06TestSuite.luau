@@ -704,6 +704,25 @@ addSuite("Client mission presentation", {
 		end,
 	},
 	{
+		Name = "failed Results preserve failure guidance while successful Results show shipment guidance",
+		Run = function()
+			expectEqual(OnboardingUIController.ResolveStage("Failing", true, 0, "PLACEMENT_TIMEOUT", nil, false), "Failure")
+			expectEqual(OnboardingUIController.ResolveStage("Results", true, 0, "PLACEMENT_TIMEOUT", nil, false), "Failure")
+			expectEqual(OnboardingUIController.ResolveStage("Results", true, 25, nil, nil, false), "Failure")
+			expectEqual(OnboardingUIController.ResolveStage("Results", true, 0, "PROFILE_REWARD_FAILED", nil, false), "Failure")
+			expectEqual(OnboardingUIController.ResolveStage("Results", true, 0, "SHIPMENT_RECORD_FAILED", nil, false), "Failure")
+			expectEqual(OnboardingUIController.ResolveStage("Results", true, 0, "DUPLICATE_OUTCOME", nil, false), "Failure")
+			expectEqual(OnboardingUIController.ResolveStage("Results", true, 0, "PLAYER_SHIPPED", nil, false), "Shipment")
+			expectEqual(OnboardingUIController.ResolveStage("Results", true, 0, "DECISION_TIMEOUT", nil, false), "Shipment")
+			expectEqual(OnboardingUIController.ResolveStage("Results", true, 0, "BOX_FULL", nil, false), "Shipment")
+			expectEqual(OnboardingUIController.ResolveStage("Results", true, 0, "MAX_ITEMS", nil, false), "Shipment")
+			expectEqual(OnboardingUIController.ResolveStage("Shipping", true, 0, "PLAYER_SHIPPED", nil, false), "Shipment")
+			expectEqual(OnboardingUIController.ResolveStage("AwaitingPlacement", true, 0, nil, true, false), "ValidFit")
+			expectEqual(OnboardingUIController.ResolveStage("AwaitingPlacement", true, 0, nil, true, true), "Move")
+			expectEqual(OnboardingUIController.ResolveStage("Results", false, 0, "PLACEMENT_TIMEOUT", nil, false), "Move")
+		end,
+	},
+	{
 		Name = "starter panel is allowed only in safe profile and round states",
 		Run = function()
 			expect(StarterMissionUIController.PanelAllowed("Ready", false, nil))

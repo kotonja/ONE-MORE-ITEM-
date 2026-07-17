@@ -72,6 +72,12 @@ local SKIP_PRIORITY = Enum.ContextActionPriority.High.Value + 120
 local SKIP_HOLD_SECONDS = 1.0
 local GUIDANCE_ATTRIBUTE = "ONE_MORE_ITEM_OnboardingGuided"
 local INPUT_FOCUS_ATTRIBUTE = "ONE_MORE_ITEM_InputFocused"
+local FAILURE_RESULT_REASONS: { [string]: boolean } = table.freeze({
+	DUPLICATE_OUTCOME = true,
+	PLACEMENT_TIMEOUT = true,
+	PROFILE_REWARD_FAILED = true,
+	SHIPMENT_RECORD_FAILED = true,
+})
 
 local function requireFrame(parent: Instance, name: string): Frame
 	local child = parent:WaitForChild(name, 10)
@@ -115,6 +121,34 @@ end
 
 function OnboardingUIController.ShouldShow(status: string): boolean
 	return status ~= "Completed" and status ~= "Skipped"
+end
+
+function OnboardingUIController.ResolveStage(
+	state: string?,
+	assigned: boolean,
+	resultLostValue: number,
+	resultReason: string?,
+	fitValid: boolean?,
+	placementPending: boolean
+): Stage
+	if state == nil or not assigned then
+		return "Move"
+	end
+	if state == "Failing" then
+		return "Failure"
+	elseif state == "Results" then
+		if resultLostValue > 0 or (resultReason ~= nil and FAILURE_RESULT_REASONS[resultReason] == true) then
+			return "Failure"
+		end
+		return "Shipment"
+	elseif state == "Shipping" then
+		return "Shipment"
+	elseif state == "Decision" then
+		return "Decision"
+	elseif state == "AwaitingPlacement" and fitValid == true and not placementPending then
+		return "ValidFit"
+	end
+	return "Move"
 end
 
 function OnboardingUIController.CopyForMode(mode: InputMode, stage: Stage): Copy
@@ -163,19 +197,17 @@ end
 
 local function currentStage(self: InternalController): Stage
 	local snapshot = self._roundSnapshot
-	if snapshot == nil or not self._assigned then
-		return "Move"
+	if snapshot == nil then
+		return OnboardingUIController.ResolveStage(nil, self._assigned, 0, nil, self._fitValid, self._placementPending)
 	end
-	if snapshot.State == "Failing" then
-		return "Failure"
-	elseif snapshot.State == "Shipping" or snapshot.State == "Results" then
-		return "Shipment"
-	elseif snapshot.State == "Decision" then
-		return "Decision"
-	elseif snapshot.State == "AwaitingPlacement" and self._fitValid == true and not self._placementPending then
-		return "ValidFit"
-	end
-	return "Move"
+	return OnboardingUIController.ResolveStage(
+		snapshot.State,
+		self._assigned,
+		snapshot.ResultLostValue,
+		snapshot.ResultReason,
+		self._fitValid,
+		self._placementPending
+	)
 end
 
 local function overlayShouldShow(self: InternalController): boolean
