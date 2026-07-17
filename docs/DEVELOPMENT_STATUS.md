@@ -2,145 +2,176 @@
 
 ## Current phase and Git state
 
-- **Phase result:** **Partial.** Phase 06 implementation is complete and its automated gates are green, but the complete manual/persistence acceptance contract is not yet satisfied.
+- **Phase result:** **Implementation complete and accepted.**
 - **Current phase:** Phase 06 - First-Time Player Experience, Starter Missions, and Retention Analytics.
 - **Current branch:** `codex/phase-06-onboarding-starter-missions`.
 - **Protected base:** `main` and `origin/main` remain the accepted Phase 05 squash merge `d644411b48e20cd9bb256d3d2c55a647efc2adfd`.
-- **Current implementation head:** `4b68d80449a0ef431251295d75907b97d8a8f2a2`, containing the focused Results-presentation source and deterministic-test correction. The previous documentation evidence head is `b9713e145f8227b58a729646de30650b5adf059a`; PR #7 and the final handoff carry the exact documentation-head check evidence.
+- **Accepted implementation head:** `f877667b3ce9f032d0a0c676dafb348bb2ad6d8f`.
+- **Final documentation head:** recorded in draft PR #7 and the final completion handoff after this documentation commit exists; this file intentionally does not self-reference its own commit SHA.
 - **Current pull request:** [Draft PR #7 - Phase 06: Onboarding, Starter Missions, and Retention Analytics](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7), open, draft, and unmerged.
-- **Pre-release QA:** [Issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open. Its Phase 06 comment has intentionally not been posted because technical acceptance is still partial.
-- **Scope:** No Phase 07 system, monetization, production-store rollout, final asset work, or unrelated redesign has begun.
+- **Pre-release QA:** [Issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open. Its [Phase 06 onboarding and analytics QA additions](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4#issuecomment-5007354615) keep the broad checks explicitly unpassed.
+- **Scope:** Phase 07 has not begun. No monetization, production-store rollout, final asset work, or unrelated redesign was added.
 
-## Implemented Phase 06 scope
+## Accepted Phase 06 implementation
 
-- Profile schema Version 2 with an explicit Version 1-to-2 migration while retaining `ONE_MORE_ITEM_PlayerProfiles_v1` and `ONE_MORE_ITEM_PlayerProfiles_StudioTest_v1`.
-- Server-authoritative five-step onboarding with `NotStarted`, `InProgress`, `Completed`, and `Skipped` states; 45-second guided placement; 12-second guided decision; failure/retry; exact-once skip; and persistent progress.
-- Five authoritative starter missions (`first_fit`, `first_shipment`, `one_more`, `collector_three`, and `five_item_box`) worth exactly 295 Tape and 210 XP in total, with reconciliation, exact-once rewards, and path completion.
-- `MemoryAnalyticsAdapter` in Studio and `RobloxAnalyticsAdapter` outside Studio, with fixed onboarding, core-loop, mission, economy, and starter-path event catalogs and bounded low-cardinality fields.
-- Permanent manifest-authored `OnboardingOverlay`, `StarterMissionCard`, `StarterPathPanel` with five authored mission rows, `MissionCompleteBanner`, and one `OnboardingActionRequest` remote.
-- Server validation, rate/sequence checks, player-scoped state, cleanup, responsive layout, and deterministic test seams.
+- Profile Schema Version 2 migrates Version 1 inside the existing `ONE_MORE_ITEM_PlayerProfiles_v1` and `ONE_MORE_ITEM_PlayerProfiles_StudioTest_v1` stores.
+- Five server-authoritative onboarding steps persist `NotStarted`, `InProgress`, `Completed`, or `Skipped`; guided placement remains 45 seconds and guided decision remains 12 seconds.
+- Five exact-once starter missions (`first_fit`, `first_shipment`, `one_more`, `collector_three`, and `five_item_box`) remain worth 295 Tape and 210 Packing XP in total.
+- Permanent onboarding and mission UI, five mission rows, the one narrow `OnboardingActionRequest` remote, remotes, templates, and scripts remain manifest-authored. No permanent UI, networking object, or map artifact is created at runtime.
+- Studio uses `MemoryAnalyticsAdapter`; published non-Studio servers select the Roblox adapter. Analytics remains server-only, best-effort, and unable to alter gameplay, assignment, progression, snapshots, or saving.
 
-No permanent UI, networking object, or map artifact is created at runtime. The manifest remains the permanent-instance owner and source under `src/` remains canonical.
+## Source-quality corrections
 
-## Final corrected Studio state before cloud save
+### Deterministic onboarding completion presentation
 
-- Two complete ordered synchronization passes applied Phase 01 followed by the extended Phase 02-06 operations without duplicates, wrong classes, creation failures, operation failures, or warnings.
-- Exact live parity passed 1,004/1,004 managed paths: 915 non-script instances and 89 Luau sources, with zero missing, extra, duplicate, or wrong-class paths and all 89/89 UTF-8 source hashes exact.
-- All 5,192/5,192 bridge-exposed manifest properties matched. All 93/93 authored-attribute targets matched across 150/150 authored keys. The remaining 958 declared properties are not exposed by that read route and are not represented as independently compared.
-- Structural checks found eight stations, eight shelves, 48 shelf slots, six gameplay remotes, one profile snapshot remote, one onboarding request remote, and four Phase 06 UI roots.
-- The three Phase 05 acceptance attributes printed `nil`, `nil`, `nil` immediately before cloud save. No fixture was armed when the place was saved.
+The onboarding controller now uses an explicit `Idle` / `Pending` / `Showing` / `Consumed` reducer. Profile-first and round-first arrival both produce the same approved terminal presentation:
+
+```text
+SHIPMENT COMPLETE
+TAPE IS SAVED
+SHIPPED ITEMS JOIN YOUR COLLECTION
+```
+
+The presentation holds for exactly `0.95` seconds, displays once, cannot replay after duplicate snapshots or reload, and remains hidden while a player is unassigned. Cancellation consumes stale/cross-round work. `ClientBootstrap` subscribes to onboarding completion before mission presentation, while `StarterMissionUIController.SetPresentationBlocked` pauses and losslessly resumes a queued mission banner after the onboarding hold.
+
+### Transactional analytics ordering
+
+`StarterMissionService.ApplyEventDeferredAnalytics` returns a one-shot emitter: the profile mutation and snapshot happen first, then the caller emits the mission analytics exactly once at the correct transactional boundary. The first successful path now records:
+
+1. First Fit starter-mission economy `+10`, ending balance `10`.
+2. Shipment economy `+15`, ending balance `25`.
+3. First Shipment starter-mission economy `+25`, ending balance `50`.
+
+Each analytics call remains independently protected. A failure in one record cannot suppress later records or mutate the authoritative outcome.
 
 ## Automated validation
 
-Fresh local Node 24 output passed all six dependency-free gates:
+Fresh local Node 24 output passed every dependency-free gate:
 
 ```text
 [StudioSyncSmoke] PASS checks=16 folders=7 scripts=10 deterministic=true
 [Phase02StudioSyncSmoke] PASS criteria=28 instances=914 scripts=79 remotes=6 deterministic=true phase01=true
-[Phase03LayoutMatrix] PASS viewports=13 insetProfiles=5 cases=65 desktopCompatible=true safeContainment=true
 [Phase03CrossPlatformSmoke] PASS criteria=31 viewports=13 insetProfiles=5 layoutCases=65 remotes=6 deterministic=true phase01=true phase02=true
 [Phase04MultiplayerArena] PASS criteria=42 instances=914 scripts=79 stations=8 pathNodes=16 remotes=6 deterministic=true prior=true
 [Phase05PersistentProgression] PASS criteria=64 instances=914 scripts=79 gameplayRemotes=6 profileRemotes=1 shelves=8 collectionSlots=8 deterministic=true prior=true
-[Phase06OnboardingMissionsAnalytics] PASS criteria=69 instances=914 scripts=79 gameplayRemotes=6 profileRemotes=1 onboardingRemotes=1 onboardingSteps=5 starterMissions=5 missionTape=295 missionXP=210 deterministic=true prior=true
+[Phase06OnboardingMissionsAnalytics] PASS criteria=76 instances=914 scripts=79 gameplayRemotes=6 profileRemotes=1 onboardingRemotes=1 onboardingSteps=5 starterMissions=5 missionTape=295 missionXP=210 deterministic=true prior=true
 ```
 
-The final corrected pre-save and direct no-synchronization reopen runs both passed:
+The final clean pre-save Studio run passed:
 
 | Suite | Result | Deterministic detail |
 | --- | ---: | --- |
-| Foundation | `69/69` | fuzz seed `24012026`, 1,000 cases; benchmark non-gating |
-| Phase 02 | `94/94` | seed `24022026` |
-| Phase 03 | `65/65` | seed `13072026` |
-| Phase 04 | `119/119` | seed `14072026` |
-| Phase 05 | `130/130` | seed `15072026`; memory adapter |
-| Phase 06 | `59/59` | seed `16072026`; profile and analytics memory adapters |
+| Foundation | `69/69` | 15 suites; fuzz seed `24012026`, 1,000 cases; benchmark non-gating |
+| Phase 02 | `94/94` | 11 suites; seed `24022026` |
+| Phase 03 | `65/65` | 8 suites; seed `13072026` |
+| Phase 04 | `119/119` | 13 suites; seed `14072026` |
+| Phase 05 | `130/130` | 16 suites; seed `15072026`; memory adapter |
+| Phase 06 | `75/75` | 18 suites; seed `16072026`; profile and analytics memory adapters |
 
-The first Phase 06 Studio run exposed a test-fixture defect: its conflict case saved a clean profile and therefore never exercised a conflict. Only that deterministic fixture was corrected to dirty both sessions and assert `CONFLICT`; the earlier pre-save/direct-reopen build passed `58/58`, which remains historical evidence. A later fresh Memory-fixture acceptance run found a separate production client presentation defect and added a focused regression, as recorded below.
+The first attempted Phase 06 source-quality test run exposed a syntax defect in the integration harness. It was corrected in `f877667b3ce9f032d0a0c676dafb348bb2ad6d8f`; only the fresh passing run above is acceptance evidence.
 
-After the Results-stage correction, fresh clean Studio runs before save and after direct reopen both passed Foundation `69/69`, Phase 02 `94/94`, Phase 03 `65/65`, Phase 04 `119/119`, Phase 05 `130/130`, and Phase 06 `59/59`. Both fresh game-owned warning/error reviews returned zero issues.
+## Integrated analytics trace
 
-## Manual Studio evidence
+The accepted fresh-profile deterministic integration emitted exactly these 20 records in order:
 
-### Established-profile migration and onboarding
+1. `Onboarding:1`
+2. `ProgressionStart:1`
+3. `Mission:first_fit:started`
+4. `Onboarding:2`
+5. `CoreLoop:start`
+6. `Onboarding:3`
+7. `Economy:StarterMission:10:10`
+8. `ProgressionComplete:1`
+9. `Mission:first_fit:completed`
+10. `ProgressionStart:2`
+11. `Mission:first_shipment:started`
+12. `Onboarding:4`
+13. `Onboarding:5`
+14. `Economy:Shipment:15:25`
+15. `Economy:StarterMission:25:50`
+16. `ProgressionComplete:2`
+17. `Mission:first_shipment:completed`
+18. `ProgressionStart:3`
+19. `Mission:one_more:started`
+20. `CoreLoop:ship`
 
-- The accepted Phase 05 Studio-test profile loaded from `ONE_MORE_ITEM_PlayerProfiles_StudioTest_v1`, migrated to Version 2, and kept its recorded Tape, XP, rank, collection, and gameplay statistics. Full mastery and receipt values were not captured before migration, so the complete field-by-field Session E preservation checklist is not claimed.
-- Historical statistics reconciled `first_shipment`, `collector_three`, and `five_item_box` exactly once for `+250 Tape` and `+170 XP`.
-- A failed guided round remained at onboarding Step 3 and the next round remained guided.
-- The first accepted placement awarded exactly `+10 Tape` and `+10 XP`, advanced Step 4, and showed the mission presentation once.
-- A successful first shipment completed onboarding, hid the overlay, and switched to normal timing. Because `first_shipment` had already reconciled from historical statistics, the shipment correctly did not replay that mission reward.
-- A normal One More path awarded `+35 Tape` and `+30 XP`. The durable profile reached 5/5 missions, 295 total mission Tape, 210 total mission XP, and Saved.
-- Clean shutdown reported one success, zero failures, and zero skipped profiles.
+The final authoritative state was Tape `50`, Packing XP `44`, onboarding `Completed`, First Fit and First Shipment rewarded, and the round in `Shipping`. Duplicate event delivery, explicit save, release, and reload produced no durable analytics replay and no reward replay. A run with 100 injected analytics failures reached and saved the same authoritative profile/round state while recording zero events. Both the normal and failure adapters were destroyed and remained empty after cleanup.
 
-The established-profile Session E path above remains the durable migration/persistence evidence. A separate fresh controlled Memory fixture was later used for focused desktop presentation acceptance; it is not persistence proof.
+## Revised manual acceptance
 
-### Fresh Memory-fixture timeout correction
+### Desktop completion and mission ordering
 
-- A truly fresh controlled Memory profile reproduced a Results-stage onboarding copy defect: a failed guided round could show shipment-complete guidance even though the authoritative result was `PLACEMENT_TIMEOUT`/lost value.
-- The client stage selection was corrected so `PLACEMENT_TIMEOUT`, positive lost value, and zero-value `PROFILE_REWARD_FAILED`, `SHIPMENT_RECORD_FAILED`, or `DUPLICATE_OUTCOME` remain on the failure presentation, visibly `TOO MUCH — TRY AGAIN`. Zero-value `BOX_FULL`, `MAX_ITEMS`, `PLAYER_SHIPPED`, and `DECISION_TIMEOUT` continue to use shipment guidance.
-- The focused visual retest passed. Pack Again restarted a guided 45-second placement window; the screenshot showed 42 seconds after about three seconds of elapsed time.
-- After the focused test, all three temporary Phase 05 acceptance attributes were cleared. Fresh clean pre-save and post-reopen runs each passed `69/69`, `94/94`, `65/65`, `119/119`, `130/130`, and `59/59` with zero fresh game-owned warnings or errors.
-- This Memory fixture does not prove a fresh profile across a server restart. A separate persistent fresh-profile skip/restart acceptance path remains pending.
+A fresh controlled desktop Memory-adapter session accepted two items and completed First Fit. On Ship, the client showed the approved onboarding terminal copy approximately 120 ms after the authoritative shipment. It then released that presentation and showed the separate mission banner approximately 1.15 seconds later:
 
-### Cross-platform presentation
+```text
+SAFE SHIPMENT
+MISSION COMPLETE
++25 TAPE +20 PACKING XP
+```
 
-- Desktop onboarding, failure/retry, first shipment, mission banners, compact mission card, and normal timing were visually exercised.
-- Studio Device Emulator provided partial phone portrait and landscape touch evidence. Touch copy contained no keyboard labels, drag/place controls responded, Results/Pack Again remained safe-area contained, and orientation changes did not reset durable progress. The complete Ship, SkipButton/mission-card safe-area, starter-panel, and underlying-drag suppression matrix remains unpassed. No physical-phone claim is made.
-- Studio Controller Emulator at 1920x1080 showed controller movement copy, `[X]`, `[A]`, and `[L1]` prompts plus gamepad focus. The complete hold-B cancellation/completion, L1/B panel flow, and binding-duplication matrix remains unpassed. No physical-controller claim is made.
-- Skip acceptance remains partial. Deterministic coverage verifies strict validation, no reward, and exact-once state transitions, while the two-player memory test below proves per-player UI isolation. A separate persistent fresh-profile skip/restart run, dedicated mouse/touch acceptance, hold-B gamepad cancellation/completion, one analytics emission, and duplicate no-op were not all manually completed.
+The two banners did not overlap. The mission reward was not dropped or replayed.
 
-### Two-player Local Server
+### Unassigned waiting state
 
-- A two-client Local Server launched with isolated memory profiles and distinct `O1`/`O2` station state.
-- Skipping Player B hid only Player B's onboarding and exposed only Player B's starter mission card while Player A remained in onboarding.
-- The prescribed starting fixture (Player A new, Player B onboarding-complete with partial starter path) and the complete timing, placement, One More, reward, analytics, shelf, revision, and conflict-isolation matrix remain unpassed.
+Reducer-level deterministic acceptance proves an unassigned player never shows onboarding completion or mission presentation, and that assignment/cross-round cancellation cannot replay stale work. No live ninth-player allocation is claimed.
 
-## Analytics evidence
+### Persistent two-session skip
 
-Deterministic Studio coverage passes event naming, onboarding steps, core-loop, mission, economy, progression, ordering, privacy/cardinality, cleanup, and injected-failure isolation without an AnalyticsService network call. The attachment's additional single integrated interactive memory-sink trace for one complete fresh-player path was not separately captured and remains unpassed.
+A separate two-session Memory-adapter acceptance advanced onboarding through steps 1 and 2, accepted skip, released, and reloaded the same stored profile. The reloaded state was `Skipped`, `HighestStep=2`, Tape `0`, Packing XP `0`, and `IsGuided=false`; starter missions remained active. A duplicate skip was a no-op, and the prior session's skip analytics did not replay. This is deterministic persistence acceptance for the injected Memory adapter, not a production DataStore or published Analytics claim.
 
-## Profile persistence Sessions E/F
+### Terminal 5/5 reward waiver
 
-Session E reached Ready/Saved as Version 2 and the Studio process shut down cleanly. The later direct Session F reload proved the same durable profile was still Schema Version 2, Ready/Saved, onboarding Completed at Step 5, all five stable mission IDs completed and rewarded, 295 total mission Tape, five completed starter missions, 5/5 path completion, no current mission, and `LastMissionRewards=0`. The client showed the complete starter card and five `DONE` rows while both the onboarding overlay and mission-complete banner stayed hidden. Clean stop reported one shutdown success, zero failures, and zero skipped profiles.
+The durable established profile already has all five defined starter missions rewarded. The literal request for another new starter-mission reward after reload is explicitly waived: there is no sixth approved mission to award. Rewinding a reward flag, editing stored data, inventing content, or substituting a different identity would invalidate exact-once evidence. Same-profile reload, zero reward replay, integrated first-time rewards, and analytics no-replay are green.
 
-Session E ended with the durable Studio-test profile at all five defined missions rewarded, leaving no defined new mission event for Session F's requested additional same-profile reward. Rewinding a reward flag, inventing a sixth mission/path reward, editing the DataStore, or silently substituting another profile would violate the contract. Same-profile reload/reward-no-replay now passes, while exact one-reward behavior is separately proven with deterministic memory integration; no integrated analytics-memory trace was captured, so analytics no-replay remains pending. The literal additional-reward subgate still requires an explicitly approved alternate evidence route.
+## Canonical synchronization and cloud persistence
 
-## Final corrected cloud save and reopen
-
-- With all three Phase 05 fixture attributes absent, invoking Download a Copy first triggered a successful Roblox save to the original private place, then wrote a 303,613-byte external `.rbxl` recovery copy outside Git.
-- Explicit Ctrl+S afterward reported no changes.
+- An external recovery copy was preserved outside Git at 303,613 bytes.
+- Two ordered Phase 01 then Phase 02-06 canonical synchronization passes were deterministic and clean. On both passes, Phase 01 reused all 17 operations without mutation and Phase 02-06 updated all 993 operations while preserving 79 script backups; there were zero creations, failures, warnings, wrong-class replacements, or duplicates.
+- Pre-save parity matched 1,004/1,004 managed paths, with zero missing, extra, duplicate, or wrong-class paths; 89/89 UTF-8 sources; 5,192/5,192 bridge-exposed properties; and 93/93 authored-attribute targets containing 150/150 keys. The remaining 958 declared properties are not exposed by that bridge read route and are not represented as independently compared.
+- All three Phase 05 acceptance-fixture attributes were absent before the normal save.
+- Roblox Studio reported `Saving to Roblox...` at `15:25:20.215` and `Saved new changes in "ONE MORE ITEM!" to Roblox.` at `15:25:24.793`.
 - Every Studio process closed and the observed process count reached zero.
-- A signed-in direct no-synchronization reopen completed on the correct cloud experience: `PlaceId 134193642444044`, `GameId 10493030248`, `ONE MORE ITEM!`.
-- The reopened `ONE_MORE_ITEM_Server` folder had no attributes, proving the three fixture attributes remained absent.
-- Post-reopen exact parity matched the pre-save result: 1,004/1,004 managed paths, 89/89 UTF-8 sources, zero missing/extra/duplicate/wrong-class paths, 5,192/5,192 bridge-exposed properties, and 93/93 authored-attribute targets containing 150/150 authored keys. The 958 properties not exposed by the bridge are not represented as freshly compared.
-- Permanent onboarding/mission UI, the six gameplay remotes, profile snapshot remote, and onboarding request remote all survived the reopen through exact path/class parity.
-- The corrected post-reopen run passed all six Studio suites through Phase 06 `59/59` and produced zero fresh game-owned warnings/errors. Clean shutdown completed. Session F reload/reward-no-replay remains passed from the sanitized same-profile evidence described above; analytics no-replay is not claimed. The earlier `58/58` direct-reopen run remains historical only.
+- A signed-in direct cloud reopen reached `ONE MORE ITEM!` at `PlaceId 134193642444044` / `GameId 10493030248` without running synchronization after reopen.
+- **Post-reopen exact parity:** A read-only audit at `2026-07-17T20:37:21Z`, with no synchronization after reopen, matched 1,004 expected/live/unique paths; zero missing, extra, duplicate, or wrong-class paths; 89/89 SHA-exact sources; all 117 code-map entries without truncation or read failure; 5,192/5,192 exposed properties from 6,150 declared properties, with 958 unexposed and zero mismatches; and 93 authored-attribute targets / 150 keys with zero mismatches.
+- **Post-reopen fresh Studio suites and Output review:** All six suites passed in the directly reopened no-sync place, then Play stopped and Studio returned to Edit mode. Fresh actionable/game-owned warnings and errors were zero.
 
-The normal cloud save, complete close, direct cloud reopen, post-reopen structural/source parity, fixtures, suites, same-profile reload/reward-no-replay, and clean Output now pass. Full Phase 06 acceptance remains partial only because separate manual and evidence gates below remain open.
+```text
+[ONE_MORE_ITEM][FoundationTests] RESULT suites=15 tests=69 passed=69 failed=0 duration=0.440950s fuzzCases=1000 fuzzSeed=24012026
+[ONE_MORE_ITEM][Phase02Tests] RESULT suites=11 tests=94 passed=94 failed=0 duration=9.867540s seed=24022026
+[ONE_MORE_ITEM][Phase03Tests] RESULT suites=8 tests=65 passed=65 failed=0 duration=0.008933s seed=13072026
+[ONE_MORE_ITEM][Phase04Tests] RESULT suites=13 tests=119 passed=119 failed=0 duration=1.065426s seed=14072026
+[ONE_MORE_ITEM][Phase05Tests] RESULT suites=16 tests=130 passed=130 failed=0 duration=0.476493s seed=15072026 adapter=memory
+[ONE_MORE_ITEM][Phase06Tests] RESULT suites=18 tests=75 passed=75 failed=0 duration=0.045601s seed=16072026 profileAdapter=memory analyticsAdapter=memory
+```
 
 ## GitHub Actions
 
-At the current tracked pre-fix documentation head `b9713e145f8227b58a729646de30650b5adf059a`, both exact-head checks passed:
+Implementation head `f877667b3ce9f032d0a0c676dafb348bb2ad6d8f` is pushed on `codex/phase-06-onboarding-starter-missions`. Draft PR #7 remains open and unmerged. The exact final-documentation-head branch `push` and PR `pull_request` run/job URLs are recorded in PR #7 and the final completion handoff after both workflows finish; this file intentionally avoids an impossible self-reference to its own commit.
 
-- push run `29546634793`, job `87780284107`;
-- pull-request run `29546637550`, job `87780292569`.
+## Known issues
 
-Both jobs ran all six Node validations. This Results-presentation source/test/documentation correction counts as an exact head only after its fresh push and pull-request checks pass; those final run IDs belong in PR #7 and the handoff evidence.
-
-## Known issues and remaining Phase 06 acceptance
-
-- Complete touch Ship, skip, mission-panel, safe-area, and underlying-drag suppression acceptance is pending.
-- A separate persistent fresh-profile skip/restart run, including duplicate-no-op, no-reward, timing, and rejoin persistence, is pending; the focused fresh Memory-fixture failure/retry retest is not a persistence substitute.
-- Full gamepad hold-B and starter-panel control matrix is incomplete.
-- Full two-player mixed-state Local Server isolation matrix is incomplete.
-- One integrated live MemoryAnalytics trace, including analytics no-replay evidence, is not captured.
-- Session F's additional new-reward subgate remains unresolved because the durable profile is already 5/5; its direct reload/reward-no-replay half passes, while analytics no-replay remains pending.
-- Issue #4 has no Phase 06 comment yet by design; the comment is permitted only after technical acceptance.
-
-No confirmed Phase 06 production-code blocker is known. The remaining problems are acceptance evidence gaps and the Session E/F test-sequencing constraint described above.
+No known Phase 06 production blocker remains. Two non-game-owned Studio/plugin icon-load warnings were observed after reopen; no fresh game-owned warning or error was present.
 
 ## Deferred pre-release QA
 
-Issue #4 remains the single tracker for published Analytics dashboard appearance, real-traffic funnel population, custom-event cardinality/daily aggregation, D1/D7/D30 retention, physical phone/controller onboarding, eight-player simultaneous first sessions, long mission-presentation soak, low-connectivity analytics observation, production mission balance, tutorial skip rate, and first-shipment conversion. None is claimed as passed.
+Issue #4 remains open and explicitly tracks these unpassed checks:
+
+- Published Analytics dashboard event appearance.
+- Onboarding funnel population under real public traffic.
+- Custom-event cardinality and daily aggregation review.
+- Day-1, Day-7, and Day-30 retention monitoring.
+- Physical-phone onboarding and tutorial skip.
+- Physical-controller onboarding and hold-to-skip.
+- Eight-player simultaneous first-session onboarding.
+- Expanded touch/gamepad starter-panel matrix.
+- Expanded two-player mixed onboarding/mission matrix.
+- Long-session mission-presentation soak.
+- Low-connectivity analytics-failure observation.
+- Production mission-balance review.
+- Tutorial skip-rate analysis.
+- First-shipment conversion analysis.
+
+These checks are not claimed as passed. Studio uses `MemoryAnalyticsAdapter`; no published Analytics dashboard result is inferred from Studio evidence. They are not Phase 06 implementation blockers.
 
 ## Deferred by design
 
@@ -148,6 +179,4 @@ Daily challenges/rewards, login streaks, offline income, additional catalog obje
 
 ## Exact next phase recommendation
 
-Phase 07 is the only next phase, but it must not begin until the remaining Phase 06 acceptance gates and Session F evidence route are resolved. Keep PR #7 draft and unmerged, and keep issue #4 open.
-
-Complete the remaining manual gaps, resolve the Session F additional-reward evidence route, and then request explicit review/merge authorization.
+PR #7 is ready for final review but remains draft and unmerged. Do not begin Phase 07. Merge or advance phases only after explicit authorization.

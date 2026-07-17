@@ -624,15 +624,15 @@ try {
     assert.doesNotMatch(docs, /Issue #4[^\n]*(?:closed|resolved)/i);
   });
 
-  criterion("Phase 05 merged baseline and honest Phase 06 active status are documented", () => {
+  criterion("Phase 05 merged baseline and honest Phase 06 closeout status are documented", () => {
     const docs = `${readText("README.md")}\n${readText("docs/DEVELOPMENT_STATUS.md")}`;
     assert.match(docs, /d644411b48e20cd9bb256d3d2c55a647efc2adfd/);
     assert.match(docs, /PR #6[^\n]*merged|merged[^\n]*PR #6/i);
     assert.match(docs, /codex\/phase-06-onboarding-starter-missions/);
     assert.match(docs, /pull\/7|PR #7/);
     assert.match(docs, /draft[^\n]*(?:unmerged|not merged)|(?:unmerged|not merged)[^\n]*draft/i);
-    assert.match(docs, /Phase 06[^\n]*(?:not yet accepted|unaccepted)/i);
-    assert.doesNotMatch(docs, /Phase 06[^\n]*(?:implementation complete and accepted|complete and accepted)/i);
+    assert.match(docs, /Phase 06[^\n]*(?:implementation complete and accepted|complete and accepted)/i);
+    assert.doesNotMatch(docs, /Phase 06[^\n]*(?:not yet accepted|unaccepted|acceptance (?:is )?partial|acceptance partial)/i);
   });
 
   criterion("phase02 manifest remains the sole Phase 02 through 06 owner", () => {
