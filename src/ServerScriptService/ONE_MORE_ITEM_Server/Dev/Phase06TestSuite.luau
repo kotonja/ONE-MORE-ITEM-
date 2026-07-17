@@ -308,10 +308,12 @@ local function runIntegratedAnalyticsTrace(userId: number, analyticsFailureCount
 	expect(round ~= nil, "Integrated trace round must start")
 	local preparing = table.remove(scheduled, 1)
 	expect(preparing ~= nil, "Integrated trace must schedule Preparing")
-	(preparing :: any).Callback()
+	local preparingCallback = (preparing :: any).Callback
+	preparingCallback()
 	local presenting = table.remove(scheduled, 1)
 	expect(presenting ~= nil, "Integrated trace must schedule PresentingItem")
-	(presenting :: any).Callback()
+	local presentingCallback = (presenting :: any).Callback
+	presentingCallback()
 	expectEqual((round :: any).State, "AwaitingPlacement")
 	local placement = roundService:HandlePlacement(player, {
 		RoundId = (round :: any).RoundId,
