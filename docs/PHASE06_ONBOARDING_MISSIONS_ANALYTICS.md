@@ -341,22 +341,27 @@ At implementation head `4fe9c97a1ab5eeef4e18c34a6a584e2ed1ec8701`, branch-push r
 | Two-player Local Server | Partial | Two memory clients had distinct `O1`/`O2` state. Skipping Player B hid only B's overlay and exposed only B's mission card while Player A remained onboarding. The complete required isolation matrix remains unpassed. |
 | Integrated analytics memory trace | Pending | Deterministic Studio tests pass event, ordering, privacy, cleanup, and failure-isolation coverage, but one separately captured integrated interactive fresh-player sink trace is absent. |
 | Session E | Partial pass | Version 2 reached Saved and the test server shut down cleanly. The full pre-migration mastery/receipt ledger was not captured. |
-| Session F | Pending with a current-state blocker | Direct reload did not complete. Session E ended with the durable profile at 5/5, leaving no defined new starter mission for the requested additional same-profile reward. A user-approved recovery or alternate proof is required. |
+| Session F | Partial pass with a current-state blocker | Direct same-profile reload now proves Schema Version 2, Ready/Saved, onboarding Completed at Step 5, all five missions completed/rewarded, 295 mission Tape, 5/5 path completion, no current mission, `LastMissionRewards=0`, complete client rows, hidden onboarding/reward banners, and clean shutdown. Session E ended with the durable profile at 5/5, leaving no defined new starter mission for the requested additional same-profile reward. An explicitly approved alternate proof is still required for that literal subgate. |
 | Cloud save and full close | Pass | Fixture attributes printed `nil nil nil`; the private place reported a successful normal Roblox save; every Studio process then closed. |
-| Direct cloud reopen and parity | Pending | Two no-sync attempts fetched the correct place/universe, completed preloading, connected to the edit server, initialized schema, and assigned a peer, but Studio remained at `Connecting to server...`. Post-reopen parity, suites, persistence, and Output are not claimed. |
+| Direct cloud reopen and parity | Pass | The later signed-in no-sync reopen completed on `PlaceId 134193642444044` / `GameId 10493030248`. Fixtures remained absent. Live parity passed 1,004/1,004 managed paths, 89/89 UTF-8 sources, zero missing/extra/duplicate/wrong-class paths, all 93 authored-attribute targets, and all 5,192 bridge-exposed manifest properties. All six Studio suites passed again and the fresh game-owned warning/error count was zero. |
 
 ### Session F current-state blocker
 
-Session E ended with the same durable Studio-test profile at every one of the five defined missions rewarded. Applying any existing mission event must correctly produce no new reward. Rewinding a `Rewarded` flag, adding a sixth mission/path reward, editing the DataStore key, or silently substituting a different profile would violate this contract. Same-profile reload/no-replay remains a valid pending proof, and exact one-reward behavior is separately proven with deterministic memory integration, but completing Session F now requires a user-approved recovery or alternate evidence route.
+Session E ended with the same durable Studio-test profile at every one of the five defined missions rewarded. Applying any existing mission event must correctly produce no new reward. Rewinding a `Rewarded` flag, adding a sixth mission/path reward, editing the DataStore key, or silently substituting a different profile would violate this contract. Same-profile reload/reward-no-replay now passes: the direct-reopen snapshot showed the five completed/rewarded IDs, `LastMissionRewards=0`, no reward banner, and no reward delta; a clean stop saved and released the profile. No integrated `MemoryAnalyticsAdapter` record trace was captured, so analytics-memory no-replay remains pending. Exact one-reward behavior is separately proven with deterministic memory integration, but completing the literal additional-reward portion of Session F still requires an explicitly approved alternate evidence route.
+
+The direct-reopen client snapshot was intentionally sanitized. It recorded Schema `2`, lifecycle `Ready`, save state `Saved`, Tape `3502`, XP `593`, rank index `2`, collection `7/8`, 17 successful shipments, 34 shipped items, highest shipment count `10`, best shipment value `2225`, one perfect shipment, 34 failed rounds, mission Tape `295`, five completed starter missions, onboarding `Completed` at Step `5`, all five stable mission IDs in both completed and rewarded lists, `5/5` path completion, no current mission, and an empty last-mission-reward batch. It did not print a player identifier, profile session identifier, store key, lock token, receipt, or full payload.
+
+Fresh post-reopen Studio Output at `2026-07-17T00:42:26Z` through `00:42:28Z` reported Foundation `69/69`, Phase 02 `94/94`, Phase 03 `65/65`, Phase 04 `119/119`, Phase 05 `130/130`, and Phase 06 `58/58`; the server selected `profileStore=StudioTest analytics=Memory`. The fresh warning/error watch returned zero issues. Clean stop printed `[ONE_MORE_ITEM][Profile] shutdown successes=1 failures=0 skipped=0`.
 
 ### Remaining technical acceptance
 
 - Run the prescribed truly fresh-profile desktop path.
+- Finish the complete touch Ship, skip, mission-panel, safe-area, and underlying-drag suppression matrix.
+- Finish the complete manual skip input, persistence, timing, duplicate-no-op, no-reward, and analytics-once matrix.
 - Finish the full gamepad hold-B and starter-panel control matrix.
 - Finish the complete two-player timing/gameplay/reward/analytics/shelf/revision/conflict matrix.
 - Capture the prescribed integrated analytics-memory sequence.
-- Resolve the direct Studio cloud-join blocker, then run post-reopen hierarchy/source parity, all six Studio suites, Session F reload/no-replay, any user-approved alternate one-reward proof, and fresh game-owned Output review.
-- Resolve the Session F current-state evidence route explicitly.
+- Resolve the Session F additional-reward evidence route explicitly without modifying the 5/5 durable profile.
 - Refresh documentation, PR evidence, and exact-head branch/PR checks.
 
 Issue #4 remains open and unchanged. Its Phase 06 QA comment is intentionally withheld until technical acceptance. Phase 07 is the only next phase, but it must not begin until these Phase 06 gates are resolved.

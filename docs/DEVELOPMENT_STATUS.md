@@ -6,7 +6,7 @@
 - **Current phase:** Phase 06 - First-Time Player Experience, Starter Missions, and Retention Analytics.
 - **Current branch:** `codex/phase-06-onboarding-starter-missions`.
 - **Protected base:** `main` and `origin/main` remain the accepted Phase 05 squash merge `d644411b48e20cd9bb256d3d2c55a647efc2adfd`.
-- **Current implementation head:** `4fe9c97a1ab5eeef4e18c34a6a584e2ed1ec8701` before this evidence-only documentation update. The production implementation commit is `5541c21434386104aac8fd85ccd934477ba8c23e`; `4fe9c97` contains the focused Phase 06 conflict-fixture correction.
+- **Current evidence head:** `91467c1547bc9750b0a9cdc3118f263ff273f3a5` before this direct-reopen evidence update. The production implementation commit is `5541c21434386104aac8fd85ccd934477ba8c23e`; `4fe9c97a1ab5eeef4e18c34a6a584e2ed1ec8701` contains the focused Phase 06 conflict-fixture correction.
 - **Current pull request:** [Draft PR #7 - Phase 06: Onboarding, Starter Missions, and Retention Analytics](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7), open, draft, and unmerged.
 - **Pre-release QA:** [Issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open. Its Phase 06 comment has intentionally not been posted because technical acceptance is still partial.
 - **Scope:** No Phase 07 system, monetization, production-store rollout, final asset work, or unrelated redesign has begun.
@@ -44,7 +44,7 @@ Fresh local Node 24 output passed all six dependency-free gates:
 [Phase06OnboardingMissionsAnalytics] PASS criteria=69 instances=914 scripts=79 gameplayRemotes=6 profileRemotes=1 onboardingRemotes=1 onboardingSteps=5 starterMissions=5 missionTape=295 missionXP=210 deterministic=true prior=true
 ```
 
-Fresh pre-cloud-save Studio Output passed all six suites:
+Fresh Studio Output passed all six suites before cloud save and again after the direct no-synchronization reopen:
 
 | Suite | Result | Deterministic detail |
 | --- | ---: | --- |
@@ -90,19 +90,23 @@ Deterministic Studio coverage passes event naming, onboarding steps, core-loop, 
 
 ## Profile persistence Sessions E/F
 
-Session E reached Ready/Saved as Version 2 and the Studio process shut down cleanly. Session F is incomplete because the required direct cloud reopen did not finish.
+Session E reached Ready/Saved as Version 2 and the Studio process shut down cleanly. The later direct Session F reload proved the same durable profile was still Schema Version 2, Ready/Saved, onboarding Completed at Step 5, all five stable mission IDs completed and rewarded, 295 total mission Tape, five completed starter missions, 5/5 path completion, no current mission, and `LastMissionRewards=0`. The client showed the complete starter card and five `DONE` rows while both the onboarding overlay and mission-complete banner stayed hidden. Clean stop reported one shutdown success, zero failures, and zero skipped profiles.
 
-Session E ended with the current durable Studio-test profile at all five defined missions rewarded, leaving no defined new mission event for Session F's requested same-profile exact reward. Rewinding a reward flag, inventing a sixth mission/path reward, or silently substituting another profile would violate the contract. Same-profile reload/no-replay can still be tested, while exact one-reward behavior is separately proven with deterministic memory integration; completing this gate now requires a user-approved recovery or alternate evidence route.
+Session E ended with the durable Studio-test profile at all five defined missions rewarded, leaving no defined new mission event for Session F's requested additional same-profile reward. Rewinding a reward flag, inventing a sixth mission/path reward, editing the DataStore, or silently substituting another profile would violate the contract. Same-profile reload/reward-no-replay now passes, while exact one-reward behavior is separately proven with deterministic memory integration; no integrated analytics-memory trace was captured, so analytics no-replay remains pending. The literal additional-reward subgate still requires an explicitly approved alternate evidence route.
 
 ## Cloud save and reopen
 
 - An external recovery copy was created outside Git.
 - The original private place (`PlaceId 134193642444044`, `GameId 10493030248`) reported `Saving to Roblox...` followed by `Saved new changes in "ONE MORE ITEM!" to Roblox.`
 - Every Studio process closed and the observed Studio process count reached zero.
-- Two direct, no-synchronization reopen attempts selected the correct cloud experience. Studio fetched the correct place/universe, completed preloading, connected to the Roblox edit server, initialized the schema, and assigned a peer ID, but the UI remained indefinitely at `Connecting to server...`.
-- Because the editor never completed the direct reopen, post-reopen hierarchy/source parity, fixture absence, six-suite rerun, Session F reload/no-replay, one additional onboarding/mission/save proof, and fresh Output review remain unpassed.
+- A later signed-in, direct no-synchronization reopen completed on the correct cloud experience: `PlaceId 134193642444044`, `GameId 10493030248`, `ONE MORE ITEM!`.
+- The reopened `ONE_MORE_ITEM_Server` folder had no attributes, proving all three Phase 05 acceptance fixtures remained absent.
+- Live hierarchy parity passed exactly 1,004 managed paths: 915 non-script instances and 89 Luau sources. Missing, extra, duplicate, and wrong-class counts were all zero; every one of the 89 UTF-8 SHA-256 source hashes matched.
+- All 93 manifest targets with authored attributes matched. The bridge exposed 5,192 of 6,150 declared manifest properties and all 5,192 matched; the 958 unexposed properties are not represented as freshly compared.
+- Permanent onboarding/mission UI, the six gameplay remotes, profile snapshot remote, and onboarding request remote all survived the reopen through exact path/class parity.
+- The fresh post-reopen run passed all six Studio suites, selected Studio-test profiles and Memory analytics, and produced zero fresh game-owned warnings/errors. Session F reload/reward-no-replay and clean shutdown passed as described above; analytics no-replay is not claimed.
 
-The normal cloud save and full close are confirmed. This document does **not** claim successful direct reopen or full Phase 06 cloud persistence acceptance.
+The normal cloud save, complete close, direct cloud reopen, post-reopen structural/source parity, fixtures, suites, same-profile reload/reward-no-replay, and clean Output now pass. Full Phase 06 acceptance remains partial only because separate manual and evidence gates below remain open.
 
 ## GitHub Actions
 
@@ -116,14 +120,15 @@ Both jobs ran all six Node validations. A documentation/evidence commit requires
 ## Known issues and remaining Phase 06 acceptance
 
 - Prescribed truly fresh-profile desktop Play path is not yet manually proven.
+- Complete touch Ship, skip, mission-panel, safe-area, and underlying-drag suppression acceptance is pending.
+- Complete manual skip input, persistence, timing, duplicate-no-op, no-reward, and analytics-once acceptance is pending.
 - Full gamepad hold-B and starter-panel control matrix is incomplete.
 - Full two-player Local Server isolation matrix is incomplete.
 - One integrated interactive analytics-memory trace is not captured.
-- Session F direct reload/no-replay and its current 5/5 durable-profile evidence constraint remain incomplete.
-- Direct cloud reopen, post-reopen parity, post-reopen suites, and post-reopen clean Output remain incomplete.
+- Session F's additional new-reward subgate remains unresolved because the durable profile is already 5/5; its direct reload/reward-no-replay half passes, while analytics no-replay remains pending.
 - Issue #4 has no Phase 06 comment yet by design; the comment is permitted only after technical acceptance.
 
-No confirmed Phase 06 production-code blocker is known. The remaining problems are acceptance evidence gaps, a direct Studio cloud-join failure, and the Session E/F test-sequencing constraint described above.
+No confirmed Phase 06 production-code blocker is known. The remaining problems are acceptance evidence gaps and the Session E/F test-sequencing constraint described above.
 
 ## Deferred pre-release QA
 
@@ -137,4 +142,4 @@ Daily challenges/rewards, login streaks, offline income, additional catalog obje
 
 Phase 07 is the only next phase, but it must not begin until the remaining Phase 06 acceptance gates and Session F evidence route are resolved. Keep PR #7 draft and unmerged, and keep issue #4 open.
 
-Complete the direct reopen/parity/manual gaps, refresh the final exact-head checks, and then request explicit review/merge authorization.
+Complete the remaining manual gaps, resolve the Session F additional-reward evidence route, refresh the final exact-head checks, and then request explicit review/merge authorization.
