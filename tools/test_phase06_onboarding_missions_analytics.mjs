@@ -50,6 +50,7 @@ const phase06Sources = [
   "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Analytics/MemoryAnalyticsAdapter.luau",
   "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Analytics/RobloxAnalyticsAdapter.luau",
   "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Analytics/GameAnalyticsService.luau",
+  "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/ClientBootstrap.luau",
   "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/OnboardingUIController.luau",
   "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/StarterMissionUIController.luau",
 ];
@@ -186,6 +187,7 @@ try {
   const bootstrap = readText("src/ServerScriptService/ONE_MORE_ITEM_Server/ServerBootstrap.server.luau");
   const onboardingRequestValidator = readText("src/ServerScriptService/ONE_MORE_ITEM_Server/Services/OnboardingRequestValidator.luau");
   const clientProfileStore = readText("src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/ClientProfileStore.luau");
+  const clientBootstrap = readText("src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/ClientBootstrap.luau");
   const onboardingUi = readText("src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/OnboardingUIController.luau");
   const missionUi = readText("src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/StarterMissionUIController.luau");
   const responsiveLayout = readText("src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/ResponsiveLayout.luau");
@@ -304,13 +306,26 @@ try {
   });
 
   criterion("mission analytics follow snapshot economy completion custom and next-spotlight order", () => {
-    const applyEvent = missionService.indexOf("function StarterMissionService.ApplyEvent");
-    const economy = missionService.indexOf("LogEconomySource", applyEvent);
+    const emitter = missionService.indexOf("local function emitMissionAnalytics");
+    const economy = missionService.indexOf("LogEconomySource", emitter);
     const complete = missionService.indexOf("LogProgressionComplete", economy);
     const customComplete = missionService.indexOf("\"completed\"", complete);
     const nextStart = missionService.indexOf("LogProgressionStart", customComplete);
-    assert.ok(applyEvent >= 0 && economy > applyEvent && complete > economy && customComplete > complete && nextStart > customComplete);
+    const deferred = missionService.indexOf("function StarterMissionService.ApplyEventDeferredAnalytics", nextStart);
+    assert.ok(emitter >= 0 && economy > emitter && complete > economy && customComplete > complete && nextStart > customComplete && deferred > nextStart);
     assert.match(missionService, /StartCurrentSpotlight/);
+  });
+
+  criterion("mission analytics expose a deferred exact-once emitter while ordinary events remain immediate", () => {
+    assert.match(missionService, /export type AnalyticsEmitter\s*=\s*\(\)\s*->\s*boolean/);
+    const deferredStart = missionService.indexOf("function StarterMissionService.ApplyEventDeferredAnalytics");
+    const ordinaryStart = missionService.indexOf("function StarterMissionService.ApplyEvent(", deferredStart);
+    assert.ok(deferredStart >= 0 && ordinaryStart > deferredStart);
+    const deferredSource = missionService.slice(deferredStart, ordinaryStart);
+    assert.match(deferredSource, /local emitted\s*=\s*false[\s\S]*if emitted then[\s\S]*return false[\s\S]*emitted\s*=\s*true[\s\S]*emitMissionAnalytics/);
+    const ordinarySource = missionService.slice(ordinaryStart, missionService.indexOf("function StarterMissionService.Reconcile", ordinaryStart));
+    assert.match(ordinarySource, /self:ApplyEventDeferredAnalytics\([\s\S]*if emitAnalytics ~= nil then[\s\S]*emitAnalytics\(\)/);
+    assert.match(phase06TestSource, /ApplyEventDeferredAnalytics[\s\S]*expect\(emitAnalytics ~= nil[\s\S]*expect\(not \(emitAnalytics :: any\)\(\)\)/);
   });
 
   criterion("guided timing constants are exact", () => {
@@ -321,6 +336,49 @@ try {
   criterion("guided timing is server-derived and presentation-safe", () => {
     assert.match(`${roundService}\n${profileNetworkTypes}`, /GuidedOnboarding/);
     assert.doesNotMatch(onboardingUi, /GuidedOnboarding\s*=/);
+  });
+
+  criterion("completion presentation is reducer-driven with approved copy hold and mission-banner coordination", () => {
+    for (const name of [
+      "NewCompletionPresentationState",
+      "IsCompletionPresentationActive",
+      "ReduceCompletionProfile",
+      "ReduceCompletionRound",
+      "FinishCompletionPresentation",
+    ]) assert.match(onboardingUi, new RegExp(`function OnboardingUIController\\.${name}\\b`));
+    assert.match(onboardingUi, /COMPLETION_HOLD_SECONDS\s*=\s*0\.95\b/);
+    assert.match(onboardingUi, /Prompt\s*=\s*"SHIPMENT COMPLETE"/);
+    assert.match(onboardingUi, /Instruction\s*=\s*"TAPE IS SAVED[^"\r\n]*SHIPPED ITEMS JOIN YOUR COLLECTION"/);
+    assert.match(clientBootstrap, /CompletionPresentationChanged[\s\S]{0,320}SetPresentationBlocked\(active\)/);
+    assert.match(missionUi, /function StarterMissionUIController\.ShouldDeferRewardPresentation\b/);
+    assert.match(missionUi, /rewardWaitsForOnboarding[\s\S]{0,320}ShouldDeferRewardPresentation\(/);
+    assert.match(missionUi, /function ControllerMethods\.SetPresentationBlocked[\s\S]{0,520}pauseBanner\(self\)[\s\S]{0,180}startRewardWorker\(self\)/);
+  });
+
+  criterion("completion presentation baselines terminal sessions and cannot replay or cross rounds", () => {
+    const profileReducerStart = onboardingUi.indexOf("function OnboardingUIController.ReduceCompletionProfile");
+    const roundReducerStart = onboardingUi.indexOf("function OnboardingUIController.ReduceCompletionRound", profileReducerStart);
+    const finishStart = onboardingUi.indexOf("function OnboardingUIController.FinishCompletionPresentation", roundReducerStart);
+    assert.ok(profileReducerStart >= 0 && roundReducerStart > profileReducerStart && finishStart > roundReducerStart);
+    const profileReducer = onboardingUi.slice(profileReducerStart, roundReducerStart);
+    const roundReducer = onboardingUi.slice(roundReducerStart, finishStart);
+    assert.match(profileReducer, /state\.ProfileSessionId ~= profileSessionId[\s\S]*baselinePhase[\s\S]*"Idle"[\s\S]*"Consumed"/);
+    assert.match(profileReducer, /previousWasNonterminal[\s\S]*onboardingStatus == "Completed"/);
+    assert.match(profileReducer, /onboardingStatus == "Skipped"[\s\S]*"Consumed"/);
+    assert.match(roundReducer, /targetRoundId ~= roundId[\s\S]*"Consumed"/);
+    assert.match(roundReducer, /not assigned[\s\S]*onboardingStatus ~= "Completed"[\s\S]*"Consumed"/);
+    assert.match(onboardingUi, /_completionSequence ~= sequence[\s\S]*FinishCompletionPresentation/);
+  });
+
+  criterion("unassigned players expose no onboarding overlay pointer highlights or skip binding", () => {
+    const overlayStart = onboardingUi.indexOf("function OnboardingUIController.ShouldShowOverlay");
+    const skipStart = onboardingUi.indexOf("function OnboardingUIController.ShouldOfferSkip", overlayStart);
+    const reducerStart = onboardingUi.indexOf("function OnboardingUIController.ReduceCompletionProfile", skipStart);
+    assert.ok(overlayStart >= 0 && skipStart > overlayStart && reducerStart > skipStart);
+    assert.match(onboardingUi.slice(overlayStart, skipStart), /and assigned/);
+    assert.match(onboardingUi.slice(skipStart, reducerStart), /and assigned/);
+    assert.match(onboardingUi, /if not visible then[\s\S]{0,220}_pointer\.Visible\s*=\s*false[\s\S]{0,120}updateHighlights\(self, "Move"\)[\s\S]{0,120}refreshSkipBinding\(self\)/);
+    assert.match(onboardingUi, /ordinaryGuidanceShouldShow\(self\)[\s\S]{0,100}_inputMode == "Gamepad"[\s\S]{0,160}else[\s\S]{0,80}unbindSkip\(self\)/);
   });
 
   criterion("analytics adapter contract is server-only and focused", () => {
@@ -398,6 +456,28 @@ try {
   criterion("analytics has no per-frame or per-move source", () => {
     const allAnalytics = `${analyticsContract}\n${analyticsEvents}\n${memoryAnalytics}\n${robloxAnalytics}\n${gameAnalytics}`;
     assert.doesNotMatch(allAnalytics, /RenderStepped|Heartbeat:Connect|Stepped:Connect|while true do|PointerMoved|MouseMoved/);
+  });
+
+  criterion("shipment analytics use authoritative post-mutation balance before deferred mission analytics", () => {
+    const shipmentStart = bootstrap.indexOf("OnShipmentProgressionApplied = function");
+    const shipmentEnd = bootstrap.indexOf("OnRoundEnded = function", shipmentStart);
+    assert.ok(shipmentStart >= 0 && shipmentEnd > shipmentStart);
+    const shipment = bootstrap.slice(shipmentStart, shipmentEnd);
+    const missionMutation = shipment.indexOf("ApplyEventDeferredAnalytics");
+    const onboardingMutation = shipment.indexOf("onboardingService:Advance", missionMutation);
+    const shipmentEconomy = shipment.indexOf("\"Shipment\"", onboardingMutation);
+    const authoritativeBalance = shipment.indexOf("reward.NewTape", shipmentEconomy);
+    const missionAnalytics = shipment.indexOf("\"ShipmentMissionAnalytics\"", authoritativeBalance);
+    const emit = shipment.indexOf("emitter()", missionAnalytics);
+    assert.ok(
+      missionMutation >= 0
+        && onboardingMutation > missionMutation
+        && shipmentEconomy > onboardingMutation
+        && authoritativeBalance > shipmentEconomy
+        && missionAnalytics > authoritativeBalance
+        && emit > missionAnalytics,
+    );
+    assert.doesNotMatch(shipment, /LogEconomySource\([\s\S]{0,180}reward\.Tape\s*(?:\+|-)\s*reward\.TapeDelta/);
   });
 
   criterion("onboarding request remote is permanently authored", () => {
@@ -664,7 +744,62 @@ try {
     assert.doesNotMatch(phase06TestSource, /DataStoreService|LogOnboardingFunnelStepEvent|LogCustomEvent/);
   });
 
-  assert.ok(criterionCount >= 60, `Phase 06 validator must retain at least 60 criteria; found ${criterionCount}`);
+  criterion("integrated analytics tests fix the complete trace balances no-replay and failure-isolation contracts", () => {
+    const suiteStart = phase06TestSource.indexOf('addSuite("Integrated analytics trace"');
+    const suiteEnd = phase06TestSource.indexOf('addSuite("Onboarding request security"', suiteStart);
+    assert.ok(suiteStart >= 0 && suiteEnd > suiteStart);
+    const suite = phase06TestSource.slice(suiteStart, suiteEnd);
+    const traceMatch = suite.match(/expectArray\(tokens,\s*\{([\s\S]*?)\}\)/);
+    assert.ok(traceMatch, "Integrated trace must assert its full ordered token array");
+    const actualTrace = [...traceMatch[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+    assert.deepEqual(actualTrace, [
+      "Onboarding:1",
+      "ProgressionStart:1",
+      "Mission:first_fit:started",
+      "Onboarding:2",
+      "CoreLoop:start",
+      "Onboarding:3",
+      "Economy:StarterMission:10:10",
+      "ProgressionComplete:1",
+      "Mission:first_fit:completed",
+      "ProgressionStart:2",
+      "Mission:first_shipment:started",
+      "Onboarding:4",
+      "Onboarding:5",
+      "Economy:Shipment:15:25",
+      "Economy:StarterMission:25:50",
+      "ProgressionComplete:2",
+      "Mission:first_shipment:completed",
+      "ProgressionStart:3",
+      "Mission:one_more:started",
+      "CoreLoop:ship",
+    ]);
+    assert.match(suite, /Profile\.Tape,\s*50/);
+    assert.match(suite, /Profile\.PackingXP,\s*44/);
+    assert.match(suite, /duplicate events[\s\S]*SaveNow[\s\S]*Release[\s\S]*reload[\s\S]*Count\(\),\s*0/i);
+    assert.match(suite, /injected analytics failure[\s\S]*runIntegratedAnalyticsTrace\([^,]+,\s*100\)/i);
+    const constructorFailureInjection = /MemoryAnalyticsAdapter\.Create\(\{\s*FailureCount\s*=\s*analyticsFailureCount\s+or\s+0\s*\}\)/.test(phase06TestSource);
+    const setterFailureInjection = /if analyticsFailureCount ~= nil then\s*harness\.AnalyticsAdapter:SetFailureCount\(analyticsFailureCount\)/.test(phase06TestSource);
+    assert.ok(constructorFailureInjection || setterFailureInjection, "Integrated harness must inject the requested analytics failures");
+    assert.match(suite, /injected analytics failure[\s\S]*ReadStored\([^)]*\)\.Tape,\s*50/i);
+  });
+
+  criterion("skip persistence is tested across two sessions without rewards replay or disabled missions", () => {
+    const suiteStart = phase06TestSource.indexOf('addSuite("Persistence"');
+    const suiteEnd = phase06TestSource.indexOf("function Phase06TestSuite.Run", suiteStart);
+    assert.ok(suiteStart >= 0 && suiteEnd > suiteStart);
+    const suite = phase06TestSource.slice(suiteStart, suiteEnd);
+    assert.match(suite, /skip[\s\S]{0,240}(?:release|reload)|(?:release|reload)[\s\S]{0,240}skip/i);
+    assert.match(suite, /Onboarding\.Status,\s*"Skipped"/);
+    assert.match(suite, /IsGuided\([^)]*\)/);
+    assert.match(suite, /\.Tape,\s*0/);
+    assert.match(suite, /\.PackingXP,\s*0/);
+    assert.match(suite, /AcceptedPlacement/);
+    assert.ok((suite.match(/:LoadPlayer\(/g) ?? []).length >= 4, "Persistence suite must load both sessions for migration and skip scenarios");
+    assert.ok((suite.match(/:Release\(/g) ?? []).length >= 3, "Persistence suite must release both skip sessions deterministically");
+  });
+
+  assert.ok(criterionCount >= 76, `Phase 06 validator must retain at least 76 criteria; found ${criterionCount}`);
   console.log(
     `[Phase06OnboardingMissionsAnalytics] PASS criteria=${criterionCount} instances=${instanceSteps.length} scripts=${scriptSteps.length} gameplayRemotes=6 profileRemotes=1 onboardingRemotes=1 onboardingSteps=5 starterMissions=5 missionTape=295 missionXP=210 deterministic=true prior=true`,
   );

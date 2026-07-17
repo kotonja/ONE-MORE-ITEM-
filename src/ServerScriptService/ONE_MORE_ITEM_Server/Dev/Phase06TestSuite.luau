@@ -18,6 +18,7 @@ local ProfileConfig = require(ProfileServices:WaitForChild("ProfileConfig"))
 local ProfileSchema = require(ProfileServices:WaitForChild("ProfileSchema"))
 local ProfileService = require(ProfileServices:WaitForChild("ProfileService"))
 local ProfileSnapshotBuilder = require(ProfileServices:WaitForChild("ProfileSnapshotBuilder"))
+local ProgressionService = require(ProfileServices:WaitForChild("ProgressionService"))
 local StarterMissionService = require(ProfileServices:WaitForChild("StarterMissionService"))
 local OnboardingRequestValidator = require(Services:WaitForChild("OnboardingRequestValidator"))
 local RoundService = require(Services:WaitForChild("RoundService"))
@@ -96,7 +97,7 @@ local function defaultProfile(now: number?): any
 	return ProfileSchema.CreateDefault(now or 10_000)
 end
 
-local function makeHarness(userId: number?): Harness
+local function makeHarness(userId: number?, analyticsFailureCount: number?): Harness
 	local clock = { Value = 10_000 }
 	local snapshots: { any } = {}
 	local identifier = 0
@@ -126,7 +127,7 @@ local function makeHarness(userId: number?): Harness
 		local loaded, code = service:LoadPlayer(userId)
 		expect(loaded and code == "READY", "Profile harness must load")
 	end
-	local analyticsAdapter = MemoryAnalyticsAdapter.Create()
+	local analyticsAdapter = MemoryAnalyticsAdapter.Create({ FailureCount = analyticsFailureCount or 0 })
 	local analytics = GameAnalyticsService.Create({ Adapter = analyticsAdapter, IsStudio = true })
 	return {
 		Clock = clock,
@@ -179,6 +180,195 @@ local function makeTimingHarness(): (any, any, { any }, { Value: number }, { Val
 		IsGuidedOnboarding = function(): boolean return guided.Value end,
 	})
 	return service, player, scheduled, clock, guided
+end
+
+local function createProfileServiceForAdapter(adapter: any, serverId: string, clock: { Value: number }, snapshots: { any }?): any
+	local lockOrdinal = 0
+	local presentationOrdinal = 0
+	return ProfileService.Create(adapter, {
+		Clock = function(): number return clock.Value end,
+		Wait = function(duration: number) clock.Value += duration end,
+		IdentifierFactory = function(): string
+			lockOrdinal += 1
+			return string.format("%s-lock-%d", serverId, lockOrdinal)
+		end,
+		PresentationIdentifierFactory = function(): string
+			presentationOrdinal += 1
+			return string.format("%s-presentation-%d", serverId, presentationOrdinal)
+		end,
+		Spawn = function(callback: () -> ()) callback() end,
+		ServerSessionId = serverId,
+		JobId = serverId,
+		PlaceId = 134193642444044,
+		AutoSchedule = false,
+		SnapshotSink = if snapshots ~= nil then function(_userId: number, snapshot: any)
+			table.insert(snapshots, snapshot)
+		end else nil,
+	})
+end
+
+type IntegratedTraceResult = {
+	Harness: Harness,
+	Player: Player,
+	Profile: any,
+	Round: any,
+	Records: { any },
+	Missions: any,
+	Onboarding: any,
+	RoundService: any,
+	SnapshotCountBeforeShip: number,
+	SnapshotCountAtShipmentEconomy: number,
+	MissionCode: string?,
+	MissionEmitterFirst: boolean?,
+	MissionEmitterSecond: boolean?,
+}
+
+local function runIntegratedAnalyticsTrace(userId: number, analyticsFailureCount: number?): IntegratedTraceResult
+	local harness = makeHarness(userId, analyticsFailureCount)
+	if analyticsFailureCount ~= nil then
+		harness.AnalyticsAdapter:SetFailureCount(analyticsFailureCount)
+	end
+	local player = fakePlayer(userId)
+	local onboarding = OnboardingService.Create(harness.Service, harness.Analytics, {
+		Clock = function(): number return harness.Clock.Value end,
+	})
+	local missions = StarterMissionService.Create(harness.Service, harness.Analytics, {
+		Clock = function(): number return harness.Clock.Value end,
+	})
+	local progression = ProgressionService.Create(harness.Service)
+	local scheduled: { { Duration: number, Callback: () -> () } } = {}
+	local snapshotCountBeforeShip = 0
+	local snapshotCountAtShipmentEconomy = 0
+	local missionCode: string? = nil
+	local missionEmitterFirst: boolean? = nil
+	local missionEmitterSecond: boolean? = nil
+
+	local station = {
+		GetStationId = function(_self: any, _player: Player): string return "station_01" end,
+	}
+	local world = {
+		SpawnAcceptedPlacement = function() return nil end,
+		ClearPlayer = function() end,
+	}
+	local roundService = RoundService.Create(station :: any, world :: any, {
+		Clock = function(): number return harness.Clock.Value end,
+		Scheduler = function(duration: number, callback: () -> ())
+			table.insert(scheduled, { Duration = duration, Callback = callback })
+		end,
+		ProfileService = harness.Service,
+		ProgressionService = progression,
+		ServerSessionId = "phase06-integrated-trace",
+		IsGuidedOnboarding = function(activePlayer: Player): boolean
+			return onboarding:IsGuided(activePlayer)
+		end,
+		EventSink = {
+			OnRoundStateChanged = function(activePlayer: Player, event: any)
+				if event.State == "Decision" and event.ItemCount > 0 then
+					onboarding:Advance(activePlayer, 4)
+				end
+			end,
+			OnRoundStarted = function(activePlayer: Player)
+				harness.Analytics:LogCoreLoopRound(activePlayer, "start", 0, 0, "NONE")
+			end,
+			OnPlacementAccepted = function(activePlayer: Player)
+				onboarding:Advance(activePlayer, 3)
+				missions:ApplyEvent(activePlayer, "AcceptedPlacement", nil)
+			end,
+			OnShipmentProgressionApplied = function(activePlayer: Player, record: any, reward: any)
+				local _missionResult, code, emitAnalytics = missions:ApplyEventDeferredAnalytics(
+					activePlayer,
+					"SuccessfulShipment",
+					{ ItemCount = record.ItemCount }
+				)
+				missionCode = code
+				onboarding:Advance(activePlayer, 5)
+				snapshotCountAtShipmentEconomy = #harness.Snapshots
+				harness.Analytics:LogEconomySource(activePlayer, "Shipment", reward.TapeDelta, reward.NewTape, "shipment")
+				if emitAnalytics ~= nil then
+					missionEmitterFirst = emitAnalytics()
+					missionEmitterSecond = emitAnalytics()
+				end
+			end,
+			OnRoundEnded = function(activePlayer: Player, event: any)
+				harness.Analytics:LogCoreLoopRound(
+					activePlayer,
+					event.Phase,
+					event.DurationSeconds,
+					event.ItemCount,
+					event.Reason
+				)
+			end,
+		},
+	})
+
+	onboarding:Advance(player, 1)
+	missions:StartCurrentSpotlight(player)
+	onboarding:Advance(player, 2)
+	local round = roundService:StartRound(player)
+	expect(round ~= nil, "Integrated trace round must start")
+	local preparing = table.remove(scheduled, 1)
+	expect(preparing ~= nil, "Integrated trace must schedule Preparing")
+	(preparing :: any).Callback()
+	local presenting = table.remove(scheduled, 1)
+	expect(presenting ~= nil, "Integrated trace must schedule PresentingItem")
+	(presenting :: any).Callback()
+	expectEqual((round :: any).State, "AwaitingPlacement")
+	local placement = roundService:HandlePlacement(player, {
+		RoundId = (round :: any).RoundId,
+		StateVersion = (round :: any).StateVersion,
+		ItemId = (round :: any).CurrentItemId,
+		QuarterTurns = 0,
+		OriginX = 0,
+		OriginZ = 0,
+		ClientSequence = 1,
+	})
+	expect(placement.Accepted, "Integrated Parcel placement must pass")
+	expectEqual((round :: any).State, "Decision")
+	snapshotCountBeforeShip = #harness.Snapshots
+	local shipped, shipCode = roundService:HandleDecision(player, {
+		RoundId = (round :: any).RoundId,
+		StateVersion = (round :: any).StateVersion,
+		Choice = "SHIP",
+		ClientSequence = 1,
+	})
+	expect(shipped, "Integrated shipment must pass: " .. tostring(shipCode))
+	local profile = harness.Service:GetProfileCopy(userId)
+	expect(profile ~= nil, "Integrated trace profile must remain loaded")
+	return {
+		Harness = harness,
+		Player = player,
+		Profile = profile,
+		Round = round,
+		Records = harness.AnalyticsAdapter:GetRecords(),
+		Missions = missions,
+		Onboarding = onboarding,
+		RoundService = roundService,
+		SnapshotCountBeforeShip = snapshotCountBeforeShip,
+		SnapshotCountAtShipmentEconomy = snapshotCountAtShipmentEconomy,
+		MissionCode = missionCode,
+		MissionEmitterFirst = missionEmitterFirst,
+		MissionEmitterSecond = missionEmitterSecond,
+	}
+end
+
+local function analyticsRecordToken(record: any): string
+	if record.Kind == "Onboarding" then
+		return string.format("Onboarding:%d", record.Value)
+	elseif record.Kind == "EconomySource" then
+		return string.format(
+			"Economy:%s:%d:%d",
+			record.Name,
+			record.Details.Amount,
+			record.Details.EndingBalance
+		)
+	elseif record.Kind == "ProgressionStart" or record.Kind == "ProgressionComplete" then
+		return string.format("%s:%d", record.Kind, record.Details.Level)
+	elseif record.Kind == "Custom" and record.Name == "StarterMission" then
+		return string.format("Mission:%s:%s", record.Fields.mission_id, record.Fields.status)
+	elseif record.Kind == "Custom" and record.Name == "CoreLoopRound" then
+		return "CoreLoop:" .. tostring(record.Fields.phase)
+	end
+	return record.Kind .. ":" .. record.Name
 end
 
 addSuite("Schema Version 2", {
@@ -803,6 +993,291 @@ addSuite("Client mission presentation", {
 	},
 })
 
+addSuite("Onboarding completion presentation", {
+	{
+		Name = "unassigned Ready player hides overlay pointer highlights and skip binding",
+		Run = function()
+			expect(not OnboardingUIController.ShouldShowOverlay("Ready", "InProgress", false, false))
+			expect(not OnboardingUIController.ShouldOfferSkip("Ready", "InProgress", false))
+			expectEqual(
+				OnboardingUIController.ResolveStage("Decision", false, 0, nil, true, false),
+				"Move"
+			)
+			expect(not OnboardingUIController.IsCompletionPresentationActive(
+				OnboardingUIController.NewCompletionPresentationState()
+			))
+		end,
+	},
+	{
+		Name = "assignment reveals current guidance without changing durable onboarding progress",
+		Run = function()
+			local profile = defaultProfile()
+			profile.Onboarding.Status = "InProgress"
+			profile.Onboarding.HighestStep = 3
+			expect(not OnboardingUIController.ShouldShowOverlay("Ready", profile.Onboarding.Status, false, false))
+			expect(OnboardingUIController.ShouldShowOverlay("Ready", profile.Onboarding.Status, true, false))
+			expect(OnboardingUIController.ShouldOfferSkip("Ready", profile.Onboarding.Status, true))
+			expectEqual(profile.Onboarding.Status, "InProgress")
+			expectEqual(profile.Onboarding.HighestStep, 3)
+		end,
+	},
+	{
+		Name = "profile-first completion waits for Shipping then shows and finishes exactly once",
+		Run = function()
+			local state = OnboardingUIController.NewCompletionPresentationState()
+			state = OnboardingUIController.ReduceCompletionProfile(
+				state, "profile-first", "Ready", "InProgress", true, 1, "Decision", 0, nil
+			)
+			state = OnboardingUIController.ReduceCompletionProfile(
+				state, "profile-first", "Saving", "Completed", true, 1, "Decision", 0, nil
+			)
+			expectEqual(state.Phase, "Pending")
+			expectEqual(state.Count, 0)
+			expect(OnboardingUIController.ShouldShowOverlay("Saving", "Completed", true, true))
+			state = OnboardingUIController.ReduceCompletionRound(
+				state, "Ready", "Completed", true, 1, "Shipping", 0, "PLAYER_SHIPPED"
+			)
+			expectEqual(state.Phase, "Showing")
+			expectEqual(state.Count, 1)
+			local copy = OnboardingUIController.CopyForMode("KeyboardMouse", "Shipment")
+			expectEqual(copy.Prompt, "SHIPMENT COMPLETE")
+			expect(string.find(copy.Instruction, "TAPE IS SAVED", 1, true) ~= nil)
+			expect(string.find(copy.Instruction, "SHIPPED ITEMS JOIN YOUR COLLECTION", 1, true) ~= nil)
+			state = OnboardingUIController.FinishCompletionPresentation(state, 1)
+			expectEqual(state.Phase, "Consumed")
+			expectEqual(state.Count, 1)
+			expect(not OnboardingUIController.ShouldShowOverlay("Ready", "Completed", true, false))
+			expectEqual(OnboardingUIController.FinishCompletionPresentation(state, 1).Count, 1)
+		end,
+	},
+	{
+		Name = "round-first completion shows the same final copy once",
+		Run = function()
+			local state = OnboardingUIController.NewCompletionPresentationState()
+			state = OnboardingUIController.ReduceCompletionProfile(
+				state, "round-first", "Ready", "InProgress", true, 2, "Decision", 0, nil
+			)
+			state = OnboardingUIController.ReduceCompletionRound(
+				state, "Ready", "InProgress", true, 2, "Shipping", 0, "PLAYER_SHIPPED"
+			)
+			expectEqual(state.Phase, "Idle")
+			state = OnboardingUIController.ReduceCompletionProfile(
+				state, "round-first", "Ready", "Completed", true, 2, "Shipping", 0, "PLAYER_SHIPPED"
+			)
+			expectEqual(state.Phase, "Showing")
+			expectEqual(state.Count, 1)
+			expectEqual(OnboardingUIController.CopyForMode("Touch", "Shipment").Prompt, "SHIPMENT COMPLETE")
+			state = OnboardingUIController.FinishCompletionPresentation(state, 2)
+			expectEqual(state.Phase, "Consumed")
+			expectEqual(state.Count, 1)
+		end,
+	},
+	{
+		Name = "each approved successful Results reason permits one final completion presentation",
+		Run = function()
+			for index, reason in ipairs({ "PLAYER_SHIPPED", "DECISION_TIMEOUT", "MAX_ITEMS", "BOX_FULL" }) do
+				local sessionId = string.format("successful-results-%d", index)
+				local state = OnboardingUIController.ReduceCompletionProfile(
+					OnboardingUIController.NewCompletionPresentationState(),
+					sessionId, "Ready", "InProgress", true, index, "Decision", 0, nil
+				)
+				state = OnboardingUIController.ReduceCompletionProfile(
+					state, sessionId, "Ready", "Completed", true, index, "Results", 0, reason
+				)
+				expectEqual(state.Phase, "Showing", "Successful Results must show for " .. reason)
+				expectEqual(state.Count, 1)
+				state = OnboardingUIController.FinishCompletionPresentation(state, index)
+				expectEqual(state.Phase, "Consumed")
+			end
+		end,
+	},
+	{
+		Name = "failure and technical Results never become successful completion guidance",
+		Run = function()
+			local fixtures = {
+				{ State = "Failing", Reason = "PLAYER_SHIPPED", Lost = 0 },
+				{ State = "Results", Reason = "PLACEMENT_TIMEOUT", Lost = 0 },
+				{ State = "Results", Reason = "PROFILE_REWARD_FAILED", Lost = 0 },
+				{ State = "Results", Reason = "SHIPMENT_RECORD_FAILED", Lost = 0 },
+				{ State = "Results", Reason = "DUPLICATE_OUTCOME", Lost = 0 },
+				{ State = "Results", Reason = "PLAYER_SHIPPED", Lost = 25 },
+			}
+			for index, fixture in ipairs(fixtures) do
+				local sessionId = string.format("failed-results-%d", index)
+				local state = OnboardingUIController.ReduceCompletionProfile(
+					OnboardingUIController.NewCompletionPresentationState(),
+					sessionId, "Ready", "InProgress", true, index, "Decision", 0, nil
+				)
+				state = OnboardingUIController.ReduceCompletionProfile(
+					state,
+					sessionId,
+					"Ready",
+					"Completed",
+					true,
+					index,
+					fixture.State,
+					fixture.Lost,
+					fixture.Reason
+				)
+				expectEqual(state.Phase, "Consumed")
+				expectEqual(state.Count, 0)
+			end
+		end,
+	},
+	{
+		Name = "already-completed baseline and completed new session never replay",
+		Run = function()
+			local state = OnboardingUIController.ReduceCompletionProfile(
+				OnboardingUIController.NewCompletionPresentationState(),
+				"completed-a", "Ready", "Completed", true, 3, "Shipping", 0, "PLAYER_SHIPPED"
+			)
+			expectEqual(state.Phase, "Consumed")
+			expectEqual(state.Count, 0)
+			state = OnboardingUIController.ReduceCompletionProfile(
+				state, "completed-b", "Ready", "Completed", true, 1, "Results", 0, "PLAYER_SHIPPED"
+			)
+			expectEqual(state.Phase, "Consumed")
+			expectEqual(state.Count, 0)
+		end,
+	},
+	{
+		Name = "Skipped hides immediately and never creates completion presentation",
+		Run = function()
+			local state = OnboardingUIController.ReduceCompletionProfile(
+				OnboardingUIController.NewCompletionPresentationState(),
+				"skipped", "Ready", "InProgress", true, 1, "AwaitingPlacement", 0, nil
+			)
+			state = OnboardingUIController.ReduceCompletionProfile(
+				state, "skipped", "Ready", "Skipped", true, 1, "AwaitingPlacement", 0, nil
+			)
+			expectEqual(state.Phase, "Consumed")
+			expectEqual(state.Count, 0)
+			expect(not OnboardingUIController.ShouldShowOverlay("Ready", "Skipped", true, false))
+			expect(not OnboardingUIController.ShouldOfferSkip("Ready", "Skipped", true))
+		end,
+	},
+	{
+		Name = "duplicate Completed save-state snapshots preserve a single presentation count",
+		Run = function()
+			local state = OnboardingUIController.ReduceCompletionProfile(
+				OnboardingUIController.NewCompletionPresentationState(),
+				"save-duplicates", "Ready", "InProgress", true, 4, "Shipping", 0, "PLAYER_SHIPPED"
+			)
+			state = OnboardingUIController.ReduceCompletionProfile(
+				state, "save-duplicates", "Ready", "Completed", true, 4, "Shipping", 0, "PLAYER_SHIPPED"
+			)
+			expectEqual(state.Phase, "Showing")
+			expectEqual(state.Count, 1)
+			for _, profileState in ipairs({ "Saving", "SaveDelayed", "Ready" }) do
+				state = OnboardingUIController.ReduceCompletionProfile(
+					state, "save-duplicates", profileState, "Completed", true, 4, "Shipping", 0, "PLAYER_SHIPPED"
+				)
+				expectEqual(state.Phase, "Showing")
+				expectEqual(state.Count, 1)
+			end
+			state = OnboardingUIController.FinishCompletionPresentation(state, 4)
+			state = OnboardingUIController.ReduceCompletionProfile(
+				state, "save-duplicates", "Ready", "Completed", true, 4, "Results", 0, "PLAYER_SHIPPED"
+			)
+			expectEqual(state.Phase, "Consumed")
+			expectEqual(state.Count, 1)
+		end,
+	},
+	{
+		Name = "new round during the final hold consumes it without replay",
+		Run = function()
+			local state = OnboardingUIController.ReduceCompletionProfile(
+				OnboardingUIController.NewCompletionPresentationState(),
+				"pack-again", "Ready", "InProgress", true, 1, "Shipping", 0, "PLAYER_SHIPPED"
+			)
+			state = OnboardingUIController.ReduceCompletionProfile(
+				state, "pack-again", "Ready", "Completed", true, 1, "Shipping", 0, "PLAYER_SHIPPED"
+			)
+			expectEqual(state.Phase, "Showing")
+			state = OnboardingUIController.ReduceCompletionRound(
+				state, "Ready", "Completed", true, 2, "Preparing", 0, nil
+			)
+			expectEqual(state.Phase, "Consumed")
+			expectEqual(state.Count, 1)
+			state = OnboardingUIController.ReduceCompletionProfile(
+				state, "pack-again", "Ready", "Completed", true, 2, "Preparing", 0, nil
+			)
+			expectEqual(state.Count, 1)
+		end,
+	},
+	{
+		Name = "lost assignment release and conflict cancel pending completion safely",
+		Run = function()
+			local unassigned = OnboardingUIController.ReduceCompletionProfile(
+				OnboardingUIController.NewCompletionPresentationState(),
+				"release", "Ready", "InProgress", true, 1, "Decision", 0, nil
+			)
+			unassigned = OnboardingUIController.ReduceCompletionProfile(
+				unassigned, "release", "Ready", "Completed", true, 1, "Decision", 0, nil
+			)
+			expectEqual(unassigned.Phase, "Pending")
+			unassigned = OnboardingUIController.ReduceCompletionRound(
+				unassigned, "Ready", "Completed", false, 1, "Decision", 0, nil
+			)
+			expectEqual(unassigned.Phase, "Consumed")
+			expect(not OnboardingUIController.ShouldShowOverlay("Ready", "Completed", false, false))
+
+			local conflict = OnboardingUIController.ReduceCompletionProfile(
+				OnboardingUIController.NewCompletionPresentationState(),
+				"conflict", "Ready", "InProgress", true, 2, "Decision", 0, nil
+			)
+			conflict = OnboardingUIController.ReduceCompletionProfile(
+				conflict, "conflict", "Ready", "Completed", true, 2, "Decision", 0, nil
+			)
+			conflict = OnboardingUIController.ReduceCompletionProfile(
+				conflict, "conflict", "Conflict", "Completed", true, 2, "Decision", 0, nil
+			)
+			expectEqual(conflict.Phase, "Consumed")
+			expectEqual(conflict.Count, 0)
+			expect(not OnboardingUIController.ShouldShowOverlay("Conflict", "Completed", true, false))
+		end,
+	},
+	{
+		Name = "mission banner remains queued once until onboarding completion presentation ends",
+		Run = function()
+			local reward = table.freeze({
+				RewardId = "starter:v1:first_shipment",
+				MissionId = "first_shipment",
+				MissionIndex = 2,
+				TapeDelta = 25,
+				XPDelta = 20,
+				NewTape = 50,
+				NewPackingXP = 44,
+			})
+			local queue = StarterMissionUIController.SortedNewRewards({ reward, reward } :: any, {})
+			expectEqual(#queue, 1)
+			expect(StarterMissionUIController.ShouldDeferRewardPresentation("first_shipment", "InProgress", false))
+
+			local state = OnboardingUIController.ReduceCompletionProfile(
+				OnboardingUIController.NewCompletionPresentationState(),
+				"banner", "Ready", "InProgress", true, 1, "Shipping", 0, "PLAYER_SHIPPED"
+			)
+			state = OnboardingUIController.ReduceCompletionProfile(
+				state, "banner", "Ready", "Completed", true, 1, "Shipping", 0, "PLAYER_SHIPPED"
+			)
+			expect(OnboardingUIController.IsCompletionPresentationActive(state))
+			expect(StarterMissionUIController.ShouldDeferRewardPresentation(
+				"first_shipment", "Completed", OnboardingUIController.IsCompletionPresentationActive(state)
+			))
+			expectEqual(#queue, 1)
+
+			state = OnboardingUIController.FinishCompletionPresentation(state, 1)
+			expect(not OnboardingUIController.IsCompletionPresentationActive(state))
+			expect(not StarterMissionUIController.ShouldDeferRewardPresentation(
+				"first_shipment", "Completed", OnboardingUIController.IsCompletionPresentationActive(state)
+			))
+			local seen = { [queue[1].RewardId] = true }
+			expectEqual(#StarterMissionUIController.SortedNewRewards({ reward } :: any, seen), 0)
+			expectEqual(#queue, 1)
+		end,
+	},
+})
+
 addSuite("Analytics adapter", {
 	{
 		Name = "Studio selects deterministic memory and non-Studio fixture selects Roblox",
@@ -913,7 +1388,7 @@ addSuite("Onboarding analytics", {
 
 addSuite("Mission analytics", {
 	{
-		Name = "mission mutation snapshots before economy complete custom and next spotlight start",
+		Name = "deferred mission analytics snapshot first emit once and preserve ordinary order",
 		Run = function()
 			local harness = makeHarness(307)
 			local order: { string } = {}
@@ -925,9 +1400,28 @@ addSuite("Mission analytics", {
 				LogProgressionComplete = function() table.insert(order, "complete"); return true end,
 			}
 			local service = StarterMissionService.Create(harness.Service, analytics :: any)
-			local result = service:ApplyEvent(fakePlayer(307), "AcceptedPlacement", nil)
+			local result, code, emitAnalytics = service:ApplyEventDeferredAnalytics(fakePlayer(307), "AcceptedPlacement", nil)
 			expect(result ~= nil and result.Changed)
+			expectEqual(code, "APPLIED")
+			expectArray(order, { "snapshot" })
+			expect(emitAnalytics ~= nil and (emitAnalytics :: any)())
 			expectArray(order, { "snapshot", "economy", "complete", "completed", "start", "started" })
+			expect(not (emitAnalytics :: any)())
+			expectArray(order, { "snapshot", "economy", "complete", "completed", "start", "started" })
+
+			local immediate = makeHarness(317)
+			local immediateOrder: { string } = {}
+			immediate.Service._snapshotSink = function() table.insert(immediateOrder, "snapshot") end
+			local immediateAnalytics = {
+				LogProgressionStart = function() table.insert(immediateOrder, "start"); return true end,
+				LogStarterMission = function(_self: any, _player: Player, _id: string, status: string) table.insert(immediateOrder, status); return true end,
+				LogEconomySource = function() table.insert(immediateOrder, "economy"); return true end,
+				LogProgressionComplete = function() table.insert(immediateOrder, "complete"); return true end,
+			}
+			local immediateService = StarterMissionService.Create(immediate.Service, immediateAnalytics :: any)
+			local immediateResult = immediateService:ApplyEvent(fakePlayer(317), "AcceptedPlacement", nil)
+			expect(immediateResult ~= nil and immediateResult.Changed)
+			expectArray(immediateOrder, { "snapshot", "economy", "complete", "completed", "start", "started" })
 		end,
 	},
 	{
@@ -980,6 +1474,111 @@ addSuite("Core loop analytics", {
 			expectEqual(record.Fields.profile_ready, true)
 			expectEqual(record.Fields.station_assigned, false)
 			expectEqual(adapter:Count(), 1)
+		end,
+	},
+})
+
+addSuite("Integrated analytics trace", {
+	{
+		Name = "fresh profile records the exact authoritative onboarding mission economy and core-loop sequence",
+		Run = function()
+			local trace = runIntegratedAnalyticsTrace(318, nil)
+			local tokens: { string } = {}
+			for _, record in ipairs(trace.Records) do
+				table.insert(tokens, analyticsRecordToken(record))
+			end
+			expectArray(tokens, {
+				"Onboarding:1",
+				"ProgressionStart:1",
+				"Mission:first_fit:started",
+				"Onboarding:2",
+				"CoreLoop:start",
+				"Onboarding:3",
+				"Economy:StarterMission:10:10",
+				"ProgressionComplete:1",
+				"Mission:first_fit:completed",
+				"ProgressionStart:2",
+				"Mission:first_shipment:started",
+				"Onboarding:4",
+				"Onboarding:5",
+				"Economy:Shipment:15:25",
+				"Economy:StarterMission:25:50",
+				"ProgressionComplete:2",
+				"Mission:first_shipment:completed",
+				"ProgressionStart:3",
+				"Mission:one_more:started",
+				"CoreLoop:ship",
+			})
+			expectEqual(trace.Profile.Tape, 50)
+			expectEqual(trace.Profile.PackingXP, 44)
+			expectEqual(trace.Profile.Onboarding.Status, "Completed")
+			expectEqual(trace.Profile.Onboarding.HighestStep, 5)
+			expectEqual(trace.Profile.StarterMissions.Rewarded.first_fit, true)
+			expectEqual(trace.Profile.StarterMissions.Rewarded.first_shipment, true)
+			expectEqual(trace.Round.State, "Shipping")
+			expectEqual(trace.MissionCode, "APPLIED")
+			expectEqual(trace.MissionEmitterFirst, true)
+			expectEqual(trace.MissionEmitterSecond, false)
+			expectEqual(trace.SnapshotCountAtShipmentEconomy - trace.SnapshotCountBeforeShip, 3)
+		end,
+	},
+	{
+		Name = "duplicate events save snapshots and reload replay no durable completion analytics",
+		Run = function()
+			local userId = 319
+			local trace = runIntegratedAnalyticsTrace(userId, nil)
+			local originalCount = trace.Harness.AnalyticsAdapter:Count()
+			trace.Onboarding:Advance(trace.Player, 5)
+			trace.Missions:ApplyEvent(trace.Player, "AcceptedPlacement", nil)
+			trace.Missions:ApplyEvent(trace.Player, "SuccessfulShipment", { ItemCount = 1 })
+			expect(trace.Harness.Service:SaveNow(userId))
+			expectEqual(trace.Harness.AnalyticsAdapter:Count(), originalCount)
+			expect(trace.Harness.Service:Release(userId))
+
+			local reloadClock = { Value = 20_000 }
+			local reloadSnapshots: { any } = {}
+			local reloadService = createProfileServiceForAdapter(
+				trace.Harness.Adapter,
+				"phase06-integrated-reload",
+				reloadClock,
+				reloadSnapshots
+			)
+			expect(reloadService:LoadPlayer(userId))
+			local reloadAdapter = MemoryAnalyticsAdapter.Create()
+			local reloadAnalytics = GameAnalyticsService.Create({ Adapter = reloadAdapter, IsStudio = true })
+			local reloadOnboarding = OnboardingService.Create(reloadService, reloadAnalytics)
+			local reloadMissions = StarterMissionService.Create(reloadService, reloadAnalytics)
+			for step = 1, 5 do reloadOnboarding:Advance(trace.Player, step) end
+			reloadMissions:Reconcile(trace.Player)
+			local reloaded = reloadService:GetProfileCopy(userId)
+			expectEqual(reloaded.Tape, 50)
+			expectEqual(reloaded.PackingXP, 44)
+			expectEqual(reloaded.Onboarding.Status, "Completed")
+			expectEqual(reloaded.StarterMissions.Rewarded.first_fit, true)
+			expectEqual(reloaded.StarterMissions.Rewarded.first_shipment, true)
+			expectEqual(reloadAdapter:Count(), 0)
+			expect(reloadService:Release(userId))
+			reloadAnalytics:Destroy()
+			expectEqual(reloadAdapter:Count(), 0)
+			trace.Harness.Analytics:Destroy()
+			expectEqual(trace.Harness.AnalyticsAdapter:Count(), 0)
+		end,
+	},
+	{
+		Name = "injected analytics failure changes no profile mission onboarding round or saved result",
+		Run = function()
+			local trace = runIntegratedAnalyticsTrace(320, 100)
+			expectEqual(trace.Harness.AnalyticsAdapter:Count(), 0)
+			expectEqual(trace.Profile.Tape, 50)
+			expectEqual(trace.Profile.PackingXP, 44)
+			expectEqual(trace.Profile.Onboarding.Status, "Completed")
+			expectEqual(trace.Profile.StarterMissions.Rewarded.first_fit, true)
+			expectEqual(trace.Profile.StarterMissions.Rewarded.first_shipment, true)
+			expectEqual(trace.Round.State, "Shipping")
+			expect(trace.Harness.Service:SaveNow(320))
+			expectEqual(trace.Harness.Adapter:ReadStored(320).Tape, 50)
+			trace.Harness.Analytics:Destroy()
+			expectEqual(trace.Harness.AnalyticsAdapter:Count(), 0)
 		end,
 	},
 })
@@ -1147,6 +1746,85 @@ addSuite("Persistence", {
 			expectEqual(profile.PackingXP, 40)
 			expectEqual(profile.Onboarding.HighestStep, 1)
 			expectEqual(profile.StarterMissions.Rewarded.first_fit, true)
+		end,
+	},
+	{
+		Name = "partial onboarding skip persists across two memory sessions without reward or analytics replay",
+		Run = function()
+			local userId = 504
+			local player = fakePlayer(userId)
+			local adapter = MemoryProfileAdapter.Create()
+			local clock = { Value = 12_000 }
+			local first = createProfileServiceForAdapter(adapter, "skip-session-a", clock, nil)
+			expect(first:LoadPlayer(userId))
+			local firstAnalyticsAdapter = MemoryAnalyticsAdapter.Create()
+			local firstAnalytics = GameAnalyticsService.Create({
+				Adapter = firstAnalyticsAdapter,
+				IsStudio = true,
+			})
+			local firstOnboarding = OnboardingService.Create(first, firstAnalytics, {
+				Clock = function(): number return clock.Value end,
+			})
+			local stepOne, stepOneCode = firstOnboarding:Advance(player, 1)
+			local stepTwo, stepTwoCode = firstOnboarding:Advance(player, 2)
+			expect(stepOne ~= nil and stepOne.Changed and stepOneCode == "APPLIED")
+			expect(stepTwo ~= nil and stepTwo.Changed and stepTwoCode == "APPLIED")
+			local skipped, skipCode = firstOnboarding:Skip(player)
+			expect(skipped ~= nil and skipped.Changed and skipped.Skipped and skipCode == "APPLIED")
+			local firstProfile = first:GetProfileCopy(userId)
+			expectEqual(firstProfile.Onboarding.Status, "Skipped")
+			expectEqual(firstProfile.Onboarding.HighestStep, 2)
+			expectEqual(firstProfile.Tape, 0)
+			expectEqual(firstProfile.PackingXP, 0)
+			expect(not firstOnboarding:IsGuided(player))
+			expectEqual(firstAnalyticsAdapter:Count("Custom", "OnboardingSkipped"), 1)
+			expect(first:SaveNow(userId))
+			expect(first:Release(userId))
+
+			local second = createProfileServiceForAdapter(adapter, "skip-session-b", clock, nil)
+			expect(second:LoadPlayer(userId))
+			local secondAnalyticsAdapter = MemoryAnalyticsAdapter.Create()
+			local secondAnalytics = GameAnalyticsService.Create({
+				Adapter = secondAnalyticsAdapter,
+				IsStudio = true,
+			})
+			local secondOnboarding = OnboardingService.Create(second, secondAnalytics, {
+				Clock = function(): number return clock.Value end,
+			})
+			local secondProfile = second:GetProfileCopy(userId)
+			expectEqual(secondProfile.Onboarding.Status, "Skipped")
+			expectEqual(secondProfile.Onboarding.HighestStep, 2)
+			expectEqual(secondProfile.Tape, 0)
+			expectEqual(secondProfile.PackingXP, 0)
+			expectEqual(secondProfile.StarterMissions.PathCompleted, false)
+			expect(not secondOnboarding:IsGuided(player))
+			expectEqual(secondAnalyticsAdapter:Count(), 0)
+			local snapshot = second:GetSnapshot(userId)
+			expect(snapshot ~= nil)
+			expectEqual((snapshot :: any).StarterMissions.CurrentMissionId, "first_fit")
+
+			local duplicate, duplicateCode = secondOnboarding:Skip(player)
+			expect(duplicate ~= nil and not duplicate.Changed and duplicateCode == "NO_CHANGE")
+			expectEqual(secondAnalyticsAdapter:Count(), 0)
+			local missionResult, missionCode = StarterMissionService.Create(second, secondAnalytics):ApplyEvent(
+				player,
+				"AcceptedPlacement",
+				nil
+			)
+			expect(missionResult ~= nil and missionResult.Changed and missionCode == "APPLIED")
+			local afterMission = second:GetProfileCopy(userId)
+			expectEqual(afterMission.Onboarding.Status, "Skipped")
+			expectEqual(afterMission.Onboarding.HighestStep, 2)
+			expectEqual(afterMission.StarterMissions.Rewarded.first_fit, true)
+			expectEqual(afterMission.Tape, 10)
+			expectEqual(afterMission.PackingXP, 10)
+			expectEqual(secondAnalyticsAdapter:Count("Custom", "OnboardingSkipped"), 0)
+			expectEqual(secondAnalyticsAdapter:Count("Onboarding"), 0)
+			expect(second:Release(userId))
+			firstAnalytics:Destroy()
+			secondAnalytics:Destroy()
+			expectEqual(firstAnalyticsAdapter:Count(), 0)
+			expectEqual(secondAnalyticsAdapter:Count(), 0)
 		end,
 	},
 	{
