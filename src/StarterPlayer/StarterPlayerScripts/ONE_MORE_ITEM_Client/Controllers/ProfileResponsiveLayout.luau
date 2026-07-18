@@ -26,25 +26,25 @@ end
 
 local layouts: { [LayoutClass]: Layout } = table.freeze({
 	Wide = table.freeze({
-		MetaBar = geometry(0.5, 0.105, 0.50, 0.085),
-		ResultsMetaBar = geometry(0.5, 0.105, 0.50, 0.085),
+		MetaBar = geometry(0.5, 0.028, 0.94, 0.055),
+		ResultsMetaBar = geometry(0.5, 0.028, 0.94, 0.055),
 		CollectionPanel = geometry(0.5, 0.52, 0.78, 0.74),
 		DiscoveryReveal = geometry(0.5, 0.40, 0.34, 0.18),
-		RankUpBanner = geometry(0.5, 0.205, 0.38, 0.11),
+		RankUpBanner = geometry(0.5, 0.17, 0.34, 0.09),
 	}),
 	CompactLandscape = table.freeze({
-		MetaBar = geometry(0.5, 0.13, 0.38, 0.12),
-		ResultsMetaBar = geometry(0.5, 0.875, 0.38, 0.12),
+		MetaBar = geometry(0.5, 0.025, 0.94, 0.095),
+		ResultsMetaBar = geometry(0.5, 0.875, 0.58, 0.095),
 		CollectionPanel = geometry(0.5, 0.53, 0.90, 0.84),
 		DiscoveryReveal = geometry(0.5, 0.42, 0.52, 0.22),
-		RankUpBanner = geometry(0.5, 0.27, 0.54, 0.15),
+		RankUpBanner = geometry(0.5, 0.24, 0.48, 0.14),
 	}),
 	Portrait = table.freeze({
-		MetaBar = geometry(0.5, 0.38, 0.94, 0.11),
-		ResultsMetaBar = geometry(0.5, 0.82, 0.94, 0.11),
+		MetaBar = geometry(0.5, 0.02, 0.94, 0.075),
+		ResultsMetaBar = geometry(0.5, 0.86, 0.94, 0.075),
 		CollectionPanel = geometry(0.5, 0.56, 0.94, 0.78),
 		DiscoveryReveal = geometry(0.5, 0.52, 0.88, 0.16),
-		RankUpBanner = geometry(0.5, 0.50, 0.82, 0.11),
+		RankUpBanner = geometry(0.5, 0.405, 0.78, 0.08),
 	}),
 })
 

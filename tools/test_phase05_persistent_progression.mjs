@@ -558,6 +558,14 @@ try {
 
   criterion("wrong-class conflicts remain visible and non-destructive", () => {
     for (const operation of commandBar.operations) {
+      if (operation.type === "setLighting") {
+        assert.equal(operation.path, "Lighting");
+        assert.match(operation.command, /Edit-mode only/);
+        assert.match(operation.command, /game:GetService\("Lighting"\)/);
+        assert.match(operation.command, /pcall/);
+        assert.doesNotMatch(operation.command, /:Destroy\s*\(|Instance\.new\s*\(/);
+        continue;
+      }
       assert.match(operation.command, /sync conflict/);
       const beforeSourceMutation = operation.type === "writeScript"
         ? operation.command.split("local sourceOk")[0]
@@ -581,9 +589,9 @@ try {
     assert.ok(gitFiles.every((file) => !/\.(?:rbxl|rbxlx|tmp|bak)$/i.test(file)));
   });
 
-  criterion("workflow uses the exact Phase 01 through 06 Node 24 contract", () => {
+  criterion("workflow uses the exact Phase 01 through 07 Node 24 contract", () => {
     const workflow = readText(".github/workflows/phase01-node-validation.yml");
-    assert.match(workflow, /^name:\s*Phase 01(?:\u2013|-)06 Node Validation/m);
+    assert.match(workflow, /^name:\s*Phase 01(?:\u2013|-)07 Node Validation/m);
     assert.match(workflow, /actions\/checkout@v7/);
     assert.match(workflow, /actions\/setup-node@v6/);
     assert.match(workflow, /node-version:\s*24/);
@@ -592,7 +600,7 @@ try {
     assert.doesNotMatch(workflow, /^\s*run:\s*(?:npm (?:install|ci)|pnpm\b|yarn\b|bun\b)/m);
   });
 
-  criterion("workflow runs all six Node gates in order", () => {
+  criterion("workflow runs all seven Node gates in order", () => {
     const workflow = readText(".github/workflows/phase01-node-validation.yml");
     const commands = [...workflow.matchAll(/^\s*run:\s*(node tools\/test_[^\s]+\.mjs)\s*$/gm)].map((match) => match[1]);
     assert.deepEqual(commands, [
@@ -602,6 +610,7 @@ try {
       "node tools/test_phase04_multiplayer_arena.mjs",
       "node tools/test_phase05_persistent_progression.mjs",
       "node tools/test_phase06_onboarding_missions_analytics.mjs",
+      "node tools/test_phase07_visual_readability.mjs",
     ]);
   });
 
@@ -624,18 +633,20 @@ try {
     assert.doesNotMatch(docs, /Issue #4[^\n]*(?:closed|resolved)/i);
   });
 
-  criterion("Phase 05 merged baseline and honest Phase 06 closeout status are documented", () => {
+  criterion("Phase 05 and Phase 06 merged baselines plus honest Phase 07 status are documented", () => {
     const docs = `${readText("README.md")}\n${readText("docs/DEVELOPMENT_STATUS.md")}`;
     assert.match(docs, /d644411b48e20cd9bb256d3d2c55a647efc2adfd/);
     assert.match(docs, /PR #6[^\n]*merged|merged[^\n]*PR #6/i);
-    assert.match(docs, /codex\/phase-06-onboarding-starter-missions/);
-    assert.match(docs, /pull\/7|PR #7/);
+    assert.match(docs, /4c606ae4f5e7a5e3d5fa431775c94469ecea1b67/);
+    assert.match(docs, /PR #7[^\n]*merged|merged[^\n]*PR #7/i);
+    assert.match(docs, /codex\/phase-07-visual-readability-arena-rebuild/);
+    assert.match(docs, /pull\/8|PR #8/);
     assert.match(docs, /draft[^\n]*(?:unmerged|not merged)|(?:unmerged|not merged)[^\n]*draft/i);
     assert.match(docs, /Phase 06[^\n]*(?:implementation complete and accepted|complete and accepted)/i);
     assert.doesNotMatch(docs, /Phase 06[^\n]*(?:not yet accepted|unaccepted|acceptance (?:is )?partial|acceptance partial)/i);
   });
 
-  criterion("phase02 manifest remains the sole Phase 02 through 06 owner", () => {
+  criterion("phase02 manifest remains the sole Phase 02 through 07 owner", () => {
     const manifests = gitFiles.filter((file) => /^studio\/.*\.manifest\.json$/i.test(file)).sort();
     assert.deepEqual(manifests, ["studio/phase01.manifest.json", "studio/phase02.manifest.json"]);
     assert.equal(manifest.mode, "edit");

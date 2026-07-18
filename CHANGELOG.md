@@ -4,7 +4,10 @@
 
 - Recorded the completed Phase 06 squash merge: [PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7) is merged into `main` as `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`.
 - Opened and pushed `codex/phase-07-visual-readability-arena-rebuild` from that exact merge without changing `main`.
+- Opened [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8), which remains open, draft, and unmerged. The latest committed Phase 07 implementation head observed while preparing the documentation is `e86c4e3484653c286f583d25c8a003488427670a`.
 - Re-ran the six inherited dependency-free Node 24 gates before editing; Foundation through Phase 06 all passed at the accepted 914-instance / 79-script baseline.
+- Added the Phase 07 reconstruction contract covering recording-derived defects, crate-first hierarchy, semantic palette, deterministic camera/projection targets, non-refractive crate geometry, low console, eight-bay warehouse composition, center dispatch, controlled lighting/Neon, distance-aware labels, authored first-frame presentation, responsive HUD hierarchy, physical shipping/failure/reset presentation, and bounded performance.
+- Kept the final seven-gate Node run, all seven Studio suites, live viewport/multiplayer flows, 15 screenshots, continuous recording, two synchronization passes, cloud save, complete Studio close, direct no-sync reopen, exact parity, and issue #4 Phase 07 comment explicitly pending. No provisional implementation or configuration result is represented as final visual acceptance.
 - Marked Phase 07 active but explicitly unaccepted until its own visual, automated, screenshot, continuous-recording, double-synchronization, cloud-save, and direct no-sync reopen gates pass. Issue #4 remains open, and no Phase 08 work has begun.
 
 ## 2026-07-17 - Phase 06 source-quality correction and acceptance closeout

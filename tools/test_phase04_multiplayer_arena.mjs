@@ -292,7 +292,7 @@ try {
       const position = cframePosition(step, `Station_${index + 1}.StationRoot`);
       return Math.hypot(position[0], position[2]);
     });
-    assert.ok(radii.every((radius) => radius >= 32 && radius <= 45));
+    assert.ok(radii.every((radius) => Math.abs(radius - 50) < 0.001));
     assert.ok(Math.max(...radii) - Math.min(...radii) < 0.001);
   });
 
@@ -465,6 +465,14 @@ try {
 
   criterion("wrong-class conflicts remain visible and non-destructive", () => {
     for (const operation of commandBar.operations) {
+      if (operation.type === "setLighting") {
+        assert.equal(operation.path, "Lighting");
+        assert.match(operation.command, /Edit-mode only/);
+        assert.match(operation.command, /game:GetService\("Lighting"\)/);
+        assert.match(operation.command, /pcall/);
+        assert.doesNotMatch(operation.command, /:Destroy\s*\(|Instance\.new\s*\(/);
+        continue;
+      }
       assert.match(operation.command, /sync conflict/);
       const preMutation = operation.type === "writeScript" ? operation.command.split("local sourceOk")[0] : operation.command;
       assert.doesNotMatch(preMutation, /:Destroy\s*\(/);
@@ -486,9 +494,9 @@ try {
     assert.ok(gitFiles.every((file) => !/\.(?:rbxl|rbxlx|tmp|bak)$/i.test(file)));
   });
 
-  criterion("workflow runs the six Node 24 gates", () => {
+  criterion("workflow runs the seven Node 24 gates", () => {
     const workflow = readText(".github/workflows/phase01-node-validation.yml");
-    assert.match(workflow, /^name:\s*Phase 01(?:–|-)06 Node Validation/m);
+    assert.match(workflow, /^name:\s*Phase 01(?:–|-)07 Node Validation/m);
     assert.match(workflow, /actions\/checkout@v7/);
     assert.match(workflow, /actions\/setup-node@v6/);
     assert.match(workflow, /node-version:\s*24/);
@@ -500,6 +508,7 @@ try {
       "node tools/test_phase04_multiplayer_arena.mjs",
       "node tools/test_phase05_persistent_progression.mjs",
       "node tools/test_phase06_onboarding_missions_analytics.mjs",
+      "node tools/test_phase07_visual_readability.mjs",
     ]) assert.match(workflow, new RegExp(command.replaceAll("/", "\\/")));
   });
 
@@ -516,18 +525,20 @@ try {
     assert.match(docs, /PR #3[^\n]*merged|merged[^\n]*PR #3/i);
   });
 
-  criterion("Phase 04 and Phase 05 merged baselines plus Phase 06 active branch are recorded", () => {
+  criterion("Phase 04 through Phase 06 merged baselines plus the Phase 07 draft branch are recorded", () => {
     const docs = `${readText("README.md")}\n${readText("docs/DEVELOPMENT_STATUS.md")}`;
     assert.match(docs, /213f3581bd242523e34601cfefa5b5a74770ddee/);
     assert.match(docs, /PR #5[^\n]*merged|merged[^\n]*PR #5/i);
     assert.match(docs, /d644411b48e20cd9bb256d3d2c55a647efc2adfd/);
     assert.match(docs, /PR #6[^\n]*merged|merged[^\n]*PR #6/i);
-    assert.match(docs, /codex\/phase-06-onboarding-starter-missions/);
-    assert.match(docs, /pull\/7|PR #7/);
+    assert.match(docs, /4c606ae4f5e7a5e3d5fa431775c94469ecea1b67/);
+    assert.match(docs, /PR #7[^\n]*merged|merged[^\n]*PR #7/i);
+    assert.match(docs, /codex\/phase-07-visual-readability-arena-rebuild/);
+    assert.match(docs, /pull\/8|PR #8/);
     assert.match(docs, /draft[^\n]*(?:unmerged|not merged)|(?:unmerged|not merged)[^\n]*draft/i);
   });
 
-  criterion("phase02 manifest remains the sole Phase 02 through 04 owner", () => {
+  criterion("phase02 manifest remains the sole Phase 02 through 07 owner", () => {
     const manifests = gitFiles.filter((file) => /^studio\/.*\.manifest\.json$/i.test(file));
     assert.deepEqual(manifests.sort(), ["studio/phase01.manifest.json", "studio/phase02.manifest.json"]);
     assert.equal(manifest.mode, "edit");
@@ -565,8 +576,7 @@ try {
   });
 
   criterion("permanent instance count stays explicit and auditable", () => {
-    assert.ok(instanceSteps.length >= 616, `Expected the complete inherited arena, found only ${instanceSteps.length} instances`);
-    assert.ok(instanceSteps.length < 1_000, `Permanent authored content exceeded the bounded Phase 05 budget: ${instanceSteps.length}`);
+    assert.equal(instanceSteps.length, 1355, `Phase 07 permanent authored path count drifted: ${instanceSteps.length}`);
   });
 
   console.log(

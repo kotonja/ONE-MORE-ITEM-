@@ -7,11 +7,52 @@
 - **Current branch:** `codex/phase-07-visual-readability-arena-rebuild`.
 - **Protected base:** `main` and `origin/main` remain the accepted Phase 06 squash merge `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`.
 - **Phase 06 merge:** [PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7) is merged as `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`.
-- **Latest Phase 07 implementation head:** no Phase 07 implementation commit exists yet; update after the first completed milestone.
-- **Current pull request:** the required Phase 07 draft pull request has not yet been opened.
+- **Latest committed Phase 07 implementation head:** `e86c4e3484653c286f583d25c8a003488427670a`. This is the last committed implementation head observed while this documentation was prepared; later implementation/documentation commits must be recorded in PR #8 and the handoff because a commit cannot contain its own SHA.
+- **Current pull request:** [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged.
 - **Pre-release QA:** [Issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open. Its [Phase 06 onboarding and analytics QA additions](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4#issuecomment-5007354615) keep the broad checks explicitly unpassed.
 - **Scope:** Phase 07 changes visual presentation only. It remains unaccepted until its visual, automated, cloud, direct-reopen, screenshot, and continuous-recording gates pass. No Phase 08 system, monetization, production-store rollout, final external asset, audio, or unrelated gameplay change is permitted.
-- **First visual milestone:** Station_01 camera, open-front crate, low console, and readable interior must pass visible Studio inspection before the design expands to the other stations or arena.
+- **Evidence warning:** source, manifest, configuration, or deterministic-test success does not by itself prove that the crate, arena, UI, or motion is visibly correct.
+
+## Phase 07 implementation and evidence ledger
+
+The reconstruction contract is documented in `docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md`. The repository contains active Phase 07 presentation work, but the integrated acceptance candidate is not yet established. Values below are deliberately marked pending until fresh final evidence exists.
+
+| Required status field | Current truthful state |
+| --- | --- |
+| Phase 06 merge SHA | `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67` through merged PR #7. |
+| Phase 07 branch | `codex/phase-07-visual-readability-arena-rebuild`. |
+| Draft PR | PR #8 is open, draft, and unmerged. |
+| Latest committed implementation SHA | `e86c4e3484653c286f583d25c8a003488427670a` at documentation preparation time; the next containing commit cannot self-reference and must be reported externally. |
+| Issue #4 | Remains open; the Phase 07 acceptance-time QA comment has not been represented as posted. |
+| Final managed-path count | Pending final deterministic generation and parity audit. |
+| Final managed-source count | Pending final deterministic generation and parity audit. |
+| Final permanent BasePart count | Pending final manifest/Studio count. |
+| Lighting configuration | Target contract documented; final Studio-tuned values and live proof pending. |
+| Camera FOV and pitch | Target `48-52` degrees / approximately `50-58` degrees; final measured results pending. |
+| Crate screen occupancy | Desktop, narrow, portrait, and landscape final measurements pending. |
+| Line of sight | Final all-station camera-to-cell/upper-corner/focus/ghost result pending. |
+| No-Glass result | Final generated and live audit pending; no acceptance claimed from policy alone. |
+| Neon-area result | Final generated area scan and visual exposure review pending. |
+| Foundation result | Fresh final-candidate Node and Studio results pending. |
+| Phase 02 result | Fresh final-candidate Node and Studio results pending. |
+| Phase 03 result | Fresh final-candidate Node and Studio results pending. |
+| Phase 04 result | Fresh final-candidate Node and Studio results pending. |
+| Phase 05 result | Fresh final-candidate Node and Studio results pending. |
+| Phase 06 result | Fresh final-candidate Node and Studio results pending. |
+| Phase 07 result | Node, Studio, and live visual acceptance pending. |
+| All seven Node summaries | Pending one fresh integrated final-candidate run. |
+| Opening sequence | Pending first-frame live evidence. |
+| Desktop / narrow desktop | Pending 1920 x 1080, 1366 x 768, and 1100 x 700 live evidence. |
+| Touch portrait / landscape | Pending required emulator profiles and live readability evidence. |
+| Station_05 | Pending explicit opposite-side live proof. |
+| Four-client visual flow | Pending arena, label-tier, camera, and obstruction review. |
+| Shipping / failure / reset | Pending continuous visible-flow proof. |
+| Screenshot and recording status | Required 15 screenshots and one unedited 3-6 minute recording are not claimed complete; they must stay outside Git. |
+| Cloud save | Pending final candidate, clean local/Studio gates, and canonical double synchronization. |
+| Direct no-sync reopen | Pending cloud save, complete Studio close to zero processes, direct reopen, and read-only post-reopen verification. |
+| Path/source/property/attribute parity | Pending pre-save and direct-reopen exact audits. |
+| Known limitations | Final object models, external assets, images, audio/music, final particles/VFX, haptics, production-device review, and broad pre-release QA remain deferred. |
+| Exact Phase 08 recommendation | Do not begin Phase 08. Complete Phase 07 evidence and keep PR #8 draft/unmerged first. |
 
 ## Accepted Phase 06 implementation
 
@@ -21,7 +62,7 @@
 - Permanent onboarding and mission UI, five mission rows, the one narrow `OnboardingActionRequest` remote, remotes, templates, and scripts remain manifest-authored. No permanent UI, networking object, or map artifact is created at runtime.
 - Studio uses `MemoryAnalyticsAdapter`; published non-Studio servers select the Roblox adapter. Analytics remains server-only, best-effort, and unable to alter gameplay, assignment, progression, snapshots, or saving.
 
-## Source-quality corrections
+## Accepted Phase 06 source-quality corrections
 
 ### Deterministic onboarding completion presentation
 
@@ -45,7 +86,9 @@ The presentation holds for exactly `0.95` seconds, displays once, cannot replay 
 
 Each analytics call remains independently protected. A failure in one record cannot suppress later records or mutate the authoritative outcome.
 
-## Automated validation
+## Accepted Phase 06 automated validation
+
+The results in this section are the accepted Phase 06 baseline. They are not a fresh Phase 07 integrated run and do not satisfy the pending Phase 07 seven-gate acceptance ledger above.
 
 Fresh local Node 24 output passed every dependency-free gate:
 
@@ -71,7 +114,7 @@ The final clean pre-save Studio run passed:
 
 The first attempted Phase 06 source-quality test run exposed a syntax defect in the integration harness. It was corrected in `f877667b3ce9f032d0a0c676dafb348bb2ad6d8f`; only the fresh passing run above is acceptance evidence.
 
-## Integrated analytics trace
+## Accepted Phase 06 integrated analytics trace
 
 The accepted fresh-profile deterministic integration emitted exactly these 20 records in order:
 
@@ -98,7 +141,7 @@ The accepted fresh-profile deterministic integration emitted exactly these 20 re
 
 The final authoritative state was Tape `50`, Packing XP `44`, onboarding `Completed`, First Fit and First Shipment rewarded, and the round in `Shipping`. Duplicate event delivery, explicit save, release, and reload produced no durable analytics replay and no reward replay. A run with 100 injected analytics failures reached and saved the same authoritative profile/round state while recording zero events. Both the normal and failure adapters were destroyed and remained empty after cleanup.
 
-## Revised manual acceptance
+## Accepted Phase 06 revised manual acceptance
 
 ### Desktop completion and mission ordering
 
@@ -124,7 +167,7 @@ A separate two-session Memory-adapter acceptance advanced onboarding through ste
 
 The durable established profile already has all five defined starter missions rewarded. The literal request for another new starter-mission reward after reload is explicitly waived: there is no sixth approved mission to award. Rewinding a reward flag, editing stored data, inventing content, or substituting a different identity would invalidate exact-once evidence. Same-profile reload, zero reward replay, integrated first-time rewards, and analytics no-replay are green.
 
-## Canonical synchronization and cloud persistence
+## Accepted Phase 06 canonical synchronization and cloud persistence
 
 - An external recovery copy was preserved outside Git at 303,613 bytes.
 - Two ordered Phase 01 then Phase 02-06 canonical synchronization passes were deterministic and clean. On both passes, Phase 01 reused all 17 operations without mutation and Phase 02-06 updated all 993 operations while preserving 79 script backups; there were zero creations, failures, warnings, wrong-class replacements, or duplicates.
@@ -151,7 +194,9 @@ Phase 06 implementation head `f877667b3ce9f032d0a0c676dafb348bb2ad6d8f` was revi
 
 ## Known issues
 
-No known Phase 06 production blocker remains. Phase 07 is not yet accepted: the authoritative recording-derived visual defects, Milestone A Studio proof, later visual milestones, complete screenshot set, continuous recording, all seven automated gates, double synchronization, cloud save, and direct no-sync reopen remain pending.
+No known Phase 06 production blocker remains.
+
+Phase 07 is active and unaccepted: final correction of every recording-derived defect, the complete visual milestone review, required screenshot set, continuous recording, all seven Node gates and Studio suites, double synchronization, cloud save, complete Studio close, and direct no-sync reopen remain pending.
 
 ## Deferred pre-release QA
 

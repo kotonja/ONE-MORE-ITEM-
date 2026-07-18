@@ -6,7 +6,7 @@ ONE MORE ITEM! is a mobile-first Roblox packing game targeting a premium visual 
 
 ## Current development phase
 
-Phase 07 — Visual Readability and Arena Art-Direction Rebuild: **Active and unaccepted.** Work is isolated on `codex/phase-07-visual-readability-arena-rebuild`. Phase 07 remains unaccepted until its own visual, automated, cloud-persistence, direct-reopen, screenshot, and continuous-recording gates pass.
+Phase 07 — Visual Readability and Arena Art-Direction Rebuild: **Active and unaccepted.** Work is isolated on `codex/phase-07-visual-readability-arena-rebuild`. [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged. Phase 07 remains unaccepted until its visual, all seven automated gates and Studio suites, cloud persistence, direct no-sync reopen, screenshot set, and continuous-recording gates pass. See [`docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md`](docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md) for the contract and live evidence boundary.
 
 Phase 06 — First-Time Player Experience, Starter Missions, and Retention Analytics is complete and accepted. [PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7) was squash-merged into `main` as `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`.
 
@@ -30,23 +30,23 @@ Phase 02 is complete and merged through PR #2 at `73b3428c5ff0068f1e57f89d2150ff
 - Phase 04 was squash-merged through PR #5 at `213f3581bd242523e34601cfefa5b5a74770ddee`.
 - Phase 05 was squash-merged through PR #6 at `d644411b48e20cd9bb256d3d2c55a647efc2adfd` after its synchronized cloud-place and direct-reopen acceptance.
 - Phase 06 was squash-merged through [PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7) at `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`.
-- Phase 07 is active on `codex/phase-07-visual-readability-arena-rebuild`; it is not accepted until its complete Phase 07 evidence boundary passes.
+- Phase 07 is active on `codex/phase-07-visual-readability-arena-rebuild`; [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged, and Phase 07 is not accepted until its complete evidence boundary passes.
 - Pull before editing, never force-push, and keep every meaningful Studio/code change committed and pushed.
 - `docs/DEVELOPMENT_STATUS.md` is updated on every task.
-- GitHub Actions workflow `Phase 01–06 Node Validation` uses Node 24 with `actions/checkout@v7` and `actions/setup-node@v6`. It runs six dependency-free validations on pull requests targeting `main` and pushes to `main` or `codex/**`. Implementation-head evidence is recorded in `docs/DEVELOPMENT_STATUS.md`; final documentation-head evidence is recorded in the draft PR and final handoff.
+- GitHub Actions workflow `Phase 01–07 Node Validation` uses Node 24 with `actions/checkout@v7` and `actions/setup-node@v6`. It runs seven dependency-free validations on pull requests targeting `main` and pushes to `main` or `codex/**`. Phase 07 exact-head evidence is still pending; no green result is inferred from the workflow definition.
 
 ## Studio source workflow
 
 The repository is the only source of truth for scripts and permanent managed instances:
 
-1. Edit canonical sources under `src/`. `studio/phase01.manifest.json` owns the foundation hierarchy, while the historically named `studio/phase02.manifest.json` remains the single canonical manifest for the authored vertical slice, Phase 03 responsive additions, Phase 04 arena, Phase 05 profile interfaces/shelves, and Phase 06 onboarding/mission UI, remotes, templates, and scripts.
+1. Edit canonical sources under `src/`. `studio/phase01.manifest.json` owns the foundation hierarchy, while the historically named `studio/phase02.manifest.json` remains the single canonical manifest for the authored vertical slice through Phase 07, including responsive UI, arena/stations, profile/onboarding/mission surfaces, first-frame presentation, Lighting, remotes, templates, and scripts.
 2. In Roblox Studio Edit mode, begin from any place state, including a clean Baseplate. Do not manually create the managed folders.
 3. Run `node tools/build_studio_blueprint.mjs` and `node tools/build_phase02_blueprint.mjs` from the repository root.
-4. Run `node tools/test_studio_blueprint.mjs`, `node tools/test_phase02_blueprint.mjs`, `node tools/test_phase03_cross_platform.mjs`, `node tools/test_phase04_multiplayer_arena.mjs`, `node tools/test_phase05_persistent_progression.mjs`, and `node tools/test_phase06_onboarding_missions_analytics.mjs`; stop if any validation fails.
+4. Run `node tools/test_studio_blueprint.mjs`, `node tools/test_phase02_blueprint.mjs`, `node tools/test_phase03_cross_platform.mjs`, `node tools/test_phase04_multiplayer_arena.mjs`, `node tools/test_phase05_persistent_progression.mjs`, `node tools/test_phase06_onboarding_missions_analytics.mjs`, and `node tools/test_phase07_visual_readability.mjs`; stop if any validation fails.
 5. Apply the generated Phase 01 operations first and the extended vertical-slice operations second, preserving generated order.
 6. Confirm parent-first creation, exact managed properties and sources, zero wrong-class paths or duplicates, and then run the Studio suites and required Play tests.
 
-Phase 02 adds `studio/phase02.manifest.json`, `tools/build_phase02_blueprint.mjs`, and `tools/test_phase02_blueprint.mjs`. Phases 03-06 deliberately extend that manifest and test path instead of creating an overlapping owner. The authoring tool deterministically expands one Station_01 descriptor into eight explicit final station paths at 45-degree ring intervals, including one permanent Phase 05 collection shelf per station. Generated Edit-mode operations author permanent `Workspace`, `StarterGui`, `ReplicatedStorage`, `ServerScriptService`, and `StarterPlayerScripts` content with typed properties and attributes. Runtime gameplay code only binds those instances and creates explicitly temporary gameplay, profile-preview, showcase, shelf-proxy, or reward-presentation content.
+Phase 02 adds `studio/phase02.manifest.json`, `tools/build_phase02_blueprint.mjs`, and `tools/test_phase02_blueprint.mjs`. Phases 03-07 deliberately extend that manifest and test path instead of creating an overlapping owner. The authoring tool deterministically expands one Station_01 descriptor into eight explicit final station paths at 45-degree intervals. Generated Edit-mode operations author permanent `Workspace`, `StarterGui`, `ReplicatedFirst`, `ReplicatedStorage`, `ServerScriptService`, `StarterPlayerScripts`, and `Lighting` content with typed properties and attributes. Runtime gameplay code only binds those instances and creates explicitly temporary gameplay or cosmetic content.
 
 Correct folders and scripts are reused or updated, and missing instances are created. A wrong-class instance at a managed path raises a clear error and is never silently destroyed. Repeating the complete operation list is idempotent and creates no duplicates.
 
@@ -60,7 +60,7 @@ The same build step also emits `.codex-cache/phase01-blueprint.json` for validat
 
 The runner exits immediately outside Roblox Studio and fails visibly with `error()` if any test fails.
 
-Phase 02 adds a separate Studio suite for round math, fair sequencing, state transitions, placement security, station ownership, serialization, world transforms, and runtime cleanup. Phase 03 adds an eight-suite deterministic Studio gate for preferred-input state, responsive layout geometry, touch tracking, gamepad repeat and routing, prompts, camera targets, character-control cleanup, and remote discipline. Phase 04 adds a 13-suite deterministic Studio gate for the eight-station registry, allocation and waiting, client rebinding, rotated transforms, concurrent isolation, immutable shipment records, bounded FIFO showcase behavior, shared displays, respawn, and cleanup. Phase 05 adds profile-schema/migration, memory-adapter, locking, progression, assignment, snapshot, shelf, presentation, autosave, and shutdown coverage. Phase 06 adds 18 Studio suites / 75 tests plus a 76-criterion Node gate covering Schema Version 2 migration, onboarding, guided timing, deterministic completion presentation, exact-once starter missions, snapshot/presentation deduplication, transactional analytics ordering, request security, multiplayer isolation, failure isolation, persistence, and replay prevention. See the phase documents under `docs/` for complete contracts and evidence status.
+Phase 02 adds a separate Studio suite for round math, fair sequencing, state transitions, placement security, station ownership, serialization, world transforms, and runtime cleanup. Phase 03 adds deterministic input and responsive-layout coverage; Phase 04 covers the multiplayer arena and showcase; Phase 05 covers persistent profiles and shelves; and Phase 06 covers onboarding, exact-once starter missions, and failure-isolated analytics. Phase 07 adds deterministic authored-hierarchy, camera projection, line-of-sight, no-Glass, Neon-area, first-frame, label, and cleanup contracts. Its full seven-gate Node run and all seven Studio suites remain pending final integrated acceptance.
 
 ## Phase 01 persistence status
 
@@ -89,3 +89,13 @@ Profile load and lock must reach Ready before station assignment. Globally uniqu
 The Studio-only failure fixture is disabled by default and is armed on `ServerScriptService.ONE_MORE_ITEM_Server` with `ONE_MORE_ITEM_Phase05AcceptanceMode`, optional `ONE_MORE_ITEM_Phase05AcceptanceTargetUserId`, and a future `ONE_MORE_ITEM_Phase05AcceptanceExpiresAt` no more than 600 seconds ahead. `Unavailable`, `SaveDelayed`, and `Conflict` select the memory adapter for the entire test server. Clear all three attributes before a normal Studio-test persistence run, cloud save, or cloud reopen, and never save the place while armed. Memory-fixture evidence validates failure behavior only; it does not replace the two real Studio-test-store sessions.
 
 See `docs/PHASE05_PERSISTENT_PROGRESSION.md` for the exact accepted evidence, the bridge-observable parity boundary, and the extended QA that remains explicitly unpassed.
+
+## Phase 06 onboarding, missions, and analytics contract
+
+Phase 06 preserves server authority while adding durable contextual onboarding, five fixed exact-once starter missions, and best-effort server-only analytics. Profile Schema Version 2 remains inside the existing production and Studio-test store names. The client may request only the narrowly validated onboarding skip action; it cannot submit progress, rewards, balances, mission completion, or analytics truth. Phase 06 was accepted and squash-merged through PR #7 at `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`.
+
+## Phase 07 visual-readability contract
+
+Phase 07 recomposes presentation without changing gameplay. The crate must dominate every active view; all 25 floor cells and four layers remain readable; the console, avatar, UI, labels, and permanent geometry cannot obscure the packing volume. The authored first-frame curtain hides uninitialized world/camera state, station anchors use deterministic responsive framing, crate panes are non-refractive, and the eight stations sit inside a controlled circular/octagonal warehouse with a legible center dispatch.
+
+Permanent first-frame UI, gameplay UI, world geometry, lighting, post-processing, labels, camera anchors, remotes, templates, and scripts remain manifest-authored before Play. Phase 07 adds no authority, remote, progression, final asset, audio, monetization, or Phase 08 feature. Its detailed targets and explicitly pending visual, automated, screenshot/recording, cloud-save, and direct-reopen gates are recorded in [`docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md`](docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md).

@@ -56,3 +56,15 @@ Starter missions observe authoritative placement, decision, shipment, discovery,
 Permanent onboarding and mission surfaces remain authored under `StarterGui`, adapt to keyboard/mouse, touch, and gamepad, and leave the crate and core controls unobstructed. Studio uses a deterministic memory analytics adapter that makes no Roblox analytics call; published non-Studio servers use current Roblox `AnalyticsService` log methods behind a best-effort server boundary. Analytics failure cannot change gameplay, progression, station assignment, saving, or presentation truth.
 
 Phase 06 introduces no daily system, store, monetization, final art, external asset, audio, functional bonus, or Phase 07 system.
+
+## Phase 07 crate-first visual reconstruction
+
+Phase 07 changes presentation, not the game contract. The crate becomes the dominant readable object in every active view: all 25 floor cells, the four-cell vertical capacity, placed items, ghost validity, and resting height must remain legible. A low matte console and low front rim frame the crate without hiding it; thin non-refractive side/rear panes, a warm opaque floor, restrained task light, and controlled camera replace the obstructed recording baseline.
+
+The first rendered frame is authored and controlled. A dark curtain hides the world until profile/waiting state and a safe Scriptable camera are ready, so players do not see raw sky, a default avatar camera, uninitialized geometry, or an uncontrolled snap. Responsive station framing remains local presentation; it adds no orbit and sends no remote.
+
+The eight deterministic stations become separate bays on a wider ring inside one coherent circular/octagonal toy-industrial warehouse. The center dispatch is the landmark and the existing showcase route explains where successful crates travel. Lighting, bloom, Neon, world labels, and screen UI all support the packing volume rather than compete with it. Semantic green/red remain state-only, amber remains shipping/reward, purple remains collection/mastery, and cyan remains navigation/station identity.
+
+Shipping must visibly close around the player's arrangement, failure must visibly break containment, and reset must return a clean open crate. These are local visual refinements around the accepted server-authoritative state machine, rewards, progression, profile, mission, and analytics boundaries.
+
+Final item models, external assets, textures, images, audio, music, final particles/VFX, haptics, monetization, new systems, and Phase 08 remain deferred. Phase 07 is active and unaccepted on `codex/phase-07-visual-readability-arena-rebuild`; [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged. Tests alone cannot establish the visual result. See `docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md` for the required live, evidence, and persistence gates.

@@ -263,3 +263,37 @@ The existing Phase 02 manifest permanently authors the onboarding overlay, skip 
 `OnboardingUIController` combines copied profile state, ordinary round state, local fit state, and current input mode for contextual presentation only. `StarterMissionUIController` reads snapshot mission state, gates the full panel to non-active round states, and queues unseen RewardIds. Named client modal blockers allow Collection and Starter Path surfaces to suppress underlying keyboard, touch, and gamepad actions without racing one another. Responsive geometry continues to use Wide, CompactLandscape, and Portrait safe-area targets with scale-only authored coordinates.
 
 The full Phase 06 contracts and acceptance evidence are recorded in `docs/PHASE06_ONBOARDING_MISSIONS_ANALYTICS.md` and `docs/DEVELOPMENT_STATUS.md`.
+
+## Phase 07 permanent presentation ownership
+
+The historically named `studio/phase02.manifest.json` remains the sole canonical owner for Phase 02 through Phase 07 permanent content. Phase 07 extends the supported managed roots to `ReplicatedFirst` and `Lighting` while retaining `Workspace`, `StarterGui`, `ReplicatedStorage`, `ServerScriptService`, and children below the built-in `StarterPlayer.StarterPlayerScripts`. It does not add a competing manifest or a runtime world/UI builder.
+
+Permanent first-frame and gameplay curtains, camera anchors, station/crate/console geometry, arena shell, center dispatch, showcase supports, signs, UI, lighting, post-processing, remotes, templates, and mapped scripts exist before Play. The builder remains parent-first, deterministic, idempotent, and conflict safe. Correct paths are reused, missing paths are authored, and wrong-class conflicts fail without deletion. Runtime creation remains limited to temporary ghosts, placed-item proxies, showcase clones, shelf proxies, and short-lived presentation effects cloned or derived from prepared content.
+
+Phase 07 presentation work has no authority over integer placement, round transitions, station ownership, rewards, persistence, missions, or analytics. The gameplay `Net` remains six remotes, `ProfileNet` remains one server-to-client snapshot remote, and `OnboardingNet` remains the one narrowly validated skip request remote.
+
+## Phase 07 visual definitions and first-frame handoff
+
+`VisualThemeDefinitions` centralizes semantic environment, text, and state colors. Green and red are state-only, amber is shipping/reward, purple is collection/mastery, and cyan is navigation/station identity. `VisualFraming` is a pure module for safe-viewport rectangles, projection, world bounds, crate/console rectangles, pitch, occupancy ratios, and line-of-sight samples; it performs no instance search.
+
+`ReplicatedFirst.ONE_MORE_ITEM_FirstFrame.FirstFrameBootstrap` immediately owns an authored opaque first-frame curtain and keeps it mounted through a bounded minimum hold. `FirstFrameHandoffPolicy` coordinates its covered handoff to the authored `StarterGui` curtain only after the canonical curtain reports a safe Scriptable camera, without revealing raw sky, a default character camera, or uninitialized station geometry. `ArrivalCurtainController` then presents honest Loading, Unavailable, Conflict, assigned Ready, or waiting Ready states and reveals the world only after the selected station camera is safe. These controllers send no server request and retain no permanent frame loop; cancellation and destruction clean tweens and connections.
+
+## Phase 07 station framing and local presentation
+
+The logical crate stays `5 x 5 x 4` with two-stud cells. Authored responsive camera anchors target a `48-52` degree FOV, roughly `50-58` degrees downward pitch, and deterministic screen occupancy. Line-of-sight fixtures sample every layer-zero cell, upper corners, `CrateFocus`, `GridOrigin`, and the ghost. The low front rim, low console, stand, signs, shelf, neighbor stations, shell, and dispatch may not obstruct those rays; only compliant non-refractive side/rear panes may intersect them.
+
+`CameraController` binds the appropriate authored station anchor and maintains epoch-guarded local arrival/retarget/impulse motion. Ordinary grid movement cannot move or orbit the camera. `WorldLabelController` applies local, adjacent, and distant station tiers on assignment and meaningful camera/responsive changes; it creates no permanent UI, sends no remote, owns no full per-frame loop, and cleans all connections. `ResponsiveLayout` and `ProfileResponsiveLayout` continue to apply scale-based safe-area geometry to authored panels while keeping the projected crate rectangle clear.
+
+## Phase 07 crate, arena, and lighting composition
+
+The crate's authored front is a low solid rim rather than a full sheet. Side and rear panes use thin non-refractive SmoothPlastic; managed station crate descendants reject `Enum.Material.Glass`. A warm opaque floor and 25 individually legible tiles preserve cell readability, a thin graphite frame defines containment, one restrained task light illuminates the interior, and the authored lid remains the moving closure component. Temporary item/ghost visuals preserve authoritative cells, station isolation, and existing cleanup.
+
+Eight equivalent bays remain at 45-degree intervals on a wider visual ring, each containing a crate, low console, stand, compact shelf, integrated owner/status display, small risk indicator, and task-light support. The authored circular/octagonal warehouse shell, enclosed floor, support system, entry, restrained branding, and central dispatch establish a shared arena silhouette without changing station allocation. The existing 16-node showcase route, FIFO limits, reward independence, and shared motion loop remain intact.
+
+Lighting and its restrained BloomEffect and ColorCorrectionEffect are managed permanent instances. Neon is limited to small semantic accents; large floors, walls, consoles, crate faces, spheres, and arena borders are rejected unless explicitly allowlisted and visually justified. No depth-of-field gameplay blur, motion blur, per-frame lighting update, particle system, physics-driven environment, per-station frame loop, or per-label frame loop is introduced.
+
+## Phase 07 shipping, failure, and evidence boundary
+
+`WorldMotionController` visually refines the accepted states without changing their authority or timing contract: shipping keeps the arrangement visible while the lid closes and sends the showcase toward dispatch; failure exposes the impact and burst through the open front; reset visibly raises the lid and clears stale presentation. Temporary objects return to their established baseline.
+
+Architecture/configuration validation is necessary but not visual acceptance. The final candidate still requires seven fresh Node gates, seven fresh Studio suites, the full viewport and line-of-sight matrices, opening/desktop/touch/opposite-station/multiplayer live review, the external screenshot set and continuous recording, two clean authoring passes, cloud save, complete close, and direct no-sync reopen parity. The detailed contract and pending evidence ledger are in `docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md` and `docs/DEVELOPMENT_STATUS.md`.

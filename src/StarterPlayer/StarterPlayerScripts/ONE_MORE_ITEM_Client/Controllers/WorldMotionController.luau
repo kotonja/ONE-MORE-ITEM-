@@ -35,6 +35,8 @@ type InternalController = Controller & {
 	_tiles: { [string]: BasePart },
 	_tileColors: { [BasePart]: Color3 },
 	_tileMaterials: { [BasePart]: Enum.Material },
+	_feedbackTiles: { BasePart },
+	_failureEdgeColors: { [BasePart]: Color3 },
 	_placedItems: Instance,
 	_runtimePresentation: Instance,
 	_failureBurst: Model?,
@@ -46,6 +48,8 @@ type InternalController = Controller & {
 local WorldMotionController = {}
 local ControllerMethods = {}
 ControllerMethods.__index = ControllerMethods
+
+local FAILURE_LID_OPEN_ALPHA = 0.62
 
 local function requireInstance(parent: Instance, name: string): Instance
 	local child = parent:WaitForChild(name, 10)
@@ -118,7 +122,33 @@ local function tweenLid(
 		{ CFrame = target, Color = color }
 	)
 	self._lidTween = tween
+	tween.Completed:Once(function()
+		if self._lidTween == tween then
+			self._lidTween = nil
+		end
+	end)
 	tween:Play()
+end
+
+local function restoreFailureEdges(self: InternalController)
+	for edge, color in pairs(self._failureEdgeColors) do
+		if edge.Parent ~= nil then
+			edge.Color = color
+		end
+	end
+end
+
+local function flashFailureEdges(self: InternalController, epoch: number)
+	for edge in pairs(self._failureEdgeColors) do
+		if edge.Parent ~= nil then
+			edge.Color = PresentationTokens.Color.Red
+		end
+	end
+	task.delay(PresentationTokens.Timing.Snap, function()
+		if not self._destroyed and self._effectEpoch == epoch then
+			restoreFailureEdges(self)
+		end
+	end)
 end
 
 local function restoreSuppressedParts(self: InternalController)
@@ -304,6 +334,15 @@ function WorldMotionController.new(station: Model): Controller
 			end
 		end
 	end
+	local failureEdgeColors: { [BasePart]: Color3 } = {}
+	local frame = crate:FindFirstChild("Frame")
+	if frame ~= nil then
+		for _, descendant in ipairs(frame:GetDescendants()) do
+			if descendant:IsA("BasePart") then
+				failureEdgeColors[descendant] = descendant.Color
+			end
+		end
+	end
 
 	local self: InternalController = setmetatable({
 		_station = station,
@@ -322,6 +361,8 @@ function WorldMotionController.new(station: Model): Controller
 		_tiles = tiles,
 		_tileColors = tileColors,
 		_tileMaterials = tileMaterials,
+		_feedbackTiles = {},
+		_failureEdgeColors = failureEdgeColors,
 		_placedItems = requireInstance(station, "PlacedItems"),
 		_runtimePresentation = requireInstance(station, "RuntimePresentation"),
 		_failureBurst = nil,
@@ -340,6 +381,7 @@ function ControllerMethods.SetState(self: InternalController, state: string, pre
 	self._effectEpoch += 1
 	local epoch = self._effectEpoch
 	cancelLidTween(self)
+	restoreFailureEdges(self)
 	setActionAvailability(self, state)
 	self:ClearGridFeedback()
 
@@ -351,22 +393,40 @@ function ControllerMethods.SetState(self: InternalController, state: string, pre
 			Enum.EasingStyle.Quart,
 			Enum.EasingDirection.InOut,
 			self._lidClosed,
-			PresentationTokens.Color.Green
+			PresentationTokens.Color.Amber
 		)
+		task.delay(PresentationTokens.Timing.LidClose, function()
+			if self._destroyed or self._effectEpoch ~= epoch then
+				return
+			end
+			local confirmation = TweenService:Create(
+				self._lid,
+				TweenInfo.new(PresentationTokens.Timing.Snap, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+				{ Color = PresentationTokens.Color.Green }
+			)
+			self._lidTween = confirmation
+			confirmation.Completed:Once(function()
+				if self._lidTween == confirmation then
+					self._lidTween = nil
+				end
+			end)
+			confirmation:Play()
+		end)
 	elseif state == "Failing" then
 		tweenLid(
 			self,
 			PresentationTokens.Timing.Quick,
 			Enum.EasingStyle.Quart,
 			Enum.EasingDirection.In,
-			self._lidClosed:Lerp(self._lidOpen, 0.22),
+			self._lidClosed:Lerp(self._lidOpen, FAILURE_LID_OPEN_ALPHA),
 			PresentationTokens.Color.Red
 		)
-		for _, tile in pairs(self._tiles) do
-			tile.Color = PresentationTokens.Color.Red
-			tile.Material = Enum.Material.Neon
-		end
 		beginFailureBurst(self, epoch)
+		task.delay(PresentationTokens.Timing.Quick + PresentationTokens.Timing.FailureImpactPause, function()
+			if not self._destroyed and epoch == self._effectEpoch then
+				flashFailureEdges(self, epoch)
+			end
+		end)
 		task.delay(PresentationTokens.Timing.Snap, function()
 			if not self._destroyed and epoch == self._effectEpoch then
 				self:ClearGridFeedback()
@@ -452,6 +512,7 @@ function ControllerMethods.ClearGridFeedback(self: InternalController)
 		tile.Color = self._tileColors[tile]
 		tile.Material = self._tileMaterials[tile]
 	end
+	table.clear(self._feedbackTiles)
 end
 
 function ControllerMethods.SetGridFeedback(self: InternalController, cells: { Cell }, valid: boolean)
@@ -467,8 +528,9 @@ function ControllerMethods.SetGridFeedback(self: InternalController, cells: { Ce
 			seen[key] = true
 			local tile = self._tiles[key]
 			if tile ~= nil then
-				tile.Color = color
-				tile.Material = Enum.Material.Neon
+				tile.Color = self._tileColors[tile]:Lerp(color, 0.82)
+				tile.Material = self._tileMaterials[tile]
+				table.insert(self._feedbackTiles, tile)
 			end
 		end
 	end
@@ -504,7 +566,7 @@ function ControllerMethods.PlayRejected(self: InternalController)
 		return
 	end
 	local previousEpoch = self._effectEpoch
-	for _, tile in pairs(self._tiles) do
+	for _, tile in ipairs(self._feedbackTiles) do
 		tile.Color = PresentationTokens.Color.Red
 	end
 	task.delay(PresentationTokens.Timing.GhostRejected, function()
@@ -524,6 +586,7 @@ function ControllerMethods.Destroy(self: InternalController)
 	destroyFailureBurst(self, true)
 	clearOwnedRuntimeEffects(self)
 	self:ClearGridFeedback()
+	restoreFailureEdges(self)
 	self._lid.CFrame = self._lidOpen
 	self._lid.Color = self._lidColor
 	for _, button in pairs(self._buttons) do
@@ -535,6 +598,8 @@ function ControllerMethods.Destroy(self: InternalController)
 	end
 	table.clear(self._buttonTweens)
 	table.clear(self._buttonTweenEpochs)
+	table.clear(self._feedbackTiles)
+	table.clear(self._failureEdgeColors)
 end
 
 return table.freeze(WorldMotionController)

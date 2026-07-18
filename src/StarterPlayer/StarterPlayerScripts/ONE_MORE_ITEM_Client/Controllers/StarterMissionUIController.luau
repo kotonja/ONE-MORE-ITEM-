@@ -214,11 +214,11 @@ end
 
 local function updateCardSize(self: InternalController, completed: boolean)
 	if self._layoutClass == "Portrait" then
-		self._card.Size = UDim2.fromScale(0.94, if completed then 0.075 else 0.15)
+		self._card.Size = UDim2.fromScale(0.90, if completed then 0.06 else 0.11)
 	elseif self._layoutClass == "CompactLandscape" then
-		self._card.Size = UDim2.fromScale(0.28, if completed then 0.18 else 0.40)
+		self._card.Size = UDim2.fromScale(0.235, if completed then 0.12 else 0.30)
 	else
-		self._card.Size = UDim2.fromScale(0.22, if completed then 0.10 else 0.24)
+		self._card.Size = UDim2.fromScale(0.19, if completed then 0.07 else 0.18)
 	end
 end
 

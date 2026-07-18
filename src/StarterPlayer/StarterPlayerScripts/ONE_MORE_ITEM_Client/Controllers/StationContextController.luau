@@ -6,6 +6,7 @@ local CameraController = require(script.Parent.CameraController)
 local CharacterController = require(script.Parent.CharacterController)
 local ClientRoundStore = require(script.Parent.ClientRoundStore)
 local PlacementController = require(script.Parent.PlacementController)
+local PresentationTokens = require(script.Parent.PresentationTokens)
 local WorldMotionController = require(script.Parent.WorldMotionController)
 
 local shared = ReplicatedStorage:WaitForChild("ONE_MORE_ITEM"):WaitForChild("Shared")
@@ -285,7 +286,15 @@ function ControllerMethods.ApplySnapshot(self: InternalController, snapshot: Sna
 	if binding.PreviousState ~= snapshot.State then
 		binding.WorldMotion:SetState(snapshot.State, binding.PreviousState)
 		if snapshot.State == "Shipping" then
-			self._camera:PlayImpulse("SHIPPING")
+			local shippingBinding = binding
+			task.delay(PresentationTokens.Timing.LidClose, function()
+				if not self._destroyed
+					and self._binding == shippingBinding
+					and shippingBinding.PreviousState == "Shipping"
+				then
+					self._camera:PlayImpulse("SHIPPING")
+				end
+			end)
 		elseif snapshot.State == "Failing" then
 			self._camera:PlayImpulse("FAILURE")
 		end
