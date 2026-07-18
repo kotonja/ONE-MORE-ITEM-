@@ -79,7 +79,7 @@ local function requireLabel(parent: Instance, name: string): TextLabel
 end
 
 local function optionalPart(parent: Instance, name: string): BasePart?
-	local child = parent:FindFirstChild(name)
+	local child = parent:WaitForChild(name, 10)
 	if child == nil then
 		return nil
 	end

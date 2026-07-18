@@ -563,6 +563,15 @@ try {
     assert.match(arrivalSource, /Cancel\s*\(/);
   });
 
+  criterion("ArrivalCurtain waits for the authored camera pair before validating replication", () => {
+    const helperStart = arrivalSource.indexOf("local function optionalPart");
+    const helperEnd = arrivalSource.indexOf("\nlocal function fallbackCenter", helperStart);
+    assert.ok(helperStart >= 0 && helperEnd > helperStart, "optionalPart helper is missing");
+    const helperSource = arrivalSource.slice(helperStart, helperEnd);
+    assert.match(helperSource, /WaitForChild\(name,\s*10\)/);
+    assert.doesNotMatch(helperSource, /FindFirstChild\(name\)/);
+  });
+
   criterion("camera becomes Scriptable before ArrivalCurtain reveal and exposes readiness", () => {
     assert.match(cameraSource, /CameraType\s*=\s*Enum\.CameraType\.Scriptable/);
     for (const api of ["PrepareWaitingView", "GetReadiness", "SubscribeReadiness"]) {
