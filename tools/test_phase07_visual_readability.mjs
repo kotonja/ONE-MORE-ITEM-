@@ -989,6 +989,15 @@ try {
     }
   });
 
+  criterion("ZIndex is authored only on GUI object classes that support it", () => {
+    const zIndexClasses = new Set(["Frame", "TextButton", "TextLabel", "ViewportFrame"]);
+    for (const entry of instanceSteps.filter((step) => step.path.startsWith(`${uiScreen}.`))) {
+      if (entry.properties.ZIndex !== undefined) {
+        assert.ok(zIndexClasses.has(entry.className), `${entry.path} cannot own ZIndex as ${entry.className}`);
+      }
+    }
+  });
+
   criterion("CollectionPanel and its accepted eight-slot layout remain present", () => {
     assertPath(instancesByPath, `${uiRoot}.CollectionPanel`, "Frame");
     assert.equal(instanceSteps.filter((step) => new RegExp(`^${uiRoot.replaceAll(".", "\\.")}\\.CollectionPanel\\.Slots\\.Slot_\\d\\d$`).test(step.path)).length, 8);
