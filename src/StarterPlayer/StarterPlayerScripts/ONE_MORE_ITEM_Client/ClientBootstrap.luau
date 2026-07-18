@@ -11,12 +11,14 @@ local ClientProfileStore = require(controllers:WaitForChild("ClientProfileStore"
 local ClientRoundStore = require(controllers:WaitForChild("ClientRoundStore"))
 local InputController = require(controllers:WaitForChild("InputController"))
 local InputModeStore = require(controllers:WaitForChild("InputModeStore"))
+local OnboardingUIController = require(controllers:WaitForChild("OnboardingUIController"))
 local PresentationTokens = require(controllers:WaitForChild("PresentationTokens"))
 local ProfileUIController = require(controllers:WaitForChild("ProfileUIController"))
 local ResponsiveLayout = require(controllers:WaitForChild("ResponsiveLayout"))
 local ResponsiveUIController = require(controllers:WaitForChild("ResponsiveUIController"))
 local RoundUIController = require(controllers:WaitForChild("RoundUIController"))
 local StationContextController = require(controllers:WaitForChild("StationContextController"))
+local StarterMissionUIController = require(controllers:WaitForChild("StarterMissionUIController"))
 local ViewportPreviewController = require(controllers:WaitForChild("ViewportPreviewController"))
 
 type Snapshot = ClientRoundStore.Snapshot
@@ -74,6 +76,7 @@ end
 local root = requireChild(ReplicatedStorage, "ONE_MORE_ITEM")
 local net = requireChild(root, "Net")
 local profileNet = requireChild(root, "ProfileNet")
+local onboardingNet = requireChild(root, "OnboardingNet")
 local shared = requireChild(root, "Shared")
 local assets = requireChild(root, "Assets")
 local developmentAssets = requireChild(assets, "Development")
@@ -93,6 +96,7 @@ local restartRequest = requireRemote(net, "RestartRequest")
 local roundSnapshotRemote = requireRemote(net, "RoundSnapshot")
 local placementResponseRemote = requireRemote(net, "PlacementResponse")
 local profileSnapshotRemote = requireRemote(profileNet, "ProfileSnapshot")
+local onboardingActionRequest = requireRemote(onboardingNet, "OnboardingActionRequest")
 
 local worldRoot = requireChild(Workspace, "ONE_MORE_ITEM_WORLD")
 local arena = requireChild(worldRoot, "PlaytestArena")
@@ -154,6 +158,8 @@ local roundUI = RoundUIController.new(gameplayGui, resolveItemName)
 local inputMode: InputMode = "KeyboardMouse"
 local layoutClass: LayoutClass = "Wide"
 local profileUIForLayout: ProfileUIController.Controller? = nil
+local onboardingUIForLayout: OnboardingUIController.Controller? = nil
+local starterMissionUIForLayout: StarterMissionUIController.Controller? = nil
 local responsiveUI = ResponsiveUIController.new(guiRoot, {
 	BeforeApply = function(panelPositions, buttonSizes)
 		roundUI:SetResponsiveTargets(panelPositions, buttonSizes)
@@ -164,6 +170,14 @@ local responsiveUI = ResponsiveUIController.new(guiRoot, {
 		local activeProfileUI = profileUIForLayout
 		if activeProfileUI ~= nil then
 			activeProfileUI:SetLayoutClass(layoutClass)
+		end
+		local activeOnboardingUI = onboardingUIForLayout
+		if activeOnboardingUI ~= nil then
+			activeOnboardingUI:SetLayoutClass(layoutClass)
+		end
+		local activeStarterMissionUI = starterMissionUIForLayout
+		if activeStarterMissionUI ~= nil then
+			activeStarterMissionUI:SetLayoutClass(layoutClass)
 		end
 		script:SetAttribute("LayoutClass", layoutClass)
 	end,
@@ -188,6 +202,9 @@ local previousLoggedState: string? = nil
 local previousLoggedStation: string? = nil
 local destroyed = false
 local connections: { RBXScriptConnection } = {}
+local onboardingUIForInput: OnboardingUIController.Controller? = nil
+local starterMissionUIForInput: StarterMissionUIController.Controller? = nil
+local starterMissionUIForOnboardingPresentation: StarterMissionUIController.Controller? = nil
 
 local function requestDecision(choice: string)
 	local snapshot = store:GetSnapshot()
@@ -265,6 +282,14 @@ local input = InputController.new({
 	ModeChanged = function(newMode: InputMode)
 		inputMode = newMode
 		camera:SetPresentation(layoutClass, inputMode)
+		local activeOnboardingUI = onboardingUIForInput
+		if activeOnboardingUI ~= nil then
+			activeOnboardingUI:SetInputMode(inputMode)
+		end
+		local activeStarterMissionUI = starterMissionUIForInput
+		if activeStarterMissionUI ~= nil then
+			activeStarterMissionUI:SetInputMode(inputMode)
+		end
 		script:SetAttribute("InputMode", inputMode)
 	end,
 	Observability = function(
@@ -282,10 +307,71 @@ local input = InputController.new({
 	end,
 }, roundUI:GetButtons(), guiRoot, touchDragSurface)
 
+local onboardingUI = OnboardingUIController.new(guiRoot, onboardingActionRequest, {
+	CompletionPresentationChanged = function(active: boolean)
+		script:SetAttribute("OnboardingCompletionPresentationActive", active)
+		local missionUI = starterMissionUIForOnboardingPresentation
+		if missionUI ~= nil then
+			missionUI:SetPresentationBlocked(active)
+		end
+	end,
+})
+onboardingUIForInput = onboardingUI
+onboardingUIForLayout = onboardingUI
+onboardingUI:SetInputMode(inputMode)
+onboardingUI:SetLayoutClass(layoutClass)
+script:SetAttribute("OnboardingCompletionPresentationActive", false)
+
+local modalStates = {
+	Collection = false,
+	StarterPath = false,
+}
+local profileUIForModal: ProfileUIController.Controller? = nil
+local starterMissionUIForModal: StarterMissionUIController.Controller? = nil
+
+local function refreshModalState()
+	input:SetModalBlocked("Collection", modalStates.Collection)
+	input:SetModalBlocked("StarterPath", modalStates.StarterPath)
+	local blocked = modalStates.Collection or modalStates.StarterPath
+	onboardingUI:SetModalBlocked(blocked)
+	script:SetAttribute("ProfileMenuOpen", modalStates.Collection)
+	script:SetAttribute("StarterPathOpen", modalStates.StarterPath)
+end
+
+local function setModalState(name: "Collection" | "StarterPath", isOpen: boolean)
+	modalStates[name] = isOpen
+	if isOpen and name == "Collection" then
+		local missionUI = starterMissionUIForModal
+		if missionUI ~= nil and missionUI:IsPanelOpen() then
+			missionUI:SetPanelOpen(false)
+		end
+	elseif isOpen then
+		local activeProfileUI = profileUIForModal
+		if activeProfileUI ~= nil and activeProfileUI:IsMenuOpen() then
+			activeProfileUI:SetMenuOpen(false)
+		end
+	end
+	refreshModalState()
+end
+
+local starterMissionUI = StarterMissionUIController.new(guiRoot, {
+	MenuOpenChanged = function(isOpen: boolean)
+		setModalState("StarterPath", isOpen)
+	end,
+})
+starterMissionUIForInput = starterMissionUI
+starterMissionUIForLayout = starterMissionUI
+starterMissionUIForModal = starterMissionUI
+starterMissionUIForOnboardingPresentation = starterMissionUI
+starterMissionUI:SetPresentationBlocked(
+	OnboardingUIController.IsCompletionPresentationActive(onboardingUI:GetCompletionPresentationState())
+)
+starterMissionUI:SetInputMode(inputMode)
+starterMissionUI:SetLayoutClass(layoutClass)
+
 local profileUI = ProfileUIController.new(guiRoot, cellBlockTemplate, {
 	MenuOpenChanged = function(isOpen: boolean)
-		input:SetProfileMenuOpen(isOpen)
-		script:SetAttribute("ProfileMenuOpen", isOpen)
+		setModalState("Collection", isOpen)
 	end,
 	AudioHook = function(eventName: string)
 		-- Phase 05 intentionally has no audio assets. This observable hook is the
@@ -294,7 +380,9 @@ local profileUI = ProfileUIController.new(guiRoot, cellBlockTemplate, {
 	end,
 })
 profileUIForLayout = profileUI
+profileUIForModal = profileUI
 profileUI:SetLayoutClass(layoutClass)
+refreshModalState()
 
 stationContext = StationContextController.new({
 	StationsRoot = stations,
@@ -305,6 +393,7 @@ stationContext = StationContextController.new({
 	Callbacks = {
 		FitChanged = function(valid: boolean?, x: number?, y: number?, z: number?)
 			roundUI:SetFitState(valid, x, y, z)
+			onboardingUI:SetFitState(valid)
 		end,
 		ButtonPressed = function(action: string)
 			roundUI:PlayButtonPress(action)
@@ -314,6 +403,7 @@ stationContext = StationContextController.new({
 		end,
 		PendingChanged = function(pending: boolean)
 			script:SetAttribute("PlacementPending", pending)
+			onboardingUI:SetPlacementPending(pending)
 			input:RefreshContext()
 		end,
 		Observability = function(valid: boolean?, x: number?, y: number?, z: number?)
@@ -355,6 +445,8 @@ local unsubscribe = store:Subscribe(function(snapshot: Snapshot)
 	end
 	roundUI:ApplySnapshot(snapshot, nowAssigned)
 	profileUI:ApplyRoundSnapshot(snapshot, nowAssigned)
+	onboardingUI:ApplyRoundSnapshot(snapshot, nowAssigned)
+	starterMissionUI:ApplyRoundSnapshot(snapshot, nowAssigned)
 	if nowAssigned then
 		viewportPreview:ApplySnapshot(snapshot)
 	else
@@ -374,6 +466,8 @@ local unsubscribeProfile = profileStore:Subscribe(function(snapshot: ProfileSnap
 		return
 	end
 	profileUI:ApplyProfileSnapshot(snapshot)
+	onboardingUI:ApplyProfileSnapshot(snapshot)
+	starterMissionUI:ApplyProfileSnapshot(snapshot)
 	script:SetAttribute("ProfileSessionId", snapshot.ProfileSessionId)
 	script:SetAttribute("ProfileRevision", snapshot.Revision)
 	script:SetAttribute("ProfileState", snapshot.State)
@@ -414,7 +508,16 @@ local function cleanup()
 		context:Destroy()
 	end
 	profileUIForLayout = nil
+	profileUIForModal = nil
 	profileUI:Destroy()
+	starterMissionUIForInput = nil
+	starterMissionUIForLayout = nil
+	starterMissionUIForModal = nil
+	starterMissionUIForOnboardingPresentation = nil
+	starterMissionUI:Destroy()
+	onboardingUIForInput = nil
+	onboardingUIForLayout = nil
+	onboardingUI:Destroy()
 	input:Destroy()
 	responsiveUI:Destroy()
 	viewportPreview:Destroy()
@@ -429,8 +532,9 @@ end
 table.insert(connections, script.Destroying:Connect(cleanup))
 
 script:SetAttribute("Initialized", true)
-script:SetAttribute("ClientVersion", "phase05")
+script:SetAttribute("ClientVersion", "phase06")
 script:SetAttribute("ProfileMenuOpen", false)
+script:SetAttribute("StarterPathOpen", false)
 script:SetAttribute("InputMode", inputMode)
 script:SetAttribute("LayoutClass", layoutClass)
 print("[ONE_MORE_ITEM][Client] READY controls=keyboard+mouse+touch+gamepad authority=server")

@@ -4,7 +4,7 @@
 
 Phase 05 is **implementation complete and accepted** on `codex/phase-05-persistent-progression` at implementation head `07d887a11c4ff5256ee663f6f306e9ca41cfbedf`. The final correction made collection shelves idempotent and canonical-catalog driven, expanded deterministic coverage, synchronized canonical source twice to the private cloud place, saved normally, completely closed Studio, and reopened through the normal signed-in route without post-reopen synchronization. The bounded bridge-observable parity projection, all five post-reopen Studio suites, current-code Studio-test-store Sessions C/D, and focused touch/gamepad Collection checks in Studio emulators passed. Acceptance fixtures remained absent, and the final cleaned verification had zero fresh game-owned warnings/errors. Exact-head documentation CI is recorded externally in PR #6 and the final handoff rather than self-referenced here.
 
-Phase 04 is the protected baseline merged through PR #5 at `213f3581bd242523e34601cfefa5b5a74770ddee`. Draft PR #6 remains open and unmerged for final review. Issue #4 remains open, and its [Phase 05 persistence QA additions](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4#issuecomment-4983229288) list the explicitly unpassed pre-release checks. Phase 06 has not begun and must not begin in this task.
+Phase 04 is the protected baseline merged through PR #5 at `213f3581bd242523e34601cfefa5b5a74770ddee`. Phase 05 was subsequently squash-merged through PR #6 as `d644411b48e20cd9bb256d3d2c55a647efc2adfd`. Issue #4 remains open, and its [Phase 05 persistence QA additions](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4#issuecomment-4983229288) list the explicitly unpassed pre-release checks. Phase 06 is now isolated on `codex/phase-06-onboarding-starter-missions` in draft PR #7.
 
 ## Canonical ownership and permanent authoring
 
@@ -446,6 +446,10 @@ The earlier TLS/no-join-snapshot block and offline recovery-copy limitation are 
 
 Phase 05 excludes daily challenges, starter missions, offline income, cosmetics/ownership/store, Robux products, monetization, trading, pets, rebirths, multiple worlds, co-op packing, cheer reactions, persistent/global/OrderedDataStore leaderboards, analytics, quests, final models, external assets, sound/music, final VFX, haptics, final Tape wrap, item power, functional mastery bonuses, rank bonuses, and every Phase 06 system.
 
+## Phase 06 cross-reference
+
+Phase 06 builds on this accepted persistence boundary by migrating the same stores to profile Schema Version 2, adding durable onboarding and five exact-once starter missions, extending the existing ProfileSnapshot, authoring contextual mission UI plus one narrowly validated skip remote, and observing authoritative transitions through server-only analytics adapters. It does not alter the Phase 05 receipt, lock, save, collection, shelf, or store-separation guarantees. See `docs/PHASE06_ONBOARDING_MISSIONS_ANALYTICS.md` for the current contract and `docs/DEVELOPMENT_STATUS.md` for fresh evidence.
+
 ## Exact next recommendation
 
-PR #6 is complete and ready for final review, but remains draft and unmerged pending that review. Keep issue #4 open for the explicitly deferred QA above. Do not begin Phase 06 in this task.
+Phase 05 is merged and protected. Continue Phase 06 only on its draft PR #7 branch, keep issue #4 open for explicitly deferred QA, and do not begin Phase 07 from this document.

@@ -14,6 +14,7 @@ type ProfileLifecycleState = ProfileTypes.ProfileLifecycleState
 type ProfileSaveState = ProfileTypes.ProfileSaveState
 type ProfileSnapshot = ProfileTypes.ProfileSnapshot
 type ProgressionReward = ProfileTypes.ProgressionReward
+type StarterMissionReward = ProfileTypes.StarterMissionReward
 
 type Clock = () -> number
 type Wait = (number) -> ()
@@ -55,6 +56,7 @@ type ProfileEntry = {
 	NextHeartbeatAt: number,
 	ConsecutiveSaveFailures: number,
 	LastReward: ProgressionReward?,
+	LastMissionRewards: { StarterMissionReward },
 	LoadInFlight: boolean,
 	SaveInFlight: boolean,
 	HeartbeatInFlight: boolean,
@@ -65,6 +67,7 @@ type ProfileEntry = {
 }
 
 type Mutation = (PersistedProfile) -> (boolean, any?, string?)
+type MissionMutation = (PersistedProfile) -> (boolean, any?, { StarterMissionReward }?, string?)
 
 export type Service = {
 	LoadPlayer: (self: Service, userId: number) -> (boolean, string),
@@ -74,6 +77,11 @@ export type Service = {
 	CanEnterGameplay: (self: Service, userId: number) -> boolean,
 	CanMutate: (self: Service, userId: number) -> boolean,
 	ApplyMutation: (self: Service, userId: number, mutation: Mutation) -> (any?, string),
+	ApplyMutationWithMissionRewards: (
+		self: Service,
+		userId: number,
+		mutation: MissionMutation
+	) -> (any?, string),
 	GetTape: (self: Service, userId: number) -> number?,
 	GetProfileCopy: (self: Service, userId: number) -> PersistedProfile?,
 	GetState: (self: Service, userId: number) -> ProfileLifecycleState?,
@@ -286,7 +294,8 @@ function ProfileService.PublishSnapshot(self: ProfileServiceImpl, userId: number
 		entry.SaveState,
 		entry.SnapshotRevision,
 		entry.ProfileSessionId,
-		entry.LastReward
+		entry.LastReward,
+		entry.LastMissionRewards
 	)
 	local callback = self._snapshotSink
 	if callback ~= nil then
@@ -310,7 +319,8 @@ function ProfileService.GetSnapshot(self: ProfileServiceImpl, userId: number): P
 		entry.SaveState,
 		entry.SnapshotRevision,
 		entry.ProfileSessionId,
-		entry.LastReward
+		entry.LastReward,
+		entry.LastMissionRewards
 	)
 end
 
@@ -404,6 +414,7 @@ function ProfileService.LoadPlayer(self: ProfileServiceImpl, userId: number): (b
 		NextHeartbeatAt = now + ProfileConfig.SESSION_HEARTBEAT_SECONDS,
 		ConsecutiveSaveFailures = 0,
 		LastReward = nil,
+		LastMissionRewards = table.freeze({}),
 		LoadInFlight = true,
 		SaveInFlight = false,
 		HeartbeatInFlight = false,
@@ -554,6 +565,59 @@ function ProfileService.ApplyMutation(
 	if type(payload) == "table" and type(payload.OutcomeId) == "string" then
 		entry.LastReward = ProfileSnapshotBuilder.CopyReward(payload :: ProgressionReward)
 	end
+	self:PublishSnapshot(userId)
+	self:_reschedule()
+	return payload, reason or "APPLIED"
+end
+
+function ProfileService.ApplyMutationWithMissionRewards(
+	self: ProfileServiceImpl,
+	userId: number,
+	mutation: MissionMutation
+): (any?, string)
+	if not self:CanMutate(userId) then
+		return nil, "PROFILE_NOT_MUTABLE"
+	end
+	local entry = self._entries[userId]
+	local current = entry.Profile
+	if current == nil then
+		return nil, "PROFILE_NOT_LOADED"
+	end
+	local draft = ProfileSchema.Clone(current)
+	local originalSession = copySession(current)
+	local ok, acceptedOrFailure, payload, missionRewards, reason = pcall(mutation, draft)
+	if not ok then
+		return nil, "MUTATION_ERROR"
+	end
+	if acceptedOrFailure ~= true then
+		return payload, reason or "REJECTED"
+	end
+
+	local rewardsOk, copiedRewardsOrFailure = pcall(function(): { StarterMissionReward }
+		return ProfileSnapshotBuilder.CopyMissionRewards(missionRewards)
+	end)
+	if not rewardsOk then
+		return nil, "INVALID_MISSION_REWARD_BATCH"
+	end
+	local copiedRewards = copiedRewardsOrFailure :: { StarterMissionReward }
+	draft.Session = originalSession
+	draft.UpdatedAt = math.max(draft.UpdatedAt, math.floor(self._clock()))
+	local normalized = ProfileSchema.Normalize(draft, self._clock())
+	if normalized == nil then
+		return nil, "INVALID_MUTATION"
+	end
+	normalized.Session = originalSession
+	entry.Profile = normalized
+	entry.MutationRevision += 1
+	local wasDirty = entry.Dirty
+	entry.Dirty = true
+	if entry.State ~= "SaveDelayed" then
+		entry.State = "Saving"
+		entry.SaveState = "Saving"
+	end
+	local debouncedSaveAt = self._clock() + ProfileConfig.DIRTY_SAVE_DEBOUNCE_SECONDS
+	entry.NextSaveAt = if wasDirty then math.min(entry.NextSaveAt, debouncedSaveAt) else debouncedSaveAt
+	entry.LastMissionRewards = copiedRewards
 	self:PublishSnapshot(userId)
 	self:_reschedule()
 	return payload, reason or "APPLIED"

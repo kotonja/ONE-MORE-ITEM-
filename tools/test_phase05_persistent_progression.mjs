@@ -154,9 +154,12 @@ try {
     assert.match(schemaSource, /function ProfileSchema\.Migrate/);
   });
 
-  criterion("schema version is exactly one", () => {
-    assert.match(configSource, /SCHEMA_VERSION\s*=\s*1\b/);
+  criterion("current schema is Version 2 with explicit Version 1 preservation", () => {
+    assert.match(configSource, /SCHEMA_VERSION\s*=\s*2\b/);
     assert.match(schemaSource, /SchemaVersion\s*=\s*ProfileConfig\.SCHEMA_VERSION/);
+    assert.match(schemaSource, /function migrateV1\b/);
+    assert.match(schemaSource, /MIGRATED_V1_TO_V2/);
+    assert.match(phase05TestSource, /Version 1[^\n]*Version 2|MIGRATED_V1_TO_V2/);
   });
 
   criterion("production and Studio-test stores are exact and distinct", () => {
@@ -578,9 +581,9 @@ try {
     assert.ok(gitFiles.every((file) => !/\.(?:rbxl|rbxlx|tmp|bak)$/i.test(file)));
   });
 
-  criterion("workflow uses the exact Phase 01 through 05 Node 24 contract", () => {
+  criterion("workflow uses the exact Phase 01 through 06 Node 24 contract", () => {
     const workflow = readText(".github/workflows/phase01-node-validation.yml");
-    assert.match(workflow, /^name:\s*Phase 01(?:\u2013|-)05 Node Validation/m);
+    assert.match(workflow, /^name:\s*Phase 01(?:\u2013|-)06 Node Validation/m);
     assert.match(workflow, /actions\/checkout@v7/);
     assert.match(workflow, /actions\/setup-node@v6/);
     assert.match(workflow, /node-version:\s*24/);
@@ -589,7 +592,7 @@ try {
     assert.doesNotMatch(workflow, /^\s*run:\s*(?:npm (?:install|ci)|pnpm\b|yarn\b|bun\b)/m);
   });
 
-  criterion("workflow runs all five Node gates in order", () => {
+  criterion("workflow runs all six Node gates in order", () => {
     const workflow = readText(".github/workflows/phase01-node-validation.yml");
     const commands = [...workflow.matchAll(/^\s*run:\s*(node tools\/test_[^\s]+\.mjs)\s*$/gm)].map((match) => match[1]);
     assert.deepEqual(commands, [
@@ -598,6 +601,7 @@ try {
       "node tools/test_phase03_cross_platform.mjs",
       "node tools/test_phase04_multiplayer_arena.mjs",
       "node tools/test_phase05_persistent_progression.mjs",
+      "node tools/test_phase06_onboarding_missions_analytics.mjs",
     ]);
   });
 
@@ -620,15 +624,18 @@ try {
     assert.doesNotMatch(docs, /Issue #4[^\n]*(?:closed|resolved)/i);
   });
 
-  criterion("Phase 05 branch draft PR and honest status are documented", () => {
+  criterion("Phase 05 merged baseline and honest Phase 06 closeout status are documented", () => {
     const docs = `${readText("README.md")}\n${readText("docs/DEVELOPMENT_STATUS.md")}`;
-    assert.match(docs, /codex\/phase-05-persistent-progression/);
-    assert.match(docs, /pull\/6|PR #6/);
+    assert.match(docs, /d644411b48e20cd9bb256d3d2c55a647efc2adfd/);
+    assert.match(docs, /PR #6[^\n]*merged|merged[^\n]*PR #6/i);
+    assert.match(docs, /codex\/phase-06-onboarding-starter-missions/);
+    assert.match(docs, /pull\/7|PR #7/);
     assert.match(docs, /draft[^\n]*(?:unmerged|not merged)|(?:unmerged|not merged)[^\n]*draft/i);
-    assert.doesNotMatch(docs, /Phase 05[^\n]*(?:merged into main|PR #6[^\n]*merged)/i);
+    assert.match(docs, /Phase 06[^\n]*(?:implementation complete and accepted|complete and accepted)/i);
+    assert.doesNotMatch(docs, /Phase 06[^\n]*(?:not yet accepted|unaccepted|acceptance (?:is )?partial|acceptance partial)/i);
   });
 
-  criterion("phase02 manifest remains the sole Phase 02 through 05 owner", () => {
+  criterion("phase02 manifest remains the sole Phase 02 through 06 owner", () => {
     const manifests = gitFiles.filter((file) => /^studio\/.*\.manifest\.json$/i.test(file)).sort();
     assert.deepEqual(manifests, ["studio/phase01.manifest.json", "studio/phase02.manifest.json"]);
     assert.equal(manifest.mode, "edit");

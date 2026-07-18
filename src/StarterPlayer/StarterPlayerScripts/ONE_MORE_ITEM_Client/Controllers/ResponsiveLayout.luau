@@ -14,6 +14,10 @@ export type TargetName =
 	| "ShipButton"
 	| "OneMoreButton"
 	| "PackAgainButton"
+	| "OnboardingOverlay"
+	| "StarterMissionCard"
+	| "StarterPathPanel"
+	| "MissionCompleteBanner"
 
 export type ParentName = "Root" | TargetName
 
@@ -103,6 +107,10 @@ local WIDE_TARGETS: TargetMap = table.freeze({
 	ShipButton = geometry("DecisionPanel", 0.30, 0.61, 0.30, 0.25, 0, 0),
 	OneMoreButton = geometry("DecisionPanel", 0.64, 0.61, 0.32, 0.25, 0, 0),
 	PackAgainButton = geometry("ResultsPanel", 0.15, 0.76, 0.70, 0.16, 0, 0),
+	OnboardingOverlay = geometry("Root", 0.5, 0.5, 1, 1, 0.5, 0.5),
+	StarterMissionCard = geometry("Root", 0.025, 0.58, 0.22, 0.24, 0, 0.5),
+	StarterPathPanel = geometry("Root", 0.5, 0.53, 0.68, 0.72, 0.5, 0.5),
+	MissionCompleteBanner = geometry("Root", 0.5, 0.20, 0.38, 0.11, 0.5, 0),
 }) :: TargetMap
 
 local COMPACT_TARGETS: TargetMap = table.freeze({
@@ -117,6 +125,10 @@ local COMPACT_TARGETS: TargetMap = table.freeze({
 	ShipButton = geometry("DecisionPanel", 0.05, 0.56, 0.42, 0.38, 0, 0),
 	OneMoreButton = geometry("DecisionPanel", 0.53, 0.56, 0.42, 0.38, 0, 0),
 	PackAgainButton = geometry("ResultsPanel", 0.15, 0.65, 0.70, 0.28, 0, 0),
+	OnboardingOverlay = geometry("Root", 0.5, 0.5, 1, 1, 0.5, 0.5),
+	StarterMissionCard = geometry("Root", 0.03, 0.52, 0.28, 0.40, 0, 0.5),
+	StarterPathPanel = geometry("Root", 0.5, 0.53, 0.90, 0.84, 0.5, 0.5),
+	MissionCompleteBanner = geometry("Root", 0.5, 0.14, 0.54, 0.16, 0.5, 0),
 }) :: TargetMap
 
 local PORTRAIT_TARGETS: TargetMap = table.freeze({
@@ -131,6 +143,10 @@ local PORTRAIT_TARGETS: TargetMap = table.freeze({
 	ShipButton = geometry("DecisionPanel", 0.04, 0.66, 0.44, 0.28, 0, 0),
 	OneMoreButton = geometry("DecisionPanel", 0.52, 0.66, 0.44, 0.28, 0, 0),
 	PackAgainButton = geometry("ResultsPanel", 0.15, 0.66, 0.70, 0.26, 0, 0),
+	OnboardingOverlay = geometry("Root", 0.5, 0.5, 1, 1, 0.5, 0.5),
+	StarterMissionCard = geometry("Root", 0.5, 0.42, 0.94, 0.15, 0.5, 0),
+	StarterPathPanel = geometry("Root", 0.5, 0.56, 0.94, 0.78, 0.5, 0.5),
+	MissionCompleteBanner = geometry("Root", 0.5, 0.30, 0.82, 0.10, 0.5, 0),
 }) :: TargetMap
 
 local function validatedInsets(viewportWidth: number, viewportHeight: number, insets: SafeInsets?): (SafeInsets, number, number)

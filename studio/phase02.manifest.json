@@ -22,9 +22,11 @@
 
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Assets", "className": "Folder" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Net", "className": "Folder" },
+    { "path": "ReplicatedStorage.ONE_MORE_ITEM.OnboardingNet", "className": "Folder" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared", "className": "Folder" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Dev", "className": "Folder" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services", "className": "Folder" },
+    { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Analytics", "className": "Folder" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Profile", "className": "Folder" },
     { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root", "className": "Frame", "properties": { "AnchorPoint": { "type": "Vector2", "x": 0.5, "y": 0.5 }, "BackgroundTransparency": { "type": "number", "value": 1 }, "Position": { "type": "UDim2", "xScale": 0.5, "xOffset": 0, "yScale": 0.5, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 1, "xOffset": 0, "yScale": 1, "yOffset": 0 } } },
     { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.TouchDragSurface", "className": "Frame", "properties": { "Active": { "type": "boolean", "value": true }, "AnchorPoint": { "type": "Vector2", "x": 0.5, "y": 0.5 }, "BackgroundColor3": { "type": "Color3", "r": 0, "g": 0, "b": 0 }, "BackgroundTransparency": { "type": "number", "value": 1 }, "Position": { "type": "UDim2", "xScale": 0.5, "xOffset": 0, "yScale": 0.5, "yOffset": 0 }, "Selectable": { "type": "boolean", "value": false }, "Size": { "type": "UDim2", "xScale": 1, "xOffset": 0, "yScale": 1, "yOffset": 0 }, "Visible": { "type": "boolean", "value": true }, "ZIndex": { "type": "number", "value": 0 } } },
@@ -38,6 +40,7 @@
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Net.PlacementResponse", "className": "RemoteEvent" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Net.RestartRequest", "className": "RemoteEvent" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Net.RoundSnapshot", "className": "RemoteEvent" },
+    { "path": "ReplicatedStorage.ONE_MORE_ITEM.OnboardingNet.OnboardingActionRequest", "className": "RemoteEvent" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Config", "className": "Folder" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Content", "className": "Folder" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Net", "className": "Folder" },
@@ -51,6 +54,2071 @@
     { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.ResultsPanel", "className": "Frame", "properties": { "AnchorPoint": { "type": "Vector2", "x": 0.5, "y": 0.5 }, "BackgroundColor3": { "type": "Color3", "r": 11, "g": 16, "b": 23 }, "BackgroundTransparency": { "type": "number", "value": 0.05 }, "Position": { "type": "UDim2", "xScale": 0.5, "xOffset": 0, "yScale": 0.5, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.38, "xOffset": 0, "yScale": 0.38, "yOffset": 0 }, "Visible": { "type": "boolean", "value": false } } },
     { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.ShipmentCard", "className": "Frame", "properties": { "AnchorPoint": { "type": "Vector2", "x": 1, "y": 0 }, "BackgroundColor3": { "type": "Color3", "r": 11, "g": 16, "b": 23 }, "BackgroundTransparency": { "type": "number", "value": 0.12 }, "Position": { "type": "UDim2", "xScale": 0.975, "xOffset": 0, "yScale": 0.04, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.22, "xOffset": 0, "yScale": 0.27, "yOffset": 0 } } },
     { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StatusBanner", "className": "TextLabel", "properties": { "AnchorPoint": { "type": "Vector2", "x": 0.5, "y": 0 }, "BackgroundColor3": { "type": "Color3", "r": 22, "g": 33, "b": 44 }, "BackgroundTransparency": { "type": "number", "value": 0.15 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.5, "xOffset": 0, "yScale": 0.035, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.3, "xOffset": 0, "yScale": 0.065, "yOffset": 0 }, "Text": { "type": "string", "value": "PACK THE BOX" }, "TextColor3": { "type": "Color3", "r": 245, "g": 247, "b": 250 }, "TextScaled": { "type": "boolean", "value": true }, "Visible": { "type": "boolean", "value": false } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.OnboardingOverlay", "className": "Frame", "properties": { "Active": { "type": "boolean", "value": false }, "AnchorPoint": { "type": "Vector2", "x": 0.5, "y": 0.5 }, "BackgroundTransparency": { "type": "number", "value": 1 }, "Position": { "type": "UDim2", "xScale": 0.5, "xOffset": 0, "yScale": 0.5, "yOffset": 0 }, "Selectable": { "type": "boolean", "value": false }, "Size": { "type": "UDim2", "xScale": 1, "xOffset": 0, "yScale": 1, "yOffset": 0 }, "Visible": { "type": "boolean", "value": false }, "ZIndex": { "type": "number", "value": 14 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.OnboardingOverlay.Prompt", "className": "TextLabel", "properties": { "AnchorPoint": { "type": "Vector2", "x": 0.5, "y": 0 }, "BackgroundColor3": { "type": "Color3", "r": 11, "g": 16, "b": 23 }, "BackgroundTransparency": { "type": "number", "value": 0.08 }, "BorderSizePixel": { "type": "number", "value": 0 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.5, "xOffset": 0, "yScale": 0.205, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.38, "xOffset": 0, "yScale": 0.052, "yOffset": 0 }, "Text": { "type": "string", "value": "PACK YOUR FIRST BOX" }, "TextColor3": { "type": "Color3", "r": 245, "g": 247, "b": 250 }, "TextScaled": { "type": "boolean", "value": true }, "TextWrapped": { "type": "boolean", "value": true }, "ZIndex": { "type": "number", "value": 15 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.OnboardingOverlay.Instruction", "className": "TextLabel", "properties": { "AnchorPoint": { "type": "Vector2", "x": 0.5, "y": 0 }, "BackgroundColor3": { "type": "Color3", "r": 11, "g": 16, "b": 23 }, "BackgroundTransparency": { "type": "number", "value": 0.14 }, "BorderSizePixel": { "type": "number", "value": 0 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "Gotham" }, "Position": { "type": "UDim2", "xScale": 0.5, "xOffset": 0, "yScale": 0.259, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.42, "xOffset": 0, "yScale": 0.044, "yOffset": 0 }, "Text": { "type": "string", "value": "MOVE THE PARCEL OVER THE BOX" }, "TextColor3": { "type": "Color3", "r": 152, "g": 168, "b": 184 }, "TextScaled": { "type": "boolean", "value": true }, "TextWrapped": { "type": "boolean", "value": true }, "ZIndex": { "type": "number", "value": 15 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.OnboardingOverlay.InputHint", "className": "TextLabel", "properties": { "AnchorPoint": { "type": "Vector2", "x": 0.5, "y": 0 }, "BackgroundTransparency": { "type": "number", "value": 1 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.5, "xOffset": 0, "yScale": 0.305, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.40, "xOffset": 0, "yScale": 0.038, "yOffset": 0 }, "Text": { "type": "string", "value": "MOVE WITH WASD OR DRAG WITH THE MOUSE" }, "TextColor3": { "type": "Color3", "r": 34, "g": 211, "b": 230 }, "TextScaled": { "type": "boolean", "value": true }, "TextWrapped": { "type": "boolean", "value": true }, "ZIndex": { "type": "number", "value": 15 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.OnboardingOverlay.StepProgress", "className": "TextLabel", "properties": { "AnchorPoint": { "type": "Vector2", "x": 0.5, "y": 0 }, "BackgroundTransparency": { "type": "number", "value": 1 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.5, "xOffset": 0, "yScale": 0.175, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.18, "xOffset": 0, "yScale": 0.026, "yOffset": 0 }, "Text": { "type": "string", "value": "STEP 1 / 5" }, "TextColor3": { "type": "Color3", "r": 34, "g": 211, "b": 230 }, "TextScaled": { "type": "boolean", "value": true }, "ZIndex": { "type": "number", "value": 15 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.OnboardingOverlay.TutorialPointer", "className": "TextLabel", "properties": { "AnchorPoint": { "type": "Vector2", "x": 0.5, "y": 0.5 }, "BackgroundTransparency": { "type": "number", "value": 1 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.5, "xOffset": 0, "yScale": 0.52, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.04, "xOffset": 0, "yScale": 0.055, "yOffset": 0 }, "Text": { "type": "string", "value": "▼" }, "TextColor3": { "type": "Color3", "r": 34, "g": 211, "b": 230 }, "TextScaled": { "type": "boolean", "value": true }, "Visible": { "type": "boolean", "value": false }, "ZIndex": { "type": "number", "value": 16 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.OnboardingOverlay.SkipButton", "className": "TextButton", "properties": { "AnchorPoint": { "type": "Vector2", "x": 1, "y": 0 }, "AutoButtonColor": { "type": "boolean", "value": true }, "BackgroundColor3": { "type": "Color3", "r": 22, "g": 33, "b": 44 }, "BackgroundTransparency": { "type": "number", "value": 0.12 }, "BorderSizePixel": { "type": "number", "value": 0 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.97, "xOffset": 0, "yScale": 0.12, "yOffset": 0 }, "Selectable": { "type": "boolean", "value": false }, "Size": { "type": "UDim2", "xScale": 0.13, "xOffset": 0, "yScale": 0.052, "yOffset": 0 }, "Text": { "type": "string", "value": "SKIP TUTORIAL" }, "TextColor3": { "type": "Color3", "r": 152, "g": 168, "b": 184 }, "TextScaled": { "type": "boolean", "value": true }, "TextWrapped": { "type": "boolean", "value": true }, "ZIndex": { "type": "number", "value": 16 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.OnboardingOverlay.SkipHoldProgress", "className": "Frame", "properties": { "AnchorPoint": { "type": "Vector2", "x": 0, "y": 0 }, "BackgroundColor3": { "type": "Color3", "r": 34, "g": 211, "b": 230 }, "BorderSizePixel": { "type": "number", "value": 0 }, "Position": { "type": "UDim2", "xScale": 0.84, "xOffset": 0, "yScale": 0.174, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0, "xOffset": 0, "yScale": 0.006, "yOffset": 0 }, "Visible": { "type": "boolean", "value": false }, "ZIndex": { "type": "number", "value": 16 } } },
+
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterMissionCard", "className": "Frame", "properties": { "Active": { "type": "boolean", "value": false }, "AnchorPoint": { "type": "Vector2", "x": 0, "y": 0.5 }, "BackgroundColor3": { "type": "Color3", "r": 11, "g": 16, "b": 23 }, "BackgroundTransparency": { "type": "number", "value": 0.08 }, "BorderSizePixel": { "type": "number", "value": 0 }, "Position": { "type": "UDim2", "xScale": 0.025, "xOffset": 0, "yScale": 0.58, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.22, "xOffset": 0, "yScale": 0.24, "yOffset": 0 }, "Visible": { "type": "boolean", "value": false }, "ZIndex": { "type": "number", "value": 14 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterMissionCard.Header", "className": "TextLabel", "properties": { "BackgroundTransparency": { "type": "number", "value": 1 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.05, "xOffset": 0, "yScale": 0.04, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.9, "xOffset": 0, "yScale": 0.12, "yOffset": 0 }, "Text": { "type": "string", "value": "STARTER PATH" }, "TextColor3": { "type": "Color3", "r": 34, "g": 211, "b": 230 }, "TextScaled": { "type": "boolean", "value": true }, "TextXAlignment": { "type": "EnumItem", "enumType": "TextXAlignment", "name": "Left" }, "ZIndex": { "type": "number", "value": 15 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterMissionCard.MissionName", "className": "TextLabel", "properties": { "BackgroundTransparency": { "type": "number", "value": 1 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.05, "xOffset": 0, "yScale": 0.18, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.9, "xOffset": 0, "yScale": 0.14, "yOffset": 0 }, "Text": { "type": "string", "value": "FIRST FIT" }, "TextColor3": { "type": "Color3", "r": 245, "g": 247, "b": 250 }, "TextScaled": { "type": "boolean", "value": true }, "TextXAlignment": { "type": "EnumItem", "enumType": "TextXAlignment", "name": "Left" }, "ZIndex": { "type": "number", "value": 15 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterMissionCard.Description", "className": "TextLabel", "properties": { "BackgroundTransparency": { "type": "number", "value": 1 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "Gotham" }, "Position": { "type": "UDim2", "xScale": 0.05, "xOffset": 0, "yScale": 0.33, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.9, "xOffset": 0, "yScale": 0.12, "yOffset": 0 }, "Text": { "type": "string", "value": "Place one item." }, "TextColor3": { "type": "Color3", "r": 152, "g": 168, "b": 184 }, "TextScaled": { "type": "boolean", "value": true }, "TextWrapped": { "type": "boolean", "value": true }, "TextXAlignment": { "type": "EnumItem", "enumType": "TextXAlignment", "name": "Left" }, "ZIndex": { "type": "number", "value": 15 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterMissionCard.ProgressText", "className": "TextLabel", "properties": { "BackgroundTransparency": { "type": "number", "value": 1 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.05, "xOffset": 0, "yScale": 0.48, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.42, "xOffset": 0, "yScale": 0.1, "yOffset": 0 }, "Text": { "type": "string", "value": "0 / 1" }, "TextColor3": { "type": "Color3", "r": 245, "g": 247, "b": 250 }, "TextScaled": { "type": "boolean", "value": true }, "TextXAlignment": { "type": "EnumItem", "enumType": "TextXAlignment", "name": "Left" }, "ZIndex": { "type": "number", "value": 15 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterMissionCard.ProgressBar", "className": "Frame", "properties": { "BackgroundTransparency": { "type": "number", "value": 1 }, "ClipsDescendants": { "type": "boolean", "value": true }, "Position": { "type": "UDim2", "xScale": 0.05, "xOffset": 0, "yScale": 0.59, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.9, "xOffset": 0, "yScale": 0.07, "yOffset": 0 }, "ZIndex": { "type": "number", "value": 15 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterMissionCard.ProgressBar.Background", "className": "Frame", "properties": { "BackgroundColor3": { "type": "Color3", "r": 42, "g": 58, "b": 72 }, "BorderSizePixel": { "type": "number", "value": 0 }, "Size": { "type": "UDim2", "xScale": 1, "xOffset": 0, "yScale": 1, "yOffset": 0 }, "ZIndex": { "type": "number", "value": 15 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterMissionCard.ProgressBar.Fill", "className": "Frame", "properties": { "BackgroundColor3": { "type": "Color3", "r": 34, "g": 211, "b": 230 }, "BorderSizePixel": { "type": "number", "value": 0 }, "Size": { "type": "UDim2", "xScale": 0, "xOffset": 0, "yScale": 1, "yOffset": 0 }, "ZIndex": { "type": "number", "value": 16 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterMissionCard.RewardText", "className": "TextLabel", "properties": { "BackgroundTransparency": { "type": "number", "value": 1 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.05, "xOffset": 0, "yScale": 0.69, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.58, "xOffset": 0, "yScale": 0.1, "yOffset": 0 }, "Text": { "type": "string", "value": "+10 TAPE  +10 XP" }, "TextColor3": { "type": "Color3", "r": 255, "g": 178, "b": 26 }, "TextScaled": { "type": "boolean", "value": true }, "TextXAlignment": { "type": "EnumItem", "enumType": "TextXAlignment", "name": "Left" }, "ZIndex": { "type": "number", "value": 15 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterMissionCard.OpenPathButton", "className": "TextButton", "properties": { "AutoButtonColor": { "type": "boolean", "value": true }, "BackgroundColor3": { "type": "Color3", "r": 22, "g": 33, "b": 44 }, "BorderSizePixel": { "type": "number", "value": 0 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.65, "xOffset": 0, "yScale": 0.68, "yOffset": 0 }, "Selectable": { "type": "boolean", "value": true }, "Size": { "type": "UDim2", "xScale": 0.3, "xOffset": 0, "yScale": 0.22, "yOffset": 0 }, "Text": { "type": "string", "value": "OPEN  [M / L1]" }, "TextColor3": { "type": "Color3", "r": 245, "g": 247, "b": 250 }, "TextScaled": { "type": "boolean", "value": true }, "TextWrapped": { "type": "boolean", "value": true }, "ZIndex": { "type": "number", "value": 15 } } },
+
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel", "className": "Frame", "properties": { "Active": { "type": "boolean", "value": true }, "AnchorPoint": { "type": "Vector2", "x": 0.5, "y": 0.5 }, "BackgroundColor3": { "type": "Color3", "r": 11, "g": 16, "b": 23 }, "BackgroundTransparency": { "type": "number", "value": 0.02 }, "BorderSizePixel": { "type": "number", "value": 0 }, "ClipsDescendants": { "type": "boolean", "value": true }, "Position": { "type": "UDim2", "xScale": 0.5, "xOffset": 0, "yScale": 0.53, "yOffset": 0 }, "Selectable": { "type": "boolean", "value": false }, "SelectionGroup": { "type": "boolean", "value": true }, "Size": { "type": "UDim2", "xScale": 0.68, "xOffset": 0, "yScale": 0.72, "yOffset": 0 }, "Visible": { "type": "boolean", "value": false }, "ZIndex": { "type": "number", "value": 40 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Header", "className": "TextLabel", "properties": { "BackgroundTransparency": { "type": "number", "value": 1 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.04, "xOffset": 0, "yScale": 0.03, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.52, "xOffset": 0, "yScale": 0.08, "yOffset": 0 }, "Text": { "type": "string", "value": "STARTER PATH" }, "TextColor3": { "type": "Color3", "r": 245, "g": 247, "b": 250 }, "TextScaled": { "type": "boolean", "value": true }, "TextXAlignment": { "type": "EnumItem", "enumType": "TextXAlignment", "name": "Left" }, "ZIndex": { "type": "number", "value": 41 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Summary", "className": "TextLabel", "properties": { "BackgroundTransparency": { "type": "number", "value": 1 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.58, "xOffset": 0, "yScale": 0.04, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.22, "xOffset": 0, "yScale": 0.07, "yOffset": 0 }, "Text": { "type": "string", "value": "0 / 5 COMPLETE" }, "TextColor3": { "type": "Color3", "r": 34, "g": 211, "b": 230 }, "TextScaled": { "type": "boolean", "value": true }, "ZIndex": { "type": "number", "value": 41 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.CloseButton", "className": "TextButton", "properties": { "AutoButtonColor": { "type": "boolean", "value": true }, "BackgroundColor3": { "type": "Color3", "r": 255, "g": 75, "b": 62 }, "BorderSizePixel": { "type": "number", "value": 0 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.84, "xOffset": 0, "yScale": 0.03, "yOffset": 0 }, "Selectable": { "type": "boolean", "value": true }, "Size": { "type": "UDim2", "xScale": 0.12, "xOffset": 0, "yScale": 0.09, "yOffset": 0 }, "Text": { "type": "string", "value": "CLOSE  [B]" }, "TextColor3": { "type": "Color3", "r": 245, "g": 247, "b": 250 }, "TextScaled": { "type": "boolean", "value": true }, "TextWrapped": { "type": "boolean", "value": true }, "ZIndex": { "type": "number", "value": 41 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions", "className": "Frame", "properties": { "BackgroundTransparency": { "type": "number", "value": 1 }, "Position": { "type": "UDim2", "xScale": 0.04, "xOffset": 0, "yScale": 0.15, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.92, "xOffset": 0, "yScale": 0.80, "yOffset": 0 }, "ZIndex": { "type": "number", "value": 41 } } },
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_01",
+      "className": "TextButton",
+      "properties": {
+        "AutoButtonColor": { "type": "boolean", "value": false },
+        "BackgroundColor3": { "type": "Color3", "r": 22, "g": 33, "b": 44 },
+        "BackgroundTransparency": { "type": "number", "value": 0.04 },
+        "BorderSizePixel": { "type": "number", "value": 0 },
+        "Position": { "type": "UDim2", "xScale": 0, "xOffset": 0, "yScale": 0, "yOffset": 0 },
+        "Selectable": { "type": "boolean", "value": true },
+        "Size": { "type": "UDim2", "xScale": 1, "xOffset": 0, "yScale": 0.18, "yOffset": 0 },
+        "Text": { "type": "string", "value": "" },
+        "ZIndex": { "type": "number", "value": 42 }
+      }
+    },
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_01.Status",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.02,
+          "xOffset": 0,
+          "yScale": 0.18,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.13,
+          "xOffset": 0,
+          "yScale": 0.64,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "1"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 34,
+          "g": 211,
+          "b": 230
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_01.MissionName",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.17,
+          "xOffset": 0,
+          "yScale": 0.1,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.31,
+          "xOffset": 0,
+          "yScale": 0.34,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "FIRST FIT"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 245,
+          "g": 247,
+          "b": 250
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextXAlignment": {
+          "type": "EnumItem",
+          "enumType": "TextXAlignment",
+          "name": "Left"
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_01.Description",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "Gotham"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.17,
+          "xOffset": 0,
+          "yScale": 0.48,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.33,
+          "xOffset": 0,
+          "yScale": 0.25,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "Place one item."
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 152,
+          "g": 168,
+          "b": 184
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextWrapped": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextXAlignment": {
+          "type": "EnumItem",
+          "enumType": "TextXAlignment",
+          "name": "Left"
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_01.ProgressText",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.51,
+          "xOffset": 0,
+          "yScale": 0.15,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.18,
+          "xOffset": 0,
+          "yScale": 0.28,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "0 / 1"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 245,
+          "g": 247,
+          "b": 250
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_01.RewardText",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.71,
+          "xOffset": 0,
+          "yScale": 0.1,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.27,
+          "xOffset": 0,
+          "yScale": 0.34,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "+10 TAPE  +10 XP"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 255,
+          "g": 178,
+          "b": 26
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextWrapped": {
+          "type": "boolean",
+          "value": true
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_01.ProgressBar",
+      "className": "Frame",
+      "properties": {
+        "BackgroundColor3": {
+          "type": "Color3",
+          "r": 42,
+          "g": 58,
+          "b": 72
+        },
+        "BorderSizePixel": {
+          "type": "number",
+          "value": 0
+        },
+        "ClipsDescendants": {
+          "type": "boolean",
+          "value": true
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.51,
+          "xOffset": 0,
+          "yScale": 0.57,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.45,
+          "xOffset": 0,
+          "yScale": 0.16,
+          "yOffset": 0
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_01.ProgressBar.Fill",
+      "className": "Frame",
+      "properties": {
+        "BackgroundColor3": {
+          "type": "Color3",
+          "r": 34,
+          "g": 211,
+          "b": 230
+        },
+        "BorderSizePixel": {
+          "type": "number",
+          "value": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0,
+          "xOffset": 0,
+          "yScale": 1,
+          "yOffset": 0
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 44
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_01.Corner",
+      "className": "UICorner",
+      "properties": {
+        "CornerRadius": {
+          "type": "UDim",
+          "scale": 0.05,
+          "offset": 0
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_01.Stroke",
+      "className": "UIStroke",
+      "properties": {
+        "ApplyStrokeMode": {
+          "type": "EnumItem",
+          "enumType": "ApplyStrokeMode",
+          "name": "Border"
+        },
+        "Color": {
+          "type": "Color3",
+          "r": 77,
+          "g": 91,
+          "b": 107
+        },
+        "Thickness": {
+          "type": "number",
+          "value": 2
+        },
+        "Transparency": {
+          "type": "number",
+          "value": 0.3
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_02",
+      "className": "TextButton",
+      "properties": {
+        "AutoButtonColor": {
+          "type": "boolean",
+          "value": false
+        },
+        "BackgroundColor3": {
+          "type": "Color3",
+          "r": 22,
+          "g": 33,
+          "b": 44
+        },
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 0.04
+        },
+        "BorderSizePixel": {
+          "type": "number",
+          "value": 0
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0,
+          "xOffset": 0,
+          "yScale": 0.2,
+          "yOffset": 0
+        },
+        "Selectable": {
+          "type": "boolean",
+          "value": true
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 1,
+          "xOffset": 0,
+          "yScale": 0.18,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": ""
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 42
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_02.Status",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.02,
+          "xOffset": 0,
+          "yScale": 0.18,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.13,
+          "xOffset": 0,
+          "yScale": 0.64,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "2"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 34,
+          "g": 211,
+          "b": 230
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_02.MissionName",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.17,
+          "xOffset": 0,
+          "yScale": 0.1,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.31,
+          "xOffset": 0,
+          "yScale": 0.34,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "SAFE SHIPMENT"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 245,
+          "g": 247,
+          "b": 250
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextXAlignment": {
+          "type": "EnumItem",
+          "enumType": "TextXAlignment",
+          "name": "Left"
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_02.Description",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "Gotham"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.17,
+          "xOffset": 0,
+          "yScale": 0.48,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.33,
+          "xOffset": 0,
+          "yScale": 0.25,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "Ship one box successfully."
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 152,
+          "g": 168,
+          "b": 184
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextWrapped": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextXAlignment": {
+          "type": "EnumItem",
+          "enumType": "TextXAlignment",
+          "name": "Left"
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_02.ProgressText",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.51,
+          "xOffset": 0,
+          "yScale": 0.15,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.18,
+          "xOffset": 0,
+          "yScale": 0.28,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "0 / 1"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 245,
+          "g": 247,
+          "b": 250
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_02.RewardText",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.71,
+          "xOffset": 0,
+          "yScale": 0.1,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.27,
+          "xOffset": 0,
+          "yScale": 0.34,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "+25 TAPE  +20 XP"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 255,
+          "g": 178,
+          "b": 26
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextWrapped": {
+          "type": "boolean",
+          "value": true
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_02.ProgressBar",
+      "className": "Frame",
+      "properties": {
+        "BackgroundColor3": {
+          "type": "Color3",
+          "r": 42,
+          "g": 58,
+          "b": 72
+        },
+        "BorderSizePixel": {
+          "type": "number",
+          "value": 0
+        },
+        "ClipsDescendants": {
+          "type": "boolean",
+          "value": true
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.51,
+          "xOffset": 0,
+          "yScale": 0.57,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.45,
+          "xOffset": 0,
+          "yScale": 0.16,
+          "yOffset": 0
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_02.ProgressBar.Fill",
+      "className": "Frame",
+      "properties": {
+        "BackgroundColor3": {
+          "type": "Color3",
+          "r": 34,
+          "g": 211,
+          "b": 230
+        },
+        "BorderSizePixel": {
+          "type": "number",
+          "value": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0,
+          "xOffset": 0,
+          "yScale": 1,
+          "yOffset": 0
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 44
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_02.Corner",
+      "className": "UICorner",
+      "properties": {
+        "CornerRadius": {
+          "type": "UDim",
+          "scale": 0.05,
+          "offset": 0
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_02.Stroke",
+      "className": "UIStroke",
+      "properties": {
+        "ApplyStrokeMode": {
+          "type": "EnumItem",
+          "enumType": "ApplyStrokeMode",
+          "name": "Border"
+        },
+        "Color": {
+          "type": "Color3",
+          "r": 77,
+          "g": 91,
+          "b": 107
+        },
+        "Thickness": {
+          "type": "number",
+          "value": 2
+        },
+        "Transparency": {
+          "type": "number",
+          "value": 0.3
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_03",
+      "className": "TextButton",
+      "properties": {
+        "AutoButtonColor": {
+          "type": "boolean",
+          "value": false
+        },
+        "BackgroundColor3": {
+          "type": "Color3",
+          "r": 22,
+          "g": 33,
+          "b": 44
+        },
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 0.04
+        },
+        "BorderSizePixel": {
+          "type": "number",
+          "value": 0
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0,
+          "xOffset": 0,
+          "yScale": 0.4,
+          "yOffset": 0
+        },
+        "Selectable": {
+          "type": "boolean",
+          "value": true
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 1,
+          "xOffset": 0,
+          "yScale": 0.18,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": ""
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 42
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_03.Status",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.02,
+          "xOffset": 0,
+          "yScale": 0.18,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.13,
+          "xOffset": 0,
+          "yScale": 0.64,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "3"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 34,
+          "g": 211,
+          "b": 230
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_03.MissionName",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.17,
+          "xOffset": 0,
+          "yScale": 0.1,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.31,
+          "xOffset": 0,
+          "yScale": 0.34,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "ONE MORE!"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 245,
+          "g": 247,
+          "b": 250
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextXAlignment": {
+          "type": "EnumItem",
+          "enumType": "TextXAlignment",
+          "name": "Left"
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_03.Description",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "Gotham"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.17,
+          "xOffset": 0,
+          "yScale": 0.48,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.33,
+          "xOffset": 0,
+          "yScale": 0.25,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "Choose One More once."
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 152,
+          "g": 168,
+          "b": 184
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextWrapped": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextXAlignment": {
+          "type": "EnumItem",
+          "enumType": "TextXAlignment",
+          "name": "Left"
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_03.ProgressText",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.51,
+          "xOffset": 0,
+          "yScale": 0.15,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.18,
+          "xOffset": 0,
+          "yScale": 0.28,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "0 / 1"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 245,
+          "g": 247,
+          "b": 250
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_03.RewardText",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.71,
+          "xOffset": 0,
+          "yScale": 0.1,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.27,
+          "xOffset": 0,
+          "yScale": 0.34,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "+35 TAPE  +30 XP"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 255,
+          "g": 178,
+          "b": 26
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextWrapped": {
+          "type": "boolean",
+          "value": true
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_03.ProgressBar",
+      "className": "Frame",
+      "properties": {
+        "BackgroundColor3": {
+          "type": "Color3",
+          "r": 42,
+          "g": 58,
+          "b": 72
+        },
+        "BorderSizePixel": {
+          "type": "number",
+          "value": 0
+        },
+        "ClipsDescendants": {
+          "type": "boolean",
+          "value": true
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.51,
+          "xOffset": 0,
+          "yScale": 0.57,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.45,
+          "xOffset": 0,
+          "yScale": 0.16,
+          "yOffset": 0
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_03.ProgressBar.Fill",
+      "className": "Frame",
+      "properties": {
+        "BackgroundColor3": {
+          "type": "Color3",
+          "r": 34,
+          "g": 211,
+          "b": 230
+        },
+        "BorderSizePixel": {
+          "type": "number",
+          "value": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0,
+          "xOffset": 0,
+          "yScale": 1,
+          "yOffset": 0
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 44
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_03.Corner",
+      "className": "UICorner",
+      "properties": {
+        "CornerRadius": {
+          "type": "UDim",
+          "scale": 0.05,
+          "offset": 0
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_03.Stroke",
+      "className": "UIStroke",
+      "properties": {
+        "ApplyStrokeMode": {
+          "type": "EnumItem",
+          "enumType": "ApplyStrokeMode",
+          "name": "Border"
+        },
+        "Color": {
+          "type": "Color3",
+          "r": 77,
+          "g": 91,
+          "b": 107
+        },
+        "Thickness": {
+          "type": "number",
+          "value": 2
+        },
+        "Transparency": {
+          "type": "number",
+          "value": 0.3
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_04",
+      "className": "TextButton",
+      "properties": {
+        "AutoButtonColor": {
+          "type": "boolean",
+          "value": false
+        },
+        "BackgroundColor3": {
+          "type": "Color3",
+          "r": 22,
+          "g": 33,
+          "b": 44
+        },
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 0.04
+        },
+        "BorderSizePixel": {
+          "type": "number",
+          "value": 0
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0,
+          "xOffset": 0,
+          "yScale": 0.6,
+          "yOffset": 0
+        },
+        "Selectable": {
+          "type": "boolean",
+          "value": true
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 1,
+          "xOffset": 0,
+          "yScale": 0.18,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": ""
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 42
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_04.Status",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.02,
+          "xOffset": 0,
+          "yScale": 0.18,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.13,
+          "xOffset": 0,
+          "yScale": 0.64,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "4"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 34,
+          "g": 211,
+          "b": 230
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_04.MissionName",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.17,
+          "xOffset": 0,
+          "yScale": 0.1,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.31,
+          "xOffset": 0,
+          "yScale": 0.34,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "START A COLLECTION"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 245,
+          "g": 247,
+          "b": 250
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextXAlignment": {
+          "type": "EnumItem",
+          "enumType": "TextXAlignment",
+          "name": "Left"
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_04.Description",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "Gotham"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.17,
+          "xOffset": 0,
+          "yScale": 0.48,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.33,
+          "xOffset": 0,
+          "yScale": 0.25,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "Discover three different items."
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 152,
+          "g": 168,
+          "b": 184
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextWrapped": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextXAlignment": {
+          "type": "EnumItem",
+          "enumType": "TextXAlignment",
+          "name": "Left"
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_04.ProgressText",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.51,
+          "xOffset": 0,
+          "yScale": 0.15,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.18,
+          "xOffset": 0,
+          "yScale": 0.28,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "0 / 3"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 245,
+          "g": 247,
+          "b": 250
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_04.RewardText",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.71,
+          "xOffset": 0,
+          "yScale": 0.1,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.27,
+          "xOffset": 0,
+          "yScale": 0.34,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "+75 TAPE  +50 XP"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 255,
+          "g": 178,
+          "b": 26
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextWrapped": {
+          "type": "boolean",
+          "value": true
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_04.ProgressBar",
+      "className": "Frame",
+      "properties": {
+        "BackgroundColor3": {
+          "type": "Color3",
+          "r": 42,
+          "g": 58,
+          "b": 72
+        },
+        "BorderSizePixel": {
+          "type": "number",
+          "value": 0
+        },
+        "ClipsDescendants": {
+          "type": "boolean",
+          "value": true
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.51,
+          "xOffset": 0,
+          "yScale": 0.57,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.45,
+          "xOffset": 0,
+          "yScale": 0.16,
+          "yOffset": 0
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_04.ProgressBar.Fill",
+      "className": "Frame",
+      "properties": {
+        "BackgroundColor3": {
+          "type": "Color3",
+          "r": 34,
+          "g": 211,
+          "b": 230
+        },
+        "BorderSizePixel": {
+          "type": "number",
+          "value": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0,
+          "xOffset": 0,
+          "yScale": 1,
+          "yOffset": 0
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 44
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_04.Corner",
+      "className": "UICorner",
+      "properties": {
+        "CornerRadius": {
+          "type": "UDim",
+          "scale": 0.05,
+          "offset": 0
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_04.Stroke",
+      "className": "UIStroke",
+      "properties": {
+        "ApplyStrokeMode": {
+          "type": "EnumItem",
+          "enumType": "ApplyStrokeMode",
+          "name": "Border"
+        },
+        "Color": {
+          "type": "Color3",
+          "r": 77,
+          "g": 91,
+          "b": 107
+        },
+        "Thickness": {
+          "type": "number",
+          "value": 2
+        },
+        "Transparency": {
+          "type": "number",
+          "value": 0.3
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_05",
+      "className": "TextButton",
+      "properties": {
+        "AutoButtonColor": {
+          "type": "boolean",
+          "value": false
+        },
+        "BackgroundColor3": {
+          "type": "Color3",
+          "r": 22,
+          "g": 33,
+          "b": 44
+        },
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 0.04
+        },
+        "BorderSizePixel": {
+          "type": "number",
+          "value": 0
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0,
+          "xOffset": 0,
+          "yScale": 0.8,
+          "yOffset": 0
+        },
+        "Selectable": {
+          "type": "boolean",
+          "value": true
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 1,
+          "xOffset": 0,
+          "yScale": 0.18,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": ""
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 42
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_05.Status",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.02,
+          "xOffset": 0,
+          "yScale": 0.18,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.13,
+          "xOffset": 0,
+          "yScale": 0.64,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "5"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 34,
+          "g": 211,
+          "b": 230
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_05.MissionName",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.17,
+          "xOffset": 0,
+          "yScale": 0.1,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.31,
+          "xOffset": 0,
+          "yScale": 0.34,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "PACK IT TIGHT"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 245,
+          "g": 247,
+          "b": 250
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextXAlignment": {
+          "type": "EnumItem",
+          "enumType": "TextXAlignment",
+          "name": "Left"
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_05.Description",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "Gotham"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.17,
+          "xOffset": 0,
+          "yScale": 0.48,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.33,
+          "xOffset": 0,
+          "yScale": 0.25,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "Ship at least five items together."
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 152,
+          "g": 168,
+          "b": 184
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextWrapped": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextXAlignment": {
+          "type": "EnumItem",
+          "enumType": "TextXAlignment",
+          "name": "Left"
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_05.ProgressText",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.51,
+          "xOffset": 0,
+          "yScale": 0.15,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.18,
+          "xOffset": 0,
+          "yScale": 0.28,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "0 / 5"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 245,
+          "g": 247,
+          "b": 250
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_05.RewardText",
+      "className": "TextLabel",
+      "properties": {
+        "BackgroundTransparency": {
+          "type": "number",
+          "value": 1
+        },
+        "Font": {
+          "type": "EnumItem",
+          "enumType": "Font",
+          "name": "GothamBold"
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.71,
+          "xOffset": 0,
+          "yScale": 0.1,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.27,
+          "xOffset": 0,
+          "yScale": 0.34,
+          "yOffset": 0
+        },
+        "Text": {
+          "type": "string",
+          "value": "+150 TAPE  +100 XP"
+        },
+        "TextColor3": {
+          "type": "Color3",
+          "r": 255,
+          "g": 178,
+          "b": 26
+        },
+        "TextScaled": {
+          "type": "boolean",
+          "value": true
+        },
+        "TextWrapped": {
+          "type": "boolean",
+          "value": true
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_05.ProgressBar",
+      "className": "Frame",
+      "properties": {
+        "BackgroundColor3": {
+          "type": "Color3",
+          "r": 42,
+          "g": 58,
+          "b": 72
+        },
+        "BorderSizePixel": {
+          "type": "number",
+          "value": 0
+        },
+        "ClipsDescendants": {
+          "type": "boolean",
+          "value": true
+        },
+        "Position": {
+          "type": "UDim2",
+          "xScale": 0.51,
+          "xOffset": 0,
+          "yScale": 0.57,
+          "yOffset": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0.45,
+          "xOffset": 0,
+          "yScale": 0.16,
+          "yOffset": 0
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 43
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_05.ProgressBar.Fill",
+      "className": "Frame",
+      "properties": {
+        "BackgroundColor3": {
+          "type": "Color3",
+          "r": 34,
+          "g": 211,
+          "b": 230
+        },
+        "BorderSizePixel": {
+          "type": "number",
+          "value": 0
+        },
+        "Size": {
+          "type": "UDim2",
+          "xScale": 0,
+          "xOffset": 0,
+          "yScale": 1,
+          "yOffset": 0
+        },
+        "ZIndex": {
+          "type": "number",
+          "value": 44
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_05.Corner",
+      "className": "UICorner",
+      "properties": {
+        "CornerRadius": {
+          "type": "UDim",
+          "scale": 0.05,
+          "offset": 0
+        }
+      }
+    },
+
+    {
+      "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel.Missions.Mission_05.Stroke",
+      "className": "UIStroke",
+      "properties": {
+        "ApplyStrokeMode": {
+          "type": "EnumItem",
+          "enumType": "ApplyStrokeMode",
+          "name": "Border"
+        },
+        "Color": {
+          "type": "Color3",
+          "r": 77,
+          "g": 91,
+          "b": 107
+        },
+        "Thickness": {
+          "type": "number",
+          "value": 2
+        },
+        "Transparency": {
+          "type": "number",
+          "value": 0.3
+        }
+      }
+    },
+
+
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.MissionCompleteBanner", "className": "Frame", "properties": { "Active": { "type": "boolean", "value": false }, "AnchorPoint": { "type": "Vector2", "x": 0.5, "y": 0 }, "BackgroundColor3": { "type": "Color3", "r": 11, "g": 16, "b": 23 }, "BackgroundTransparency": { "type": "number", "value": 0.04 }, "BorderSizePixel": { "type": "number", "value": 0 }, "Position": { "type": "UDim2", "xScale": 0.5, "xOffset": 0, "yScale": 0.20, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.38, "xOffset": 0, "yScale": 0.11, "yOffset": 0 }, "Visible": { "type": "boolean", "value": false }, "ZIndex": { "type": "number", "value": 34 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.MissionCompleteBanner.Header", "className": "TextLabel", "properties": { "BackgroundTransparency": { "type": "number", "value": 1 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.04, "xOffset": 0, "yScale": 0.08, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.92, "xOffset": 0, "yScale": 0.2, "yOffset": 0 }, "Text": { "type": "string", "value": "MISSION COMPLETE" }, "TextColor3": { "type": "Color3", "r": 99, "g": 232, "b": 92 }, "TextScaled": { "type": "boolean", "value": true }, "ZIndex": { "type": "number", "value": 35 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.MissionCompleteBanner.MissionName", "className": "TextLabel", "properties": { "BackgroundTransparency": { "type": "number", "value": 1 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.04, "xOffset": 0, "yScale": 0.31, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.56, "xOffset": 0, "yScale": 0.27, "yOffset": 0 }, "Text": { "type": "string", "value": "FIRST FIT" }, "TextColor3": { "type": "Color3", "r": 245, "g": 247, "b": 250 }, "TextScaled": { "type": "boolean", "value": true }, "TextXAlignment": { "type": "EnumItem", "enumType": "TextXAlignment", "name": "Left" }, "ZIndex": { "type": "number", "value": 35 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.MissionCompleteBanner.RewardText", "className": "TextLabel", "properties": { "BackgroundTransparency": { "type": "number", "value": 1 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.04, "xOffset": 0, "yScale": 0.62, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.58, "xOffset": 0, "yScale": 0.22, "yOffset": 0 }, "Text": { "type": "string", "value": "+10 TAPE  +10 PACKING XP" }, "TextColor3": { "type": "Color3", "r": 255, "g": 178, "b": 26 }, "TextScaled": { "type": "boolean", "value": true }, "TextXAlignment": { "type": "EnumItem", "enumType": "TextXAlignment", "name": "Left" }, "ZIndex": { "type": "number", "value": 35 } } },
+    { "path": "StarterGui.ONE_MORE_ITEM_Gameplay.Root.MissionCompleteBanner.PathProgress", "className": "TextLabel", "properties": { "BackgroundTransparency": { "type": "number", "value": 1 }, "Font": { "type": "EnumItem", "enumType": "Font", "name": "GothamBold" }, "Position": { "type": "UDim2", "xScale": 0.64, "xOffset": 0, "yScale": 0.38, "yOffset": 0 }, "Size": { "type": "UDim2", "xScale": 0.32, "xOffset": 0, "yScale": 0.32, "yOffset": 0 }, "Text": { "type": "string", "value": "1 / 5" }, "TextColor3": { "type": "Color3", "r": 34, "g": 211, "b": 230 }, "TextScaled": { "type": "boolean", "value": true }, "ZIndex": { "type": "number", "value": 35 } } },
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers", "className": "Folder" },
     { "path": "Workspace.ONE_MORE_ITEM_WORLD.PlaytestArena.ArenaBackdrop", "className": "Part", "properties": { "Anchored": { "type": "boolean", "value": true }, "CanCollide": { "type": "boolean", "value": false }, "CanQuery": { "type": "boolean", "value": false }, "CanTouch": { "type": "boolean", "value": false }, "CFrame": { "type": "CFrame", "position": [0, 16, -60], "rotationDegrees": [0, 0, 0] }, "Color": { "type": "Color3", "r": 11, "g": 16, "b": 23 }, "Material": { "type": "EnumItem", "enumType": "Material", "name": "SmoothPlastic" }, "Size": { "type": "Vector3", "x": 128, "y": 32, "z": 2 } } },
     { "path": "Workspace.ONE_MORE_ITEM_WORLD.PlaytestArena.ArenaFloor", "className": "Part", "properties": { "Anchored": { "type": "boolean", "value": true }, "CanCollide": { "type": "boolean", "value": true }, "CanQuery": { "type": "boolean", "value": true }, "CanTouch": { "type": "boolean", "value": true }, "CFrame": { "type": "CFrame", "position": [0, -0.5, 0], "rotationDegrees": [0, 0, 0] }, "Color": { "type": "Color3", "r": 22, "g": 33, "b": 44 }, "Material": { "type": "EnumItem", "enumType": "Material", "name": "Concrete" }, "Size": { "type": "Vector3", "x": 120, "y": 1, "z": 120 } } },
@@ -351,9 +2419,11 @@
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Net.NetworkTypes", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Net/NetworkTypes.luau" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Profile.CollectionDefinitions", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Profile/CollectionDefinitions.luau" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Profile.MasteryDefinitions", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Profile/MasteryDefinitions.luau" },
+    { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Profile.OnboardingDefinitions", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Profile/OnboardingDefinitions.luau" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Profile.PackingRankDefinitions", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Profile/PackingRankDefinitions.luau" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Profile.ProfileNetworkTypes", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Profile/ProfileNetworkTypes.luau" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Profile.ProgressionTypes", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Profile/ProgressionTypes.luau" },
+    { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Profile.StarterMissionDefinitions", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Profile/StarterMissionDefinitions.luau" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Round.RoundMath", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Round/RoundMath.luau" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.Round.RoundTypes", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/Round/RoundTypes.luau" },
     { "path": "ReplicatedStorage.ONE_MORE_ITEM.Shared.World.DisplayNameSanitizer", "className": "ModuleScript", "sourceFile": "src/ReplicatedStorage/ONE_MORE_ITEM/Shared/World/DisplayNameSanitizer.luau" },
@@ -369,9 +2439,12 @@
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Dev.RunPhase04Tests", "className": "Script", "enabled": true, "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Dev/RunPhase04Tests.server.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Dev.Phase05TestSuite", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Dev/Phase05TestSuite.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Dev.RunPhase05Tests", "className": "Script", "enabled": true, "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Dev/RunPhase05Tests.server.luau" },
+    { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Dev.Phase06TestSuite", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Dev/Phase06TestSuite.luau" },
+    { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Dev.RunPhase06Tests", "className": "Script", "enabled": true, "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Dev/RunPhase06Tests.server.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.ServerBootstrap", "className": "Script", "enabled": true, "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/ServerBootstrap.server.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.ArenaAnnouncementService", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/ArenaAnnouncementService.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.CollectionShelfService", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/CollectionShelfService.luau" },
+    { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.OnboardingRequestValidator", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/OnboardingRequestValidator.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.PlacementService", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/PlacementService.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.RequestRateLimiter", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/RequestRateLimiter.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.RoundService", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/RoundService.luau" },
@@ -382,8 +2455,14 @@
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.StationDisplayService", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/StationDisplayService.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.StationService", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/StationService.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.WorldItemService", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/WorldItemService.luau" },
+    { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Analytics.AnalyticsAdapter", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Analytics/AnalyticsAdapter.luau" },
+    { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Analytics.AnalyticsEventDefinitions", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Analytics/AnalyticsEventDefinitions.luau" },
+    { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Analytics.GameAnalyticsService", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Analytics/GameAnalyticsService.luau" },
+    { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Analytics.MemoryAnalyticsAdapter", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Analytics/MemoryAnalyticsAdapter.luau" },
+    { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Analytics.RobloxAnalyticsAdapter", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Analytics/RobloxAnalyticsAdapter.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Profile.DataStoreProfileAdapter", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Profile/DataStoreProfileAdapter.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Profile.MemoryProfileAdapter", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Profile/MemoryProfileAdapter.luau" },
+    { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Profile.OnboardingService", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Profile/OnboardingService.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Profile.ProfileConfig", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Profile/ProfileConfig.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Profile.ProfileSchema", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Profile/ProfileSchema.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Profile.ProfileService", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Profile/ProfileService.luau" },
@@ -391,6 +2470,7 @@
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Profile.ProfileStoreAdapter", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Profile/ProfileStoreAdapter.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Profile.ProfileTypes", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Profile/ProfileTypes.luau" },
     { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Profile.ProgressionService", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Profile/ProgressionService.luau" },
+    { "path": "ServerScriptService.ONE_MORE_ITEM_Server.Services.Profile.StarterMissionService", "className": "ModuleScript", "sourceFile": "src/ServerScriptService/ONE_MORE_ITEM_Server/Services/Profile/StarterMissionService.luau" },
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.ClientBootstrap", "className": "LocalScript", "enabled": true, "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/ClientBootstrap.luau" },
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.CameraController", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/CameraController.luau" },
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.CharacterController", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/CharacterController.luau" },
@@ -400,6 +2480,7 @@
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.InputModeStore", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/InputModeStore.luau" },
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.InputPromptController", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/InputPromptController.luau" },
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.GamepadInputController", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/GamepadInputController.luau" },
+    { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.OnboardingUIController", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/OnboardingUIController.luau" },
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.PlacementController", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/PlacementController.luau" },
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.PresentationTokens", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/PresentationTokens.luau" },
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.ProfileResponsiveLayout", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/ProfileResponsiveLayout.luau" },
@@ -408,6 +2489,7 @@
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.ResponsiveUIController", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/ResponsiveUIController.luau" },
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.RoundUIController", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/RoundUIController.luau" },
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.StationContextController", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/StationContextController.luau" },
+    { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.StarterMissionUIController", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/StarterMissionUIController.luau" },
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.TouchInputController", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/TouchInputController.luau" },
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.ViewportPreviewController", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/ViewportPreviewController.luau" },
     { "path": "StarterPlayer.StarterPlayerScripts.ONE_MORE_ITEM_Client.Controllers.WorldMotionController", "className": "ModuleScript", "sourceFile": "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client/Controllers/WorldMotionController.luau" }

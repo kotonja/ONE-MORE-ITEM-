@@ -60,6 +60,7 @@ export type RoundSnapshot = {
 	ResultReason: string?,
 	ResultValue: number,
 	ResultLostValue: number,
+	GuidedOnboarding: boolean,
 }
 
 return table.freeze({})

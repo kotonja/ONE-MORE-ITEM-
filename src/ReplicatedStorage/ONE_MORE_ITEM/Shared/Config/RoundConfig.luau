@@ -19,6 +19,7 @@ local rateLimits: { [string]: number } = {
 	PlaceItemRequest = 10,
 	DecisionRequest = 4,
 	RestartRequest = 2,
+	OnboardingActionRequest = 2,
 }
 table.freeze(rateLimits)
 
@@ -28,6 +29,8 @@ local RoundConfig = {
 	PRESENTATION_DURATION = 0.45,
 	PLACEMENT_DURATION = 30,
 	DECISION_DURATION = 8,
+	GUIDED_PLACEMENT_DURATION = 45,
+	GUIDED_DECISION_DURATION = 12,
 	SHIPPING_PRESENTATION_DURATION = 1.35,
 	FAILURE_PRESENTATION_DURATION = 1.0,
 	MAXIMUM_ITEMS = 10,
@@ -43,10 +46,12 @@ local RoundConfig = {
 		RUN_PHASE03_TESTS = true,
 		RUN_PHASE04_TESTS = true,
 		RUN_PHASE05_TESTS = true,
+		RUN_PHASE06_TESTS = true,
 		TEST_SEED = 24022026,
 		PHASE03_TEST_SEED = 13072026,
 		PHASE04_TEST_SEED = 14072026,
 		PHASE05_TEST_SEED = 15072026,
+		PHASE06_TEST_SEED = 16072026,
 	}),
 }
 

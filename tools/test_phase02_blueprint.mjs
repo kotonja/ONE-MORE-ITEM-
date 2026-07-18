@@ -784,16 +784,22 @@ try {
 
   const instanceCount = operations.filter((operation) => operation.type === "ensureInstance").length;
   const scriptCount = operations.filter((operation) => operation.type === "writeScript").length;
-  criterion("inherited Phase 04 artifact counts remain exact inside the Phase 05 extension", () => {
-    const phase05InstancePrefixes = [
+  criterion("inherited Phase 04 artifact counts remain exact inside the Phase 05 and 06 extensions", () => {
+    const laterPhaseInstancePrefixes = [
       "ReplicatedStorage.ONE_MORE_ITEM.ProfileNet",
       "ReplicatedStorage.ONE_MORE_ITEM.Shared.Profile",
       "ServerScriptService.ONE_MORE_ITEM_Server.Services.Profile",
       "ReplicatedStorage.ONE_MORE_ITEM.Assets.Development.CollectionShelfItemTemplate",
+      "ReplicatedStorage.ONE_MORE_ITEM.OnboardingNet",
+      "ServerScriptService.ONE_MORE_ITEM_Server.Services.Analytics",
       "StarterGui.ONE_MORE_ITEM_Gameplay.Root.MetaBar",
       "StarterGui.ONE_MORE_ITEM_Gameplay.Root.CollectionPanel",
       "StarterGui.ONE_MORE_ITEM_Gameplay.Root.DiscoveryReveal",
       "StarterGui.ONE_MORE_ITEM_Gameplay.Root.RankUpBanner",
+      "StarterGui.ONE_MORE_ITEM_Gameplay.Root.OnboardingOverlay",
+      "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterMissionCard",
+      "StarterGui.ONE_MORE_ITEM_Gameplay.Root.StarterPathPanel",
+      "StarterGui.ONE_MORE_ITEM_Gameplay.Root.MissionCompleteBanner",
     ];
     const phase05ExactInstances = new Set([
       "StarterGui.ONE_MORE_ITEM_Gameplay.Root.ResultsPanel.XPReward",
@@ -802,12 +808,12 @@ try {
     ]);
     const inheritedInstances = operations.filter((operation) =>
       operation.type === "ensureInstance"
-      && !phase05InstancePrefixes.some((prefix) => operation.path === prefix || operation.path.startsWith(`${prefix}.`))
+      && !laterPhaseInstancePrefixes.some((prefix) => operation.path === prefix || operation.path.startsWith(`${prefix}.`))
       && !phase05ExactInstances.has(operation.path)
       && !operation.path.includes(".CollectionShelf")
     );
-    const phase05SourcePattern = /(?:^|\/)(?:Profile\/|CollectionShelfService\.luau$|ClientProfileStore\.luau$|ProfileResponsiveLayout\.luau$|ProfileUIController\.luau$|Phase05TestSuite\.luau$|RunPhase05Tests\.server\.luau$)/;
-    const inheritedScripts = manifest.scripts.filter((entry) => !phase05SourcePattern.test(entry.sourceFile));
+    const laterPhaseSourcePattern = /(?:^|\/)(?:Profile\/|Analytics\/|OnboardingRequestValidator\.luau$|CollectionShelfService\.luau$|ClientProfileStore\.luau$|ProfileResponsiveLayout\.luau$|ProfileUIController\.luau$|OnboardingUIController\.luau$|StarterMissionUIController\.luau$|Phase0[56]TestSuite\.luau$|RunPhase0[56]Tests\.server\.luau$)/;
+    const inheritedScripts = manifest.scripts.filter((entry) => !laterPhaseSourcePattern.test(entry.sourceFile));
     assert.equal(inheritedInstances.length, 616, "The accepted Phase 04 instance baseline must remain exactly 616 paths");
     assert.equal(inheritedScripts.length, 45, "The accepted Phase 04 source baseline must remain exactly 45 scripts");
     assert.equal(scriptCount, manifest.scripts.length, "Every canonical source mapping must generate exactly one script operation");

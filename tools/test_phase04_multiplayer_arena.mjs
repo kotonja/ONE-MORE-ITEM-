@@ -486,9 +486,9 @@ try {
     assert.ok(gitFiles.every((file) => !/\.(?:rbxl|rbxlx|tmp|bak)$/i.test(file)));
   });
 
-  criterion("workflow runs the five Node 24 gates", () => {
+  criterion("workflow runs the six Node 24 gates", () => {
     const workflow = readText(".github/workflows/phase01-node-validation.yml");
-    assert.match(workflow, /^name:\s*Phase 01(?:–|-)05 Node Validation/m);
+    assert.match(workflow, /^name:\s*Phase 01(?:–|-)06 Node Validation/m);
     assert.match(workflow, /actions\/checkout@v7/);
     assert.match(workflow, /actions\/setup-node@v6/);
     assert.match(workflow, /node-version:\s*24/);
@@ -499,6 +499,7 @@ try {
       "node tools/test_phase03_cross_platform.mjs",
       "node tools/test_phase04_multiplayer_arena.mjs",
       "node tools/test_phase05_persistent_progression.mjs",
+      "node tools/test_phase06_onboarding_missions_analytics.mjs",
     ]) assert.match(workflow, new RegExp(command.replaceAll("/", "\\/")));
   });
 
@@ -515,11 +516,15 @@ try {
     assert.match(docs, /PR #3[^\n]*merged|merged[^\n]*PR #3/i);
   });
 
-  criterion("Phase 04 merged baseline and Phase 05 active branch are recorded", () => {
+  criterion("Phase 04 and Phase 05 merged baselines plus Phase 06 active branch are recorded", () => {
     const docs = `${readText("README.md")}\n${readText("docs/DEVELOPMENT_STATUS.md")}`;
     assert.match(docs, /213f3581bd242523e34601cfefa5b5a74770ddee/);
     assert.match(docs, /PR #5[^\n]*merged|merged[^\n]*PR #5/i);
-    assert.match(docs, /codex\/phase-05-persistent-progression/);
+    assert.match(docs, /d644411b48e20cd9bb256d3d2c55a647efc2adfd/);
+    assert.match(docs, /PR #6[^\n]*merged|merged[^\n]*PR #6/i);
+    assert.match(docs, /codex\/phase-06-onboarding-starter-missions/);
+    assert.match(docs, /pull\/7|PR #7/);
+    assert.match(docs, /draft[^\n]*(?:unmerged|not merged)|(?:unmerged|not merged)[^\n]*draft/i);
   });
 
   criterion("phase02 manifest remains the sole Phase 02 through 04 owner", () => {

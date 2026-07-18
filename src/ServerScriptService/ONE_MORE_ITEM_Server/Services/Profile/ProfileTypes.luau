@@ -8,6 +8,7 @@ local ProgressionTypes = require(Root.Shared.Profile.ProgressionTypes)
 export type Statistics = ProgressionTypes.Statistics
 export type CollectionState = ProgressionTypes.CollectionState
 export type ProgressionReward = ProgressionTypes.ProgressionReward
+export type StarterMissionReward = ProgressionTypes.StarterMissionReward
 export type ProfileLifecycleState = ProfileNetworkTypes.ProfileLifecycleState
 export type ProfileSaveState = ProfileNetworkTypes.ProfileSaveState
 export type ProfileSnapshot = ProfileNetworkTypes.ProfileSnapshot
@@ -24,6 +25,22 @@ export type ReceiptState = {
 	ProcessedOutcomeIds: { string },
 }
 
+export type OnboardingState = {
+	Version: number,
+	Status: "NotStarted" | "InProgress" | "Completed" | "Skipped",
+	HighestStep: number,
+	CompletedAt: number,
+}
+
+export type StarterMissionState = {
+	Version: number,
+	Progress: { [string]: number },
+	Completed: { [string]: boolean },
+	Rewarded: { [string]: boolean },
+	PathCompleted: boolean,
+	CompletedAt: number,
+}
+
 export type PersistedProfile = {
 	SchemaVersion: number,
 	Tape: number,
@@ -31,6 +48,8 @@ export type PersistedProfile = {
 	Stats: Statistics,
 	Collection: CollectionState,
 	Receipts: ReceiptState,
+	Onboarding: OnboardingState,
+	StarterMissions: StarterMissionState,
 	CreatedAt: number,
 	UpdatedAt: number,
 	Session: ProfileSession?,

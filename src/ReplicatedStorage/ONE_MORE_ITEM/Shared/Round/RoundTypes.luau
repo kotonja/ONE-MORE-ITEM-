@@ -56,6 +56,8 @@ export type RoundRecord = {
 	ResultValue: number,
 	ResultLostValue: number,
 	ShipmentBanked: boolean,
+	GuidedOnboarding: boolean,
+	StartedAt: number,
 }
 
 return table.freeze({})

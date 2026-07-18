@@ -55,6 +55,8 @@ export type Controller = {
 	ApplySnapshot: (self: Controller, snapshot: Snapshot, assigned: boolean) -> (),
 	SetAssigned: (self: Controller, assigned: boolean) -> (),
 	SetProfileMenuOpen: (self: Controller, isOpen: boolean) -> (),
+	SetModalBlocked: (self: Controller, blockerName: string, isBlocked: boolean) -> (),
+	IsModalBlocked: (self: Controller) -> boolean,
 	RefreshContext: (self: Controller) -> (),
 	RefreshPointer: (self: Controller) -> (),
 	Destroy: (self: Controller) -> (),
@@ -71,7 +73,7 @@ type InternalController = Controller & {
 	_snapshot: Snapshot?,
 	_mode: InputMode,
 	_assigned: boolean,
-	_profileMenuOpen: boolean,
+	_modalBlockers: { [string]: boolean },
 	_touchActive: boolean,
 	_boundGamepadActions: number,
 	_repeatActive: boolean,
@@ -82,6 +84,10 @@ type InternalController = Controller & {
 local InputController = {}
 local ControllerMethods = {}
 ControllerMethods.__index = ControllerMethods
+
+local function modalBlocked(self: InternalController): boolean
+	return next(self._modalBlockers) ~= nil
+end
 
 function InputController.NetworkRequestForAction(action: RoutedAction): NetworkRequest?
 	if action == "PLACE" then
@@ -141,7 +147,7 @@ local function currentState(self: InternalController): string
 end
 
 local function awaitingPlacement(self: InternalController): boolean
-	return not self._profileMenuOpen
+	return not modalBlocked(self)
 		and self._assigned
 		and currentState(self) == "AwaitingPlacement"
 		and not self._callbacks.IsPlacementPending()
@@ -165,11 +171,11 @@ local function refreshContexts(self: InternalController)
 	local state = currentState(self)
 	local touch = self._touch
 	if touch ~= nil then
-		touch:SetContext(self._mode == "Touch" and not self._profileMenuOpen, self._assigned, awaitingPlacement(self))
+		touch:SetContext(self._mode == "Touch" and not modalBlocked(self), self._assigned, awaitingPlacement(self))
 	end
 	local gamepad = self._gamepad
 	if gamepad ~= nil then
-		gamepad:SetContext(self._mode == "Gamepad" and not self._profileMenuOpen, self._assigned, state)
+		gamepad:SetContext(self._mode == "Gamepad" and not modalBlocked(self), self._assigned, state)
 	end
 	observe(self)
 end
@@ -186,7 +192,7 @@ end
 
 local function handleKeyboardMouse(self: InternalController, input: InputObject, gameProcessed: boolean)
 	if self._destroyed
-		or self._profileMenuOpen
+		or modalBlocked(self)
 		or self._mode ~= "KeyboardMouse"
 		or not self._assigned
 		or gameProcessed
@@ -240,7 +246,7 @@ local function bindAuthoredButtons(self: InternalController, buttons: Buttons)
 	local function connect(button: TextButton, gamepadSelectable: boolean, callback: () -> ())
 		table.insert(self._connections, button.Activated:Connect(function()
 			if self._destroyed
-				or self._profileMenuOpen
+				or modalBlocked(self)
 				or not InputController.ShouldHandleAuthoredButton(
 					self._mode,
 					self._assigned,
@@ -299,7 +305,7 @@ function InputController.new(
 		_snapshot = nil,
 		_mode = modeStore:GetMode(),
 		_assigned = false,
-		_profileMenuOpen = false,
+		_modalBlockers = {},
 		_touchActive = false,
 		_boundGamepadActions = 0,
 		_repeatActive = false,
@@ -350,7 +356,7 @@ function InputController.new(
 		handleKeyboardMouse(self, input, gameProcessed)
 	end))
 	table.insert(self._connections, UserInputService.InputChanged:Connect(function(input: InputObject)
-		if self._destroyed or self._profileMenuOpen or self._mode ~= "KeyboardMouse" or isTyping() then
+		if self._destroyed or modalBlocked(self) or self._mode ~= "KeyboardMouse" or isTyping() then
 			return
 		end
 		if input.UserInputType == Enum.UserInputType.MouseMovement then
@@ -390,11 +396,30 @@ function ControllerMethods.SetAssigned(self: InternalController, assigned: boole
 end
 
 function ControllerMethods.SetProfileMenuOpen(self: InternalController, isOpen: boolean)
-	if self._destroyed or self._profileMenuOpen == isOpen then
+	self:SetModalBlocked("Collection", isOpen)
+end
+
+function ControllerMethods.SetModalBlocked(self: InternalController, blockerName: string, isBlocked: boolean)
+	if self._destroyed then
 		return
 	end
-	self._profileMenuOpen = isOpen
+	if blockerName == "" then
+		error("InputController modal blocker name must be non-empty", 2)
+	end
+	local wasBlocked = self._modalBlockers[blockerName] == true
+	if wasBlocked == isBlocked then
+		return
+	end
+	if isBlocked then
+		self._modalBlockers[blockerName] = true
+	else
+		self._modalBlockers[blockerName] = nil
+	end
 	refreshContexts(self)
+end
+
+function ControllerMethods.IsModalBlocked(self: InternalController): boolean
+	return modalBlocked(self)
 end
 
 function ControllerMethods.RefreshContext(self: InternalController)
@@ -441,6 +466,7 @@ function ControllerMethods.Destroy(self: InternalController)
 	self._modeStore:Destroy()
 	self._snapshot = nil
 	self._selectedAction = nil
+	table.clear(self._modalBlockers)
 	observe(self)
 end
 

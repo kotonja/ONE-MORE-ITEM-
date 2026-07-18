@@ -230,4 +230,36 @@ The six gameplay remotes remain unchanged. `ReplicatedStorage.ONE_MORE_ITEM.Prof
 
 The canonical manifest permanently authors MetaBar, DataStatus, CollectionPanel with eight complete slots, DiscoveryReveal, RankUpBanner, Results additions, eight six-slot station shelves, and one script-free shelf proxy template. Runtime creates only temporary previews and at most six proxy Parts per shelf. Shelf selection is deterministic: up to three newest valid discoveries, then mastery tier, mastery count, and catalog order. Clear-before-render and station-scoped ownership prevent one player inheriting another player's display.
 
-The detailed contracts, exact formulas and thresholds, completed deterministic and Studio-test persistence evidence, and still-blocked final cloud-reopen/manual-device gates are documented in `docs/PHASE05_PERSISTENT_PROGRESSION.md`.
+The detailed contracts, exact formulas and thresholds, completed deterministic and Studio-test persistence evidence, accepted cloud close/reopen proof, and explicitly deferred physical-device/production checks are documented in `docs/PHASE05_PERSISTENT_PROGRESSION.md`.
+
+## Phase 06 schema and retention boundaries
+
+Phase 06 advances the in-profile schema to Version 2 without changing either store namespace. `ProfileSchema` explicitly migrates Version 1 through an input-immutable, non-yielding boundary, preserves every existing persistent value and session owner, and normalizes the new onboarding and starter-mission state from shared canonical definitions. Unsupported future versions still reject. Current round state, input mode, UI state, analytics records, and presentation queues are never persisted.
+
+`OnboardingService` and `StarterMissionService` are focused server-owned mutation boundaries above `ProfileService`. Onboarding accepts only monotonic authoritative step transitions or a narrowly validated persistent skip. Starter missions consume only server-created placement, decision, shipment, and reconciliation events; one profile draft applies progress, exact-once rewards, Tape/XP/statistics, and rank transitions atomically. The rewarded mission map is canonical truth, so duplicate callbacks and reconciliation cannot grant twice.
+
+```text
+authoritative round/station/profile events
+                 |
+       OnboardingService   StarterMissionService
+                 \         /
+                   ProfileService
+                         |
+              ProfileSnapshot V2
+```
+
+Guided timing is captured once when a round is created from the durable onboarding status. That round keeps its original deadline even if onboarding completes or is skipped mid-round; only later rounds switch back to the normal timing. The snapshot exposes only copied onboarding/mission presentation data plus a bounded ephemeral mission-reward batch. Save-state snapshots may repeat that batch, so the client deduplicates deterministic RewardIds within one presentation session.
+
+## Phase 06 server-only analytics
+
+`GameAnalyticsService` is a best-effort observer with no gameplay or profile authority. Studio and deterministic tests select `MemoryAnalyticsAdapter`; published non-Studio servers select `RobloxAnalyticsAdapter`. The Roblox adapter wraps every current AnalyticsService log call in `pcall`, while the memory adapter deep-copies bounded records for deterministic ordering and failure-injection assertions. Analytics runs only after the corresponding authoritative mutation and snapshot, and failure cannot roll back progression, block assignment/saving, or suppress round/showcase presentation.
+
+The event catalog is fixed. Onboarding funnel names come from `OnboardingDefinitions`; core-loop, One More, starter-mission, skip, and session events accept only allowlisted bounded fields. Tape economy events use authoritative deltas and ending balances, while StarterPath progression uses canonical mission indexes/names. Event names are never built from player, round, station, outcome, or item identifiers, and custom fields exclude personal/session/store data.
+
+## Phase 06 authored UI and client input ownership
+
+The existing Phase 02 manifest permanently authors the onboarding overlay, skip control/progress, compact starter card, full five-row starter path, mission-complete banner, and the sole new request remote `OnboardingNet.OnboardingActionRequest`. Runtime controllers bind and animate those instances but never create permanent UI or mission rows. The existing gameplay Net remains six remotes, and the existing ProfileNet remains one server-to-client snapshot remote.
+
+`OnboardingUIController` combines copied profile state, ordinary round state, local fit state, and current input mode for contextual presentation only. `StarterMissionUIController` reads snapshot mission state, gates the full panel to non-active round states, and queues unseen RewardIds. Named client modal blockers allow Collection and Starter Path surfaces to suppress underlying keyboard, touch, and gamepad actions without racing one another. Responsive geometry continues to use Wide, CompactLandscape, and Portrait safe-area targets with scale-only authored coordinates.
+
+The full Phase 06 contracts and acceptance evidence are recorded in `docs/PHASE06_ONBOARDING_MISSIONS_ANALYTICS.md` and `docs/DEVELOPMENT_STATUS.md`.

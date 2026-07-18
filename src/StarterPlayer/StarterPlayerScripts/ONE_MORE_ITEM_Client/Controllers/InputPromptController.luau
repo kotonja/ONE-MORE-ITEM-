@@ -46,6 +46,9 @@ local InputPromptController = {}
 local ControllerMethods = {}
 ControllerMethods.__index = ControllerMethods
 
+local GUIDANCE_ATTRIBUTE = "ONE_MORE_ITEM_OnboardingGuided"
+local INPUT_FOCUS_ATTRIBUTE = "ONE_MORE_ITEM_InputFocused"
+
 local function requireLabel(parent: Instance, name: string): TextLabel
 	local child = parent:WaitForChild(name, 10)
 	if child == nil or not child:IsA("TextLabel") then
@@ -121,8 +124,11 @@ end
 
 local function applyFocus(self: InternalController)
 	for action, stroke in pairs(self._focusStrokes) do
+		local guided = stroke:GetAttribute(GUIDANCE_ATTRIBUTE) == true
+		local focused = self._mode == "Gamepad" and self._selectedAction == action
+		stroke:SetAttribute(INPUT_FOCUS_ATTRIBUTE, focused)
 		stroke.Enabled = true
-		stroke.Transparency = if self._mode == "Gamepad" and self._selectedAction == action then 0 else 1
+		stroke.Transparency = if guided or focused then 0 else 1
 	end
 end
 
@@ -187,6 +193,7 @@ function ControllerMethods.Destroy(self: InternalController)
 	self._destroyed = true
 	self._selectedAction = nil
 	for _, stroke in pairs(self._focusStrokes) do
+		stroke:SetAttribute(INPUT_FOCUS_ATTRIBUTE, nil)
 		stroke.Transparency = 1
 		stroke.Enabled = false
 	end

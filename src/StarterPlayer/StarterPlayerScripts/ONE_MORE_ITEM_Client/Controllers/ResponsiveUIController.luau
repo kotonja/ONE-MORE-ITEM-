@@ -237,7 +237,9 @@ local function applyLayout(self: InternalController, layout: Layout)
 		if instant then
 			object.AnchorPoint = target.AnchorPoint
 			object.Position = target.Position
-			object.Size = target.Size
+			if targetName ~= "StarterMissionCard" then
+				object.Size = target.Size
+			end
 		else
 			local tweenInfo = TweenInfo.new(
 				PresentationTokens.Timing.Layout,
@@ -256,9 +258,11 @@ local function applyLayout(self: InternalController, layout: Layout)
 			trackTween(self, object, tweens, "Position", TweenService:Create(object, tweenInfo, {
 				Position = target.Position,
 			}))
-			trackTween(self, object, tweens, "Size", TweenService:Create(object, tweenInfo, {
-				Size = target.Size,
-			}))
+			if targetName ~= "StarterMissionCard" then
+				trackTween(self, object, tweens, "Size", TweenService:Create(object, tweenInfo, {
+					Size = target.Size,
+				}))
+			end
 		end
 	end
 	self._hasApplied = true
@@ -291,6 +295,10 @@ function ResponsiveUIController.new(root: GuiObject, callbacks: Callbacks): Cont
 			ShipButton = shipButton,
 			OneMoreButton = oneMoreButton,
 			PackAgainButton = packAgainButton,
+			OnboardingOverlay = requireGui(root, "OnboardingOverlay"),
+			StarterMissionCard = requireGui(root, "StarterMissionCard"),
+			StarterPathPanel = requireGui(root, "StarterPathPanel"),
+			MissionCompleteBanner = requireGui(root, "MissionCompleteBanner"),
 		},
 		_constraints = {
 			RotateButton = requireConstraint(rotateButton),

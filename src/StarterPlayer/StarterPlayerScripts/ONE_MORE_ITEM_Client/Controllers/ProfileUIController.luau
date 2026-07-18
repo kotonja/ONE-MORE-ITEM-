@@ -82,6 +82,7 @@ export type Controller = {
 	ApplyProfileSnapshot: (self: Controller, snapshot: ProfileSnapshot) -> (),
 	ApplyRoundSnapshot: (self: Controller, snapshot: RoundSnapshot, assigned: boolean) -> (),
 	SetLayoutClass: (self: Controller, layoutClass: LayoutClass) -> (),
+	SetMenuOpen: (self: Controller, isOpen: boolean) -> (),
 	IsMenuOpen: (self: Controller) -> boolean,
 	Destroy: (self: Controller) -> (),
 }
@@ -1173,6 +1174,10 @@ end
 
 function ControllerMethods.IsMenuOpen(self: InternalController): boolean
 	return self._panelOpen
+end
+
+function ControllerMethods.SetMenuOpen(self: InternalController, isOpen: boolean)
+	setPanelOpen(self, isOpen)
 end
 
 function ControllerMethods.Destroy(self: InternalController)

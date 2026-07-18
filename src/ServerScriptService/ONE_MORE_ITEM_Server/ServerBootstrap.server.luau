@@ -15,6 +15,7 @@ end
 local Root = requireDirect(ReplicatedStorage, "ONE_MORE_ITEM", "Folder")
 local Net = requireDirect(Root, "Net", "Folder")
 local ProfileNet = requireDirect(Root, "ProfileNet", "Folder")
+local OnboardingNet = requireDirect(Root, "OnboardingNet", "Folder")
 
 local expectedRemoteNames: { [string]: boolean } = {
 	ClientReadyRequest = true,
@@ -50,6 +51,19 @@ if profileRemoteCount ~= 1 then
 	error(string.format("ONE_MORE_ITEM.ProfileNet must contain exactly one RemoteEvent; found %d", profileRemoteCount))
 end
 
+local onboardingRemoteCount = 0
+for _, child in ipairs(OnboardingNet:GetChildren()) do
+	if child:IsA("RemoteEvent") then
+		onboardingRemoteCount += 1
+		if child.Name ~= "OnboardingActionRequest" then
+			error(string.format("Unexpected onboarding RemoteEvent %s", child:GetFullName()))
+		end
+	end
+end
+if onboardingRemoteCount ~= 1 then
+	error(string.format("ONE_MORE_ITEM.OnboardingNet must contain exactly one RemoteEvent; found %d", onboardingRemoteCount))
+end
+
 local ClientReadyRequest = requireDirect(Net, "ClientReadyRequest", "RemoteEvent") :: RemoteEvent
 local PlaceItemRequest = requireDirect(Net, "PlaceItemRequest", "RemoteEvent") :: RemoteEvent
 local DecisionRequest = requireDirect(Net, "DecisionRequest", "RemoteEvent") :: RemoteEvent
@@ -57,6 +71,7 @@ local RestartRequest = requireDirect(Net, "RestartRequest", "RemoteEvent") :: Re
 local RoundSnapshot = requireDirect(Net, "RoundSnapshot", "RemoteEvent") :: RemoteEvent
 local PlacementResponse = requireDirect(Net, "PlacementResponse", "RemoteEvent") :: RemoteEvent
 local ProfileSnapshot = requireDirect(ProfileNet, "ProfileSnapshot", "RemoteEvent") :: RemoteEvent
+local OnboardingActionRequest = requireDirect(OnboardingNet, "OnboardingActionRequest", "RemoteEvent") :: RemoteEvent
 
 local worldRoot = requireDirect(workspace, "ONE_MORE_ITEM_WORLD", "Folder")
 local arena = requireDirect(worldRoot, "PlaytestArena", "Folder")
@@ -90,6 +105,9 @@ local ServerBestService = require(script.Parent.Services.ServerBestService)
 local StationDisplayService = require(script.Parent.Services.StationDisplayService)
 local ArenaAnnouncementService = require(script.Parent.Services.ArenaAnnouncementService)
 local CollectionShelfService = require(script.Parent.Services.CollectionShelfService)
+local OnboardingRequestValidator = require(script.Parent.Services.OnboardingRequestValidator)
+local AnalyticsModules = script.Parent.Services.Analytics
+local GameAnalyticsService = require(AnalyticsModules.GameAnalyticsService)
 local ProfileModules = script.Parent.Services.Profile
 local DataStoreProfileAdapter = require(ProfileModules.DataStoreProfileAdapter)
 local MemoryProfileAdapter = require(ProfileModules.MemoryProfileAdapter)
@@ -97,12 +115,19 @@ local ProfileConfig = require(ProfileModules.ProfileConfig)
 local ProfileService = require(ProfileModules.ProfileService)
 local ProfileSnapshotBuilder = require(ProfileModules.ProfileSnapshotBuilder)
 local ProgressionService = require(ProfileModules.ProgressionService)
+local OnboardingService = require(ProfileModules.OnboardingService)
+local StarterMissionService = require(ProfileModules.StarterMissionService)
+local RoundConfig = require(Root.Shared.Config.RoundConfig)
 
 type StationRecord = StationService.StationRecord
 type RoundStateEvent = RoundService.RoundStateEvent
 type HighRiskMilestoneEvent = RoundService.HighRiskMilestoneEvent
 type RoundFailureEvent = RoundService.RoundFailureEvent
 type ShipmentRecord = RoundService.ShipmentRecord
+type RoundStartedEvent = RoundService.RoundStartedEvent
+type PlacementAcceptedEvent = RoundService.PlacementAcceptedEvent
+type DecisionAcceptedEvent = RoundService.DecisionAcceptedEvent
+type RoundEndedEvent = RoundService.RoundEndedEvent
 type AcceptanceMode = "Unavailable" | "SaveDelayed" | "Conflict"
 type AcceptanceFixture = {
 	Mode: AcceptanceMode,
@@ -322,14 +347,30 @@ end
 local readyPlayers: { [Player]: boolean } = {}
 local removingPlayers: { [Player]: boolean } = {}
 local shutdownStarted = false
+local sessionStartedAt: { [Player]: number } = {}
+local profileWasReady: { [Player]: boolean } = {}
+local stationWasAssigned: { [Player]: boolean } = {}
+local sessionDurationLogged: { [Player]: boolean } = {}
+local profileInitializationInProgress: { [number]: boolean } = {}
+local profileInitializedForSession: { [number]: boolean } = {}
 
 local profileService: any = nil
+local analyticsService: any = GameAnalyticsService.Create()
+local onboardingService: any = nil
+local starterMissionService: any = nil
 local stationService: any = nil
 local worldItemService: any = nil
 local stationDisplayService: any = nil
 local collectionShelfService: any = nil
 local roundService: any = nil
 local waitingStateVersions: { [Player]: number } = {}
+
+local function runIntegration(label: string, callback: () -> ())
+	local ok, failure = pcall(callback)
+	if not ok then
+		warn(string.format("[ONE_MORE_ITEM][Integration] %s failed reason=%s", label, tostring(failure)))
+	end
+end
 local sendWaitingSnapshot: (Player, number?, number?) -> () = function(
 	_player: Player,
 	_roundId: number?,
@@ -377,6 +418,8 @@ profileService = ProfileService.Create(profileAdapter, {
 			return
 		end
 		if state == "Conflict" or state == "Unavailable" or state == "Releasing" or state == "Released" then
+			profileInitializationInProgress[userId] = nil
+			profileInitializedForSession[userId] = nil
 			local previousRound = roundService:GetRound(player)
 			roundService:RemovePlayer(player)
 			local release = stationService:ReleasePlayer(player)
@@ -398,7 +441,33 @@ profileService = ProfileService.Create(profileAdapter, {
 					shelfRuntimeCount
 				))
 			end
-		elseif (state == "Ready" or state == "Saving" or state == "SaveDelayed")
+		elseif state == "Ready" then
+			profileWasReady[player] = true
+			if not profileInitializedForSession[userId]
+				and not profileInitializationInProgress[userId]
+				and onboardingService ~= nil
+				and starterMissionService ~= nil
+			then
+				-- Mark the loaded session before mutations begin. Profile mutations emit
+				-- nested Saving/Ready lifecycle transitions, which must not repeat load work.
+				profileInitializationInProgress[userId] = true
+				profileInitializedForSession[userId] = true
+				runIntegration("ProfileReadyOnboarding", function()
+					local onboardingResult = onboardingService:Advance(player, 1)
+					if onboardingResult ~= nil and onboardingResult.Changed then
+						starterMissionService:StartCurrentSpotlight(player)
+					end
+				end)
+				runIntegration("ProfileReadyMissionReconcile", function()
+					starterMissionService:Reconcile(player)
+				end)
+				profileInitializationInProgress[userId] = nil
+			end
+			if not profileInitializationInProgress[userId] and stationService:GetStationId(player) == nil then
+				stationService:AssignPlayer(player)
+			end
+		elseif (state == "Saving" or state == "SaveDelayed")
+			and not profileInitializationInProgress[userId]
 			and stationService:GetStationId(player) == nil
 		then
 			stationService:AssignPlayer(player)
@@ -406,6 +475,8 @@ profileService = ProfileService.Create(profileAdapter, {
 	end,
 })
 local progressionService = ProgressionService.Create(profileService)
+onboardingService = OnboardingService.Create(profileService, analyticsService)
+starterMissionService = StarterMissionService.Create(profileService, analyticsService)
 
 stationService = StationService.Create(stationsRoot, {
 	IsPlayerEligible = function(player: Player): boolean
@@ -430,9 +501,77 @@ local function runCosmetic(label: string, callback: () -> ())
 end
 
 local eventSink: RoundService.EventSink = {
-	OnRoundStateChanged = function(_player: Player, event: RoundStateEvent)
+	OnRoundStateChanged = function(player: Player, event: RoundStateEvent)
+		if event.State == "Decision" and event.ItemCount > 0 then
+			runIntegration("DecisionShownOnboarding", function()
+				onboardingService:Advance(player, 4)
+			end)
+		end
 		runCosmetic("StationDisplay", function()
 			stationDisplayService:ApplyRoundState(event)
+		end)
+	end,
+	OnRoundStarted = function(player: Player, _event: RoundStartedEvent)
+		runIntegration("RoundStartAnalytics", function()
+			analyticsService:LogCoreLoopRound(player, "start", 0, 0, "NONE")
+		end)
+	end,
+	OnPlacementAccepted = function(player: Player, _event: PlacementAcceptedEvent)
+		runIntegration("PlacementOnboarding", function()
+			onboardingService:Advance(player, 3)
+		end)
+		runIntegration("PlacementMission", function()
+			starterMissionService:ApplyEvent(player, "AcceptedPlacement", nil)
+		end)
+	end,
+	OnDecisionAccepted = function(player: Player, event: DecisionAcceptedEvent)
+		if event.Choice == "ONE_MORE" then
+			runIntegration("OneMoreMission", function()
+				starterMissionService:ApplyEvent(player, "OneMoreAccepted", nil)
+			end)
+			runIntegration("OneMoreAnalytics", function()
+				analyticsService:LogOneMoreAccepted(player, event.ItemCount, event.Difficulty)
+			end)
+		end
+	end,
+	OnShipmentProgressionApplied = function(player: Player, record: ShipmentRecord, reward: any)
+		local missionAnalyticsEmitter: (() -> boolean)? = nil
+		runIntegration("ShipmentMissions", function()
+			local _missionResult, _missionCode, emitter = starterMissionService:ApplyEventDeferredAnalytics(
+				player,
+				"SuccessfulShipment",
+				{ ItemCount = record.ItemCount }
+			)
+			missionAnalyticsEmitter = emitter
+		end)
+		runIntegration("ShipmentOnboarding", function()
+			onboardingService:Advance(player, 5)
+		end)
+		runIntegration("ShipmentEconomyAnalytics", function()
+			analyticsService:LogEconomySource(
+				player,
+				"Shipment",
+				reward.TapeDelta,
+				reward.NewTape,
+				"shipment"
+			)
+		end)
+		local emitter = missionAnalyticsEmitter
+		if emitter ~= nil then
+			runIntegration("ShipmentMissionAnalytics", function()
+				emitter()
+			end)
+		end
+	end,
+	OnRoundEnded = function(player: Player, event: RoundEndedEvent)
+		runIntegration("RoundEndAnalytics", function()
+			analyticsService:LogCoreLoopRound(
+				player,
+				event.Phase,
+				event.DurationSeconds,
+				event.ItemCount,
+				event.Reason
+			)
 		end)
 	end,
 	OnShipmentCompleted = function(record: ShipmentRecord)
@@ -473,8 +612,15 @@ roundService = RoundService.Create(stationService, worldItemService, {
 	ProfileService = profileService,
 	ProgressionService = progressionService,
 	ServerSessionId = profileService:GetServerSessionId(),
+	IsGuidedOnboarding = function(player: Player): boolean
+		return onboardingService:IsGuided(player)
+	end,
 })
 local rateLimiter = RequestRateLimiter.Create()
+local onboardingRequestValidator = OnboardingRequestValidator.Create({
+	RateLimitPerSecond = RoundConfig.RATE_LIMITS_PER_SECOND.OnboardingActionRequest,
+	WarningThreshold = 10,
+})
 
 local function waitingReason(player: Player): string
 	local state = profileService:GetState(player.UserId)
@@ -513,6 +659,7 @@ sendWaitingSnapshot = function(player: Player, roundId: number?, stateVersion: n
 		ResultValue = 0,
 		ResultLostValue = 0,
 		QueuePosition = stationService:GetQueuePosition(player),
+		GuidedOnboarding = onboardingService ~= nil and onboardingService:IsGuided(player) or false,
 	})
 end
 
@@ -524,6 +671,10 @@ stationService:SetCallbacks({
 		collectionShelfService:Clear(station.Id)
 	end,
 	OnAssigned = function(player: Player, station: StationRecord, reason: string)
+		stationWasAssigned[player] = true
+		runIntegration("StationAssignedOnboarding", function()
+			onboardingService:Advance(player, 2)
+		end)
 		stationDisplayService:SetOwner(player, station.Id)
 		local profile = profileService:GetProfileCopy(player.UserId)
 		if profile ~= nil then
@@ -631,7 +782,24 @@ local function scheduleAcceptanceConflict(player: Player)
 	end)
 end
 
+local function logSessionDuration(player: Player)
+	if sessionDurationLogged[player] then
+		return
+	end
+	sessionDurationLogged[player] = true
+	local startedAt = sessionStartedAt[player] or workspace:GetServerTimeNow()
+	runIntegration("SessionDurationAnalytics", function()
+		analyticsService:LogSessionDuration(
+			player,
+			math.max(0, workspace:GetServerTimeNow() - startedAt),
+			profileWasReady[player] == true,
+			stationWasAssigned[player] == true
+		)
+	end)
+end
+
 local function beginProfileLoad(player: Player)
+	sessionStartedAt[player] = sessionStartedAt[player] or workspace:GetServerTimeNow()
 	local acceptanceTarget = prepareAcceptancePlayer(player.UserId)
 	task.spawn(function()
 		local success, code = profileService:LoadPlayer(player.UserId)
@@ -663,12 +831,20 @@ Players.PlayerRemoving:Connect(function(player: Player)
 		return
 	end
 	removingPlayers[player] = true
+	logSessionDuration(player)
 	readyPlayers[player] = nil
 	waitingStateVersions[player] = nil
 	profileService:BeginRelease(player.UserId)
 	roundService:RemovePlayer(player)
 	stationService:ReleasePlayer(player)
 	rateLimiter:RemoveUser(player.UserId)
+	onboardingRequestValidator:RemoveUser(player.UserId)
+	profileInitializationInProgress[player.UserId] = nil
+	profileInitializedForSession[player.UserId] = nil
+	sessionStartedAt[player] = nil
+	profileWasReady[player] = nil
+	stationWasAssigned[player] = nil
+	sessionDurationLogged[player] = nil
 	if not shutdownStarted then
 		task.spawn(function()
 			local success, code = profileService:Release(player.UserId)
@@ -693,6 +869,32 @@ ClientReadyRequest.OnServerEvent:Connect(function(player: Player)
 		ProfileSnapshot:FireClient(player, profileSnapshot)
 	end
 	syncPlayerState(player)
+end)
+
+OnboardingActionRequest.OnServerEvent:Connect(function(player: Player, payload: unknown)
+	local profile = profileService:GetProfileCopy(player.UserId)
+	local status = if profile ~= nil then profile.Onboarding.Status else nil
+	local validation = onboardingRequestValidator:Validate(
+		player.UserId,
+		payload,
+		profileService:CanMutate(player.UserId),
+		status,
+		workspace:GetServerTimeNow()
+	)
+	if validation.ShouldWarn then
+		warn(string.format(
+			"[ONE_MORE_ITEM][Onboarding] excessive requests user=%d count=%d",
+			player.UserId,
+			validation.RequestCount
+		))
+	end
+	if not validation.Accepted or validation.Request == nil then
+		return
+	end
+	local applied = onboardingService:Skip(player)
+	if applied ~= nil and applied.Changed then
+		onboardingRequestValidator:MarkAccepted(player.UserId, validation.Request.ClientSequence)
+	end
 end)
 
 PlaceItemRequest.OnServerEvent:Connect(function(player: Player, payload: unknown)
@@ -748,6 +950,7 @@ game:BindToClose(function()
 	shutdownStarted = true
 	profileService:BeginShutdown()
 	for _, player in ipairs(Players:GetPlayers()) do
+		logSessionDuration(player)
 		removingPlayers[player] = true
 		roundService:RemovePlayer(player)
 		stationService:ReleasePlayer(player)
@@ -763,12 +966,15 @@ game:BindToClose(function()
 	announcementService:Destroy()
 	showcaseService:Destroy()
 	stationService:Destroy()
+	analyticsService:Destroy()
 end)
 
 print(string.format(
-	"[ONE_MORE_ITEM][Phase05] server ready stations=%d gameplayRemotes=%d profileRemotes=%d profileStore=%s",
+	"[ONE_MORE_ITEM][Phase06] server ready stations=%d gameplayRemotes=%d profileRemotes=%d onboardingRemotes=%d profileStore=%s analytics=%s",
 	stationService:GetStationCount(),
 	remoteCount,
 	profileRemoteCount,
-	profileService:GetStoreEnvironment()
+	onboardingRemoteCount,
+	profileService:GetStoreEnvironment(),
+	analyticsService:GetEnvironment()
 ))
