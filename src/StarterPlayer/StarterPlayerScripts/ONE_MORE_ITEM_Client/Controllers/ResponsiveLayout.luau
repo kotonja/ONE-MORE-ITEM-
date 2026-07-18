@@ -64,6 +64,7 @@ local ResponsiveLayout = {}
 local PORTRAIT_RATIO = 1.10
 local COMPACT_RATIO = 1.45
 local COMPACT_MAX_HEIGHT = 500
+local CONTAINMENT_EPSILON = 1e-4
 
 local ZERO_INSETS: SafeInsets = table.freeze({
 	Left = 0,
@@ -351,10 +352,10 @@ function ResponsiveLayout.BoundsForTarget(layout: Layout, targetName: TargetName
 end
 
 function ResponsiveLayout.IsContained(inner: Bounds, outer: Bounds): boolean
-	return inner.Left >= outer.Left
-		and inner.Top >= outer.Top
-		and inner.Right <= outer.Right
-		and inner.Bottom <= outer.Bottom
+	return inner.Left >= outer.Left - CONTAINMENT_EPSILON
+		and inner.Top >= outer.Top - CONTAINMENT_EPSILON
+		and inner.Right <= outer.Right + CONTAINMENT_EPSILON
+		and inner.Bottom <= outer.Bottom + CONTAINMENT_EPSILON
 end
 
 return table.freeze(ResponsiveLayout)
