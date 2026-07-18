@@ -901,7 +901,7 @@ try {
   criterion("BloomEffect is singular and restrained", () => {
     const blooms = instanceSteps.filter((step) => step.className === "BloomEffect");
     assert.equal(blooms.length, 1);
-    const bloom = assertPath(instancesByPath, "Lighting.ONE_MORE_ITEM_Bloom", "BloomEffect");
+    const bloom = assertPath(instancesByPath, "Lighting.Bloom", "BloomEffect");
     assert.equal(bloom.properties.Enabled, true);
     assert.ok(bloom.properties.Intensity >= 0.10 && bloom.properties.Intensity <= 0.18);
     assert.ok(bloom.properties.Size >= 12 && bloom.properties.Size <= 18);

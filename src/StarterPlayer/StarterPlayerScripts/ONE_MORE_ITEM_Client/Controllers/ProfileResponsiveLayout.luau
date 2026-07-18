@@ -26,8 +26,8 @@ end
 
 local layouts: { [LayoutClass]: Layout } = table.freeze({
 	Wide = table.freeze({
-		MetaBar = geometry(0.5, 0.028, 0.94, 0.055),
-		ResultsMetaBar = geometry(0.5, 0.028, 0.94, 0.055),
+		MetaBar = geometry(0.5, 0.028, 0.94, 0.044),
+		ResultsMetaBar = geometry(0.5, 0.028, 0.94, 0.044),
 		CollectionPanel = geometry(0.5, 0.52, 0.78, 0.74),
 		DiscoveryReveal = geometry(0.5, 0.40, 0.34, 0.18),
 		RankUpBanner = geometry(0.5, 0.17, 0.34, 0.09),

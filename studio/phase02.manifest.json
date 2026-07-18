@@ -136,7 +136,7 @@
   ],
   "instances": [
     {
-      "path": "Lighting.ONE_MORE_ITEM_Bloom",
+      "path": "Lighting.Bloom",
       "className": "BloomEffect",
       "properties": {
         "Enabled": {
@@ -6241,7 +6241,7 @@
           "type": "UDim2",
           "xScale": 0.94,
           "xOffset": 0,
-          "yScale": 0.055,
+          "yScale": 0.044,
           "yOffset": 0
         },
         "Visible": {
