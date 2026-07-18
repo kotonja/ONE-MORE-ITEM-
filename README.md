@@ -2,11 +2,13 @@
 
 **PACK THE BOX** — Fit it. Ship it. Or risk one more.
 
-ONE MORE ITEM! is a premium, mobile-first Roblox packing game built around fitting irregular items into a deterministic snap-grid crate.
+ONE MORE ITEM! is a mobile-first Roblox packing game targeting a premium visual bar, built around fitting irregular items into a deterministic snap-grid crate.
 
 ## Current development phase
 
-Phase 06 — First-Time Player Experience, Starter Missions, and Retention Analytics: **Implementation complete and accepted.** The accepted implementation head is `f877667b3ce9f032d0a0c676dafb348bb2ad6d8f` on `codex/phase-06-onboarding-starter-missions`. Draft [PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7) remains open, draft, and unmerged; Phase 07 has not begun.
+Phase 07 — Visual Readability and Arena Art-Direction Rebuild: **Active and unaccepted.** Work is isolated on `codex/phase-07-visual-readability-arena-rebuild`. Phase 07 remains unaccepted until its own visual, automated, cloud-persistence, direct-reopen, screenshot, and continuous-recording gates pass.
+
+Phase 06 — First-Time Player Experience, Starter Missions, and Retention Analytics is complete and accepted. [PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7) was squash-merged into `main` as `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`.
 
 The completion presentation is now deterministic for both profile-first and round-first arrival. It shows exactly `SHIPMENT COMPLETE` / `TAPE IS SAVED` / `SHIPPED ITEMS JOIN YOUR COLLECTION` for `0.95` seconds, cannot replay after completion or reload, remains hidden while a player is unassigned, and losslessly defers the mission banner until the onboarding presentation releases it. Authoritative economy analytics preserve mutation order: First Fit records `+10` ending at `10`, Shipment records `+15` ending at `25`, then First Shipment records `+25` ending at `50`.
 
@@ -27,7 +29,8 @@ Phase 02 is complete and merged through PR #2 at `73b3428c5ff0068f1e57f89d2150ff
 - Phase 03 was squash-merged through PR #3 at `014ff3964eb63f22f8527894067cddb1b4f98070`.
 - Phase 04 was squash-merged through PR #5 at `213f3581bd242523e34601cfefa5b5a74770ddee`.
 - Phase 05 was squash-merged through PR #6 at `d644411b48e20cd9bb256d3d2c55a647efc2adfd` after its synchronized cloud-place and direct-reopen acceptance.
-- Phase 06 implementation is complete and accepted on `codex/phase-06-onboarding-starter-missions` in [draft PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7). The PR remains open, draft, and unmerged until explicit review/merge authorization.
+- Phase 06 was squash-merged through [PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7) at `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`.
+- Phase 07 is active on `codex/phase-07-visual-readability-arena-rebuild`; it is not accepted until its complete Phase 07 evidence boundary passes.
 - Pull before editing, never force-push, and keep every meaningful Studio/code change committed and pushed.
 - `docs/DEVELOPMENT_STATUS.md` is updated on every task.
 - GitHub Actions workflow `Phase 01–06 Node Validation` uses Node 24 with `actions/checkout@v7` and `actions/setup-node@v6`. It runs six dependency-free validations on pull requests targeting `main` and pushes to `main` or `codex/**`. Implementation-head evidence is recorded in `docs/DEVELOPMENT_STATUS.md`; final documentation-head evidence is recorded in the draft PR and final handoff.

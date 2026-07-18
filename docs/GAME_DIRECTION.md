@@ -1,6 +1,6 @@
 # Game direction
 
-ONE MORE ITEM! — PACK THE BOX is a premium, mobile-first Roblox packing game. The core promise is: **Fit it. Ship it. Or risk one more.**
+ONE MORE ITEM! — PACK THE BOX is a mobile-first Roblox packing game targeting a premium visual bar. The core promise is: **Fit it. Ship it. Or risk one more.**
 
 ## Frozen foundation
 

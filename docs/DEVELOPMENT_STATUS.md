@@ -2,15 +2,16 @@
 
 ## Current phase and Git state
 
-- **Phase result:** **Implementation complete and accepted.**
-- **Current phase:** Phase 06 - First-Time Player Experience, Starter Missions, and Retention Analytics.
-- **Current branch:** `codex/phase-06-onboarding-starter-missions`.
-- **Protected base:** `main` and `origin/main` remain the accepted Phase 05 squash merge `d644411b48e20cd9bb256d3d2c55a647efc2adfd`.
-- **Accepted implementation head:** `f877667b3ce9f032d0a0c676dafb348bb2ad6d8f`.
-- **Final documentation head:** recorded in draft PR #7 and the final completion handoff after this documentation commit exists; this file intentionally does not self-reference its own commit SHA.
-- **Current pull request:** [Draft PR #7 - Phase 06: Onboarding, Starter Missions, and Retention Analytics](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7), open, draft, and unmerged.
+- **Phase result:** **In progress and unaccepted.**
+- **Current phase:** Phase 07 - Visual Readability and Arena Art-Direction Rebuild.
+- **Current branch:** `codex/phase-07-visual-readability-arena-rebuild`.
+- **Protected base:** `main` and `origin/main` remain the accepted Phase 06 squash merge `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`.
+- **Phase 06 merge:** [PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7) is merged as `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`.
+- **Latest Phase 07 implementation head:** no Phase 07 implementation commit exists yet; update after the first completed milestone.
+- **Current pull request:** the required Phase 07 draft pull request has not yet been opened.
 - **Pre-release QA:** [Issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open. Its [Phase 06 onboarding and analytics QA additions](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4#issuecomment-5007354615) keep the broad checks explicitly unpassed.
-- **Scope:** Phase 07 has not begun. No monetization, production-store rollout, final asset work, or unrelated redesign was added.
+- **Scope:** Phase 07 changes visual presentation only. It remains unaccepted until its visual, automated, cloud, direct-reopen, screenshot, and continuous-recording gates pass. No Phase 08 system, monetization, production-store rollout, final external asset, audio, or unrelated gameplay change is permitted.
+- **First visual milestone:** Station_01 camera, open-front crate, low console, and readable interior must pass visible Studio inspection before the design expands to the other stations or arena.
 
 ## Accepted Phase 06 implementation
 
@@ -146,11 +147,11 @@ The durable established profile already has all five defined starter missions re
 
 ## GitHub Actions
 
-Implementation head `f877667b3ce9f032d0a0c676dafb348bb2ad6d8f` is pushed on `codex/phase-06-onboarding-starter-missions`. Draft PR #7 remains open and unmerged. The exact final-documentation-head branch `push` and PR `pull_request` run/job URLs are recorded in PR #7 and the final completion handoff after both workflows finish; this file intentionally avoids an impossible self-reference to its own commit.
+Phase 06 implementation head `f877667b3ce9f032d0a0c676dafb348bb2ad6d8f` was reviewed and [PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7) was squash-merged as `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`. Phase 07 exact-head GitHub Actions evidence is pending.
 
 ## Known issues
 
-No known Phase 06 production blocker remains. Two non-game-owned Studio/plugin icon-load warnings were observed after reopen; no fresh game-owned warning or error was present.
+No known Phase 06 production blocker remains. Phase 07 is not yet accepted: the authoritative recording-derived visual defects, Milestone A Studio proof, later visual milestones, complete screenshot set, continuous recording, all seven automated gates, double synchronization, cloud save, and direct no-sync reopen remain pending.
 
 ## Deferred pre-release QA
 
@@ -175,8 +176,8 @@ These checks are not claimed as passed. Studio uses `MemoryAnalyticsAdapter`; no
 
 ## Deferred by design
 
-Daily challenges/rewards, login streaks, offline income, additional catalog objects, final models/assets, cosmetics/ownership/store, Robux products, monetization, trading, pets, rebirths, multiple worlds, co-op packing, cheer reactions, persistent/global/OrderedDataStore leaderboards, experiments, quests beyond the five starter missions, final sound/music/VFX, haptics, functional mission/rank/mastery bonuses, and every Phase 07 system remain deferred.
+Daily challenges/rewards, login streaks, offline income, additional catalog objects, final models/assets, cosmetics/ownership/store, Robux products, monetization, trading, pets, rebirths, multiple worlds, co-op packing, cheer reactions, persistent/global/OrderedDataStore leaderboards, experiments, quests beyond the five starter missions, final sound/music/VFX, haptics, functional mission/rank/mastery bonuses, and every Phase 08 system remain deferred.
 
 ## Exact next phase recommendation
 
-PR #7 is ready for final review but remains draft and unmerged. Do not begin Phase 07. Merge or advance phases only after explicit authorization.
+Complete Phase 07 only on `codex/phase-07-visual-readability-arena-rebuild`, keep its pull request draft and unmerged, and preserve issue #4. Do not begin Phase 08.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-18 - Phase 07 visual reconstruction opened
+
+- Recorded the completed Phase 06 squash merge: [PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7) is merged into `main` as `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`.
+- Opened and pushed `codex/phase-07-visual-readability-arena-rebuild` from that exact merge without changing `main`.
+- Re-ran the six inherited dependency-free Node 24 gates before editing; Foundation through Phase 06 all passed at the accepted 914-instance / 79-script baseline.
+- Marked Phase 07 active but explicitly unaccepted until its own visual, automated, screenshot, continuous-recording, double-synchronization, cloud-save, and direct no-sync reopen gates pass. Issue #4 remains open, and no Phase 08 work has begun.
+
 ## 2026-07-17 - Phase 06 source-quality correction and acceptance closeout
 
 - Marked Phase 06 **Implementation complete and accepted** at implementation head `f877667b3ce9f032d0a0c676dafb348bb2ad6d8f`, without merging draft PR #7 or beginning Phase 07.
