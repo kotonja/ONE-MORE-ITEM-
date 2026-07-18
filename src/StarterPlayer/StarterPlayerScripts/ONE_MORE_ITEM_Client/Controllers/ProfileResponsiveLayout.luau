@@ -33,8 +33,8 @@ local layouts: { [LayoutClass]: Layout } = table.freeze({
 		RankUpBanner = geometry(0.5, 0.17, 0.34, 0.09),
 	}),
 	CompactLandscape = table.freeze({
-		MetaBar = geometry(0.5, 0.025, 0.94, 0.095),
-		ResultsMetaBar = geometry(0.5, 0.875, 0.58, 0.095),
+		MetaBar = geometry(0.5, 0.025, 0.94, 0.075),
+		ResultsMetaBar = geometry(0.5, 0.875, 0.58, 0.075),
 		CollectionPanel = geometry(0.5, 0.53, 0.90, 0.84),
 		DiscoveryReveal = geometry(0.5, 0.42, 0.52, 0.22),
 		RankUpBanner = geometry(0.5, 0.24, 0.48, 0.14),
