@@ -2,9 +2,9 @@
 
 ## Status and acceptance boundary
 
-**Active and unaccepted.** Phase 07 is isolated on `codex/phase-07-visual-readability-arena-rebuild`, based on the accepted Phase 06 squash merge `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`. [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged. The latest committed Phase 07 implementation head observed while this document was prepared is `e86c4e3484653c286f583d25c8a003488427670a`; later implementation or documentation commits must be recorded in `docs/DEVELOPMENT_STATUS.md` and the PR because a commit cannot contain its own SHA.
+**Active and unaccepted.** Phase 07 is isolated on `codex/phase-07-visual-readability-arena-rebuild`, based on the accepted Phase 06 squash merge `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`. [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged. The latest committed Phase 07 implementation head observed while this document was prepared is `a057cbb7fd23cb16f387142dec3e988efa213247`; later documentation commits must be recorded in `docs/DEVELOPMENT_STATUS.md` and the PR because a commit cannot contain its own SHA.
 
-This document records the reconstruction contract and the current evidence boundary. It does not claim visual acceptance, a complete screenshot set, a continuous recording, seven-suite Studio Output, seven-gate Node acceptance, canonical double synchronization, cloud save, full Studio close, or direct no-synchronization reopen. Phase 07 remains unaccepted until all of those gates pass together on the final candidate. Passing configuration or deterministic tests cannot substitute for visibly readable gameplay.
+This document records the reconstruction contract and the current evidence boundary. The implementation head has fresh seven-gate Node, seven-suite synchronized-Studio, deterministic camera/line-of-sight, double-authoring, targeted manual visual checks, exact-head Actions, normal cloud publish, complete Studio close, direct no-sync cloud reopen, and final parity. It does **not** claim final live visual acceptance, a complete accepted screenshot set, or an accepted continuous recording. Phase 07 remains unaccepted until those remaining evidence gates pass together on the final candidate. Passing configuration, deterministic tests, or persistence parity cannot substitute for visibly readable gameplay.
 
 [Issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open. Its Phase 07 QA comment is not due until Phase 07 acceptance and has not been represented as posted.
 
@@ -108,6 +108,8 @@ Station_01, Station_03, Station_05, and Station_07 require explicit projection c
 
 For every gameplay anchor, deterministic rays target all 25 layer-zero centers, four upper-layer corner centers, `CrateFocus`, `GridOrigin`, and the current ghost center. Only compliant transparent side/back panes may intersect those rays. The console, front rim, stand, sign, shelf, labels, light support, neighboring station, shell, and center dispatch may not.
 
+The current authored candidate uses FOV `48`. Relative to each rotated station frame, its desktop camera is at approximately `(0, 19.2659, 9.2203)` with `55.6` degrees downward pitch; touch landscape is at `(0, 16.2375, 8.7548)` with approximately `50.0` degrees pitch; touch portrait is at `(0, 28.4608, 18.9810)` with approximately `50.0` degrees pitch. The Phase 07 Studio suite passed the deterministic projection fixtures and all `768/768` line-of-sight rays (`32` samples x eight stations x three anchor profiles). Exact 1100x700, touch portrait, touch landscape, legitimate Station_05 pointer/Place/Ship, and Station_03/07 clearance spot checks passed. The accepted 1920x1080 evidence replacement, documented 1366x768 final review, and complete avatar/UI obstruction evidence remain pending.
+
 ## Crate, panes, grid, and item presentation
 
 The logical interior stays exactly `10 x 10 x 8` studs, `5 x 5 x 4` cells, with two-stud cells and unchanged `GridOrigin` semantics.
@@ -145,9 +147,9 @@ Center dispatch is the arena landmark: a circular/octagonal base, lift, lift top
 
 ## Lighting, bloom, and Neon policy
 
-The source-controlled Lighting target is Future technology, brightness near `2.0`, exposure near `-0.25`, ambient near RGB `28,35,45`, outdoor ambient near RGB `20,25,32`, diffuse scale near `0.35`, specular scale near `0.55`, global shadows enabled, and shadow softness near `0.35`. Final tuned values must be measured and recorded after Studio visual verification.
+The current source-controlled Lighting configuration is Future technology, brightness `2.0`, clock time `14.5`, exposure `-0.25`, ambient RGB `28,35,45`, outdoor ambient RGB `20,25,32`, diffuse scale `0.35`, specular scale `0.55`, global shadows enabled, and shadow softness `0.35`.
 
-One restrained BloomEffect targets intensity `0.10-0.18`, size `12-18`, and threshold `1.35-1.55`. One restrained ColorCorrectionEffect targets contrast `0.06-0.12`, saturation `-0.04` to `-0.10`, and brightness `-0.03` to `0`. Gameplay uses no enabled depth-of-field blur, motion blur, per-frame lighting change, or global strobe.
+The single authored BloomEffect uses intensity `0.14`, size `16`, and threshold `1.45`. The single authored ColorCorrectionEffect uses contrast `0.09`, saturation `-0.07`, brightness `-0.02`, and tint RGB `255,249,242`. Gameplay uses no enabled depth-of-field blur, motion blur, per-frame lighting change, or global strobe. Deterministic configuration checks pass, but final visible exposure/contrast review on the required device profiles and direct cloud reopen remains pending.
 
 Neon is an accent, not construction material. Small station edges, buttons, risk indicators, dispatch routes, branding accents, and state lights are allowed. Entire floors, console decks, crate surfaces, walls, yellow rectangles, giant spheres, and arena-wide borders are rejected unless a specifically documented allowlist proves safe area and exposure.
 
@@ -186,35 +188,61 @@ Reset raises the lid visibly, immediately restores the readable interior, uses o
 
 The final accepted candidate must record exact permanent counts. New environment geometry should generally stay below about 350 additional permanent BaseParts unless justified. Dynamic lights target about 20 or fewer, with shadow-casting lights used sparingly. Phase 07 adds no particles, scripts inside decorative Parts, physics-driven environment, per-station frame loop, per-label frame loop, per-frame full-Workspace scan, or one-connection-per-decoration system. Transparent panes and Neon accents generally do not cast shadows.
 
-Final managed-path, managed-source, permanent-BasePart, light, and Neon-area counts remain pending final candidate generation and acceptance; no provisional count is represented as final here.
+The current generated candidate contains 1,453 combined managed paths, 97 managed sources, and 824 permanent BaseParts, a `+346` visual-Part delta from the accepted Phase 06 generated tree. It contains 20 PointLights, including eight station task lights, and zero shadow-casting dynamic lights. The deterministic material scan finds zero `Enum.Material.Glass` descendants under any gameplay station `Crate`; four Glass walls remain only in the off-world development `ShowcaseCrateTemplate` and are not gameplay panes. Eighty managed Neon Parts remain as small accents, with a maximum second-largest dimension of `0.9` studs and no giant-surface allowlist. These counts are not by themselves a low-end-device performance claim.
 
 ## Automated and manual evidence ledger
 
-The six inherited Node gates passed at the accepted Phase 06 baseline before Phase 07 editing. That historical baseline is not Phase 07 acceptance. The final candidate still requires fresh green output from all seven Node gates and all seven Studio suites, including the Phase 07 deterministic camera/projector, line-of-sight, no-Glass, Neon, authored hierarchy, source discipline, and cleanup coverage.
+The current implementation head passed all seven dependency-free Node 24 gates:
+
+```text
+[StudioSyncSmoke] PASS checks=16 folders=7 scripts=10 deterministic=true
+[Phase02StudioSyncSmoke] PASS criteria=28 instances=1355 scripts=87 remotes=6 deterministic=true phase01=true
+[Phase03CrossPlatformSmoke] PASS criteria=31 viewports=13 insetProfiles=5 layoutCases=65 remotes=6 deterministic=true phase01=true phase02=true
+[Phase04MultiplayerArena] PASS criteria=42 instances=1355 scripts=87 stations=8 pathNodes=16 remotes=6 deterministic=true prior=true
+[Phase05PersistentProgression] PASS criteria=64 instances=1355 scripts=87 gameplayRemotes=6 profileRemotes=1 shelves=8 collectionSlots=8 deterministic=true prior=true
+[Phase06OnboardingMissionsAnalytics] PASS criteria=76 instances=1355 scripts=87 gameplayRemotes=6 profileRemotes=1 onboardingRemotes=1 onboardingSteps=5 starterMissions=5 missionTape=295 missionXP=210 deterministic=true prior=true
+[Phase07VisualReadability] PASS criteria=160 instances=1355 scripts=87 stations=8 losRays=768 pointLights=20 deterministic=true prior=true
+```
+
+The final directly reopened place produced this fresh seven-suite run without post-reopen synchronization:
+
+| Suite | Current result | Deterministic detail |
+| --- | ---: | --- |
+| Foundation | `69/69` | 15 suites; seed `24012026`; 1,000 fuzz cases; `0.333691s` |
+| Phase 02 | `94/94` | 11 suites; seed `24022026`; `6.775828s` |
+| Phase 03 | `65/65` | 8 suites; seed `13072026`; `0.007074s` |
+| Phase 04 | `119/119` | 13 suites; seed `14072026`; `3.483551s` |
+| Phase 05 | `130/130` | 16 suites; seed `15072026`; memory adapter; `0.553133s` |
+| Phase 06 | `75/75` | 18 suites; seed `16072026`; profile/analytics memory adapters; `0.036370s` |
+| Phase 07 | `64/64` | 12 suites; seed `17072026`; 768 LOS rays; `1.654351s` |
+
+Implementation-head GitHub Actions also passed: push run `29662807404` / job `88128209680` and draft-PR run `29662808244` / job `88128211869`, with all seven Node steps successful. A later documentation head requires fresh exact-head Actions evidence.
+
+The direct-reopen Studio run reported no fresh game-owned warning or error. The remaining visual ledger is:
 
 | Gate | Current Phase 07 state |
 | --- | --- |
-| Seven Node validations | Pending final integrated run. |
-| Foundation through Phase 07 Studio suites | Pending final synchronized-place run. |
-| Opening sequence | Pending final live recording. |
-| Desktop 1920 x 1080 and 1366 x 768 | Pending final live visual acceptance. |
-| Narrow desktop 1100 x 700 | Pending final live visual acceptance. |
-| Touch portrait and landscape | Pending final emulator visual acceptance. |
-| Station_05 opposite-side view | Pending final live visual acceptance. |
-| Four-client arena and label tiers | Pending final live visual acceptance. |
-| Shipping, failure, reset, Collection, and Starter Path | Pending one continuous accepted flow. |
-| Edit-mode top-down, entrance, ring, dispatch, loop, and shelf inspection | Pending final review. |
-| Fresh game-owned warnings/errors | Pending final Output review. |
+| Opening sequence | First-frame curtain and controlled arrival passed; the accepted recording must retain the sequence. |
+| Desktop 1920 x 1080 and 1366 x 768 | Both final visual checks passed. |
+| Narrow desktop 1100 x 700 | Exact-size visual spot check passed. |
+| Touch portrait and landscape | Both required Phase 07 emulator spot checks passed; no physical-phone result is claimed. |
+| Station_05 opposite-side view | Legitimate assignment, opposite-side camera, pointer, Place, and Ship passed; Station_03/07 clearance also passed. |
+| Four-client arena and label tiers | Exact four-client cold-start assignment and four distinct occupied bays passed; the final evidence image must show that state more clearly. |
+| Shipping, failure, reset, Collection, and Starter Path | Individual live checks passed; one complete accepted continuous flow remains required. |
+| Edit-mode top-down, entrance, ring, dispatch, loop, and shelf inspection | All required inspection angles passed; the accepted recording must retain the flyover and Station_05 view. |
+| Post-publish seven suites and clean Output | Passed after normal publish, verified zero-process close, and direct no-sync reopen. |
 
-The required 15 screenshots and one unedited continuous recording of approximately 3-6 minutes must remain outside Git. No screenshot or recording is claimed present by this document.
+The required 15 screenshots and one unedited continuous recording of approximately 3-6 minutes must remain outside Git. No complete accepted set is claimed by this document. Thirteen screenshot frames are usable; frame 12 must clearly prove the four-client arena and frame 15 must show the physical authored collection shelf. Existing recordings are explicitly rejected because none contains all 13 required moments. The user is supplying the replacement continuous recording. Rejected material remains recovery-only and may not be counted toward acceptance.
 
 ## Canonical synchronization and cloud persistence
 
-After the final candidate passes locally, use one Studio process, confirm every Phase 05 acceptance-fixture attribute is absent, build canonical artifacts, and apply Phase 01 then the extended Phase 02-07 authoring twice. Verify exact paths, classes, managed properties, attributes, sources, rebuilt stations/shell/dispatch, lighting, curtains, existing UI/remotes, no external assets, and no duplicates or wrong classes.
+With all three Phase 05 acceptance-fixture attributes absent, the current candidate applied Phase 01 and the extended Phase 02-07 authoring twice in one Studio session. Phase 01 reused all 17 operations on both passes with zero creation, update, warning, backup, or failure. Each extended pass updated 1,443 operations, preserved 87 script backups, created nothing, failed nothing, and emitted one expected protected-property warning because the authoring context lacks `RobloxScript` capability for `Lighting.Technology`; the manifest remains the source of the Future intent.
 
-Then run all seven Studio suites and visual Play gates, save normally to the original private cloud place, close every Studio process to a verified zero count, reopen the correct original place directly from Roblox, and perform no synchronization after reopen. Only a read-only direct-reopen audit plus a successful and failed visual round, exact parity, all seven suites, and clean Output can establish Phase 07 persistence.
+The synchronized audit and one later direct no-sync read-only reopen audit each matched 1,453 expected managed paths against 1,454 unique live paths, with only the allowlisted unmanaged `Workspace.Baseplate.Texture` extra and zero missing, duplicate, or wrong-class paths. All 97 sources matched exactly. Of 9,512 declared managed properties, the bridge exposed and matched 7,813; 1,699 were not exposed and are not claimed as independently read back. All 94 authored-attribute targets and 152 keys matched with zero mismatch. The no-sync audit targeted the original PlaceId `134193642444044` and GameId `10493030248`.
 
-No Phase 07 synchronization, cloud save, full close, direct reopen, or post-reopen parity is claimed yet.
+The final persistence sequence passed: Studio published normally to the original private cloud place with all Phase 05 fixture attributes absent, every Studio process closed to a verified zero count, and the correct original place reopened directly from Roblox. No synchronization occurred after reopen. The reopened place passed one successful round, one failure, all seven suites, clean Output, and the parity counts above.
+
+Canonical double synchronization, normal cloud publish, full close, post-publish direct reopen, and final post-reopen parity are green. These persistence results do not waive the remaining external visual-evidence gates.
 
 ## Known limitations and deferred pre-release QA
 

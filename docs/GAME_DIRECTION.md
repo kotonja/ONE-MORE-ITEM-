@@ -15,8 +15,9 @@ ONE MORE ITEM! — PACK THE BOX is a mobile-first Roblox packing game targeting 
 
 ## Permanent authoring direction
 
-- Permanent UI is authored as actual `StarterGui` instances, never generated wholesale at runtime.
+- Permanent gameplay UI is authored as actual `StarterGui` instances. The permanent pre-game first-frame curtain is authored under `ReplicatedFirst`; neither surface is generated wholesale at runtime.
 - The permanent arena and stations are authored as actual `Workspace` instances, never generated at runtime.
+- Permanent environment lighting and post-processing are authored under `Lighting`, never synthesized by gameplay scripts.
 - Temporary ghosts, cloned active items, particles, debris, beams, tokens, and showcase copies may be created at runtime from prepared templates.
 
 Phase 01 contains only the mathematical grid foundation, its development shapes, automated tests, and documentation.
@@ -67,4 +68,4 @@ The eight deterministic stations become separate bays on a wider ring inside one
 
 Shipping must visibly close around the player's arrangement, failure must visibly break containment, and reset must return a clean open crate. These are local visual refinements around the accepted server-authoritative state machine, rewards, progression, profile, mission, and analytics boundaries.
 
-Final item models, external assets, textures, images, audio, music, final particles/VFX, haptics, monetization, new systems, and Phase 08 remain deferred. Phase 07 is active and unaccepted on `codex/phase-07-visual-readability-arena-rebuild`; [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged. Tests alone cannot establish the visual result. See `docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md` for the required live, evidence, and persistence gates.
+Final item models, external assets, textures, images, audio, music, final particles/VFX, haptics, monetization, new systems, and Phase 08 remain deferred. Phase 07 is active and unaccepted on `codex/phase-07-visual-readability-arena-rebuild`; [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged. Automated, manual, cloud, complete-close, direct-reopen, and parity checks are green, but they cannot substitute for the accepted complete recording and final screenshot set. See `docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md` for the remaining evidence gate.

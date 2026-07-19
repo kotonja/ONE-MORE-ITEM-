@@ -15,12 +15,13 @@
 - Canonical Luau lives under `src/`; the source-controlled manifests under `studio/` map each phase into Studio. Generated blueprints under `.codex-cache/` are temporary.
 - Repository-to-Studio synchronization must be folder-first, deterministic, idempotent, and conflict-safe; it must never silently replace or destroy a wrong-class instance.
 - Never maintain a divergent Studio-only copy of a script.
-- Permanent UI is authored as real `StarterGui` instances. Do not build permanent UI at runtime.
+- Permanent gameplay UI is authored as real `StarterGui` instances. The permanent pre-game first-frame curtain is authored under `ReplicatedFirst`. Do not build permanent UI at runtime.
 - Permanent map content is authored as real `Workspace` instances. Do not build the arena or permanent decoration at runtime.
+- Permanent lighting and post-processing objects are authored under `Lighting`; runtime scripts may adjust authored presentation state but may not recreate the environment.
 - Permanent networking instances and development templates are authored through the manifest as real `ReplicatedStorage` instances. Runtime scripts may bind or clone them but may not recreate them.
 - Treat `StarterPlayer.StarterPlayerScripts` as a built-in container, not a managed `Folder`; author children beneath it without replacing it.
 - Runtime creation is limited to temporary gameplay/cosmetic objects cloned from prepared templates.
-- `studio/phase02.manifest.json` remains the sole canonical owner for permanent Phase 02-and-later gameplay/profile/onboarding UI, remotes, templates, arena content, and mapped scripts unless an explicitly approved phase changes that ownership.
+- `studio/phase02.manifest.json` remains the sole canonical owner for permanent Phase 02-and-later gameplay/profile/onboarding UI, the `ReplicatedFirst` first-frame presentation, Lighting/post-processing, remotes, templates, arena content, and mapped scripts unless an explicitly approved phase changes that ownership.
 
 ## Luau and architecture
 

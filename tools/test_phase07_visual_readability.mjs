@@ -1141,21 +1141,49 @@ try {
     }
   });
 
-  criterion("Issue 4 remains referenced as open", () => {
+  criterion("Issue 4 remains referenced as open with Phase 07 deferred QA", () => {
     const status = readText("docs/DEVELOPMENT_STATUS.md");
     assert.match(status, /Issue #4[^\n]*remains open/i);
     assert.match(status, /github\.com\/kotonja\/ONE-MORE-ITEM-\/issues\/4/);
+    assert.match(status, /Phase 07 visual and arena QA additions/i);
+    for (const deferredCheck of [
+      "Physical-phone crate readability",
+      "Physical-controller visual flow",
+      "Low-end-device lighting and transparency performance",
+      "Color-vision-deficiency review",
+      "Eight-player long-session world-label clutter",
+      "Eight-player simultaneous showcase visibility",
+      "Long-session camera and label cleanup",
+      "Production screenshot and thumbnail review",
+      "Final object-model replacement",
+      "Final sound/music/VFX integration",
+      "Final art consistency review",
+      "Public-beta visual feedback",
+      "Production-device bloom/exposure review",
+    ]) {
+      assert.match(status, new RegExp(deferredCheck.replaceAll("/", "\\/"), "i"));
+    }
   });
 
   criterion("Phase 07 branch and active-unaccepted status are documented without Phase 08 work", () => {
-    const status = `${readText("README.md")}\n${readText("docs/DEVELOPMENT_STATUS.md")}`;
+    const developmentStatus = readText("docs/DEVELOPMENT_STATUS.md");
+    const phase07 = readText("docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md");
+    const status = `${readText("README.md")}\n${developmentStatus}`;
     assert.match(status, /codex\/phase-07-visual-readability-arena-rebuild/);
     assert.match(status, /Phase 07[^\n]*(?:active|Current phase)/i);
     assert.match(status, /Phase 07[^\n]*unaccepted/i);
     assert.match(status, /No Phase 08|Do not begin Phase 08/i);
+    assert.match(developmentStatus, /\*\*Phase result:\*\*\s+\*\*In progress and unaccepted\.\*\*/i);
+    assert.match(developmentStatus, /PR #8[^\n]*open, draft, and unmerged/i);
+    assert.match(developmentStatus, /\| Cloud save \|[^\n]*Passed normal publish/i);
+    assert.match(developmentStatus, /\| Direct no-sync reopen \|[^\n]*Passed[^\n]*without synchronization/i);
+    assert.match(developmentStatus, /frame 12[^\n]*four-client[^\n]*frame 15[^\n]*physical authored collection shelf/i);
+    assert.match(developmentStatus, /user[^\n]*replacement unedited 3-6 minute recording/i);
+    assert.match(phase07, /\*\*Active and unaccepted\.\*\*/i);
+    assert.match(phase07, /does \*\*not\*\* claim[^\n]*accepted continuous recording/i);
   });
 
-  assert.ok(criterionCount >= 72, `Phase 07 Node gate requires at least 72 criteria, got ${criterionCount}`);
+  assert.ok(criterionCount >= 160, `Phase 07 Node gate requires at least 160 criteria, got ${criterionCount}`);
   console.log(
     `[Phase07VisualReadability] PASS criteria=${criterionCount} instances=${instanceSteps.length} scripts=${scriptSteps.length} stations=8 losRays=${lineOfSightRayCount} pointLights=${instanceSteps.filter((step) => step.className === "PointLight").length} deterministic=true prior=true`,
   );

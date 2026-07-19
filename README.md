@@ -6,7 +6,7 @@ ONE MORE ITEM! is a mobile-first Roblox packing game targeting a premium visual 
 
 ## Current development phase
 
-Phase 07 — Visual Readability and Arena Art-Direction Rebuild: **Active and unaccepted.** Work is isolated on `codex/phase-07-visual-readability-arena-rebuild`. [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged. Phase 07 remains unaccepted until its visual, all seven automated gates and Studio suites, cloud persistence, direct no-sync reopen, screenshot set, and continuous-recording gates pass. See [`docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md`](docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md) for the contract and live evidence boundary.
+Phase 07 — Visual Readability and Arena Art-Direction Rebuild: **Active and unaccepted.** Work is isolated on `codex/phase-07-visual-readability-arena-rebuild`. [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged. The current implementation candidate at `a057cbb7fd23cb16f387142dec3e988efa213247` has green seven-gate Node, final direct-reopen seven-suite Studio, deterministic projection/line-of-sight, canonical double-synchronization, normal cloud publish, verified zero-process close, and final direct no-sync reopen parity. Phase 07 nevertheless remains unaccepted until screenshot frames 12 and 15 and the complete continuous recording are accepted. See [`docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md`](docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md) for the contract and exact evidence boundary.
 
 Phase 06 — First-Time Player Experience, Starter Missions, and Retention Analytics is complete and accepted. [PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7) was squash-merged into `main` as `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`.
 
@@ -33,7 +33,7 @@ Phase 02 is complete and merged through PR #2 at `73b3428c5ff0068f1e57f89d2150ff
 - Phase 07 is active on `codex/phase-07-visual-readability-arena-rebuild`; [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged, and Phase 07 is not accepted until its complete evidence boundary passes.
 - Pull before editing, never force-push, and keep every meaningful Studio/code change committed and pushed.
 - `docs/DEVELOPMENT_STATUS.md` is updated on every task.
-- GitHub Actions workflow `Phase 01–07 Node Validation` uses Node 24 with `actions/checkout@v7` and `actions/setup-node@v6`. It runs seven dependency-free validations on pull requests targeting `main` and pushes to `main` or `codex/**`. Phase 07 exact-head evidence is still pending; no green result is inferred from the workflow definition.
+- GitHub Actions workflow `Phase 01–07 Node Validation` uses Node 24 with `actions/checkout@v7` and `actions/setup-node@v6`. It runs seven dependency-free validations on pull requests targeting `main` and pushes to `main` or `codex/**`. Implementation head `a057cbb7fd23cb16f387142dec3e988efa213247` passed push run `29662807404` / job `88128209680` and draft-PR run `29662808244` / job `88128211869`; the later documentation head must receive its own exact-head result.
 
 ## Studio source workflow
 
@@ -60,7 +60,7 @@ The same build step also emits `.codex-cache/phase01-blueprint.json` for validat
 
 The runner exits immediately outside Roblox Studio and fails visibly with `error()` if any test fails.
 
-Phase 02 adds a separate Studio suite for round math, fair sequencing, state transitions, placement security, station ownership, serialization, world transforms, and runtime cleanup. Phase 03 adds deterministic input and responsive-layout coverage; Phase 04 covers the multiplayer arena and showcase; Phase 05 covers persistent profiles and shelves; and Phase 06 covers onboarding, exact-once starter missions, and failure-isolated analytics. Phase 07 adds deterministic authored-hierarchy, camera projection, line-of-sight, no-Glass, Neon-area, first-frame, label, and cleanup contracts. Its full seven-gate Node run and all seven Studio suites remain pending final integrated acceptance.
+Phase 02 adds a separate Studio suite for round math, fair sequencing, state transitions, placement security, station ownership, serialization, world transforms, and runtime cleanup. Phase 03 adds deterministic input and responsive-layout coverage; Phase 04 covers the multiplayer arena and showcase; Phase 05 covers persistent profiles and shelves; and Phase 06 covers onboarding, exact-once starter missions, and failure-isolated analytics. Phase 07 adds deterministic authored-hierarchy, camera projection, line-of-sight, no-Glass, Neon-area, first-frame, label, and cleanup contracts. The current candidate passed all seven Node gates and all seven Studio suites after the final direct no-sync reopen; those results and final persistence parity do not replace the still-pending accepted recording and two clearer screenshots.
 
 ## Phase 01 persistence status
 
@@ -68,7 +68,7 @@ The original private cloud place is verified as persistent. After a controlled c
 
 ## Permanent authoring rule
 
-Permanent UI must be authored as real instances under `StarterGui`, and permanent world content must be authored as real instances under `Workspace`. Runtime Lua may operate those instances but may not generate the permanent UI or arena. Phase 01 creates neither UI nor map content.
+Permanent gameplay UI must be authored as real instances under `StarterGui`; the permanent pre-game first-frame curtain is authored under `ReplicatedFirst`; permanent world content is authored under `Workspace`; and permanent lighting/post-processing is authored under `Lighting`. Runtime Lua may operate or animate those instances but may not generate permanent UI, the arena, or the environment. Phase 01 creates none of those presentation surfaces.
 
 ## Phase 03 cross-platform contract
 
@@ -98,4 +98,4 @@ Phase 06 preserves server authority while adding durable contextual onboarding, 
 
 Phase 07 recomposes presentation without changing gameplay. The crate must dominate every active view; all 25 floor cells and four layers remain readable; the console, avatar, UI, labels, and permanent geometry cannot obscure the packing volume. The authored first-frame curtain hides uninitialized world/camera state, station anchors use deterministic responsive framing, crate panes are non-refractive, and the eight stations sit inside a controlled circular/octagonal warehouse with a legible center dispatch.
 
-Permanent first-frame UI, gameplay UI, world geometry, lighting, post-processing, labels, camera anchors, remotes, templates, and scripts remain manifest-authored before Play. Phase 07 adds no authority, remote, progression, final asset, audio, monetization, or Phase 08 feature. Its detailed targets and explicitly pending visual, automated, screenshot/recording, cloud-save, and direct-reopen gates are recorded in [`docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md`](docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md).
+Permanent first-frame UI, gameplay UI, world geometry, lighting, post-processing, labels, camera anchors, remotes, templates, and scripts remain manifest-authored before Play. Phase 07 adds no authority, remote, progression, final asset, audio, monetization, or Phase 08 feature. Its detailed targets, proven automated/manual/persistence checks, rejected preliminary evidence, and remaining external evidence gates are recorded in [`docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md`](docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md).
