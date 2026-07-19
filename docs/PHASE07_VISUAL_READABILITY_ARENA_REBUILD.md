@@ -4,7 +4,7 @@
 
 **Active and unaccepted.** Phase 07 is isolated on `codex/phase-07-visual-readability-arena-rebuild`, based on the accepted Phase 06 squash merge `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`. [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged. The latest committed Phase 07 implementation head observed while this document was prepared is `a057cbb7fd23cb16f387142dec3e988efa213247`; later documentation commits must be recorded in `docs/DEVELOPMENT_STATUS.md` and the PR because a commit cannot contain its own SHA.
 
-This document records the reconstruction contract and the current evidence boundary. The implementation head has fresh seven-gate Node, seven-suite synchronized-Studio, deterministic camera/line-of-sight, double-authoring, targeted manual visual checks, exact-head Actions, normal cloud publish, complete Studio close, direct no-sync cloud reopen, and final parity. It does **not** claim final live visual acceptance, a complete accepted screenshot set, or an accepted continuous recording. Phase 07 remains unaccepted until those remaining evidence gates pass together on the final candidate. Passing configuration, deterministic tests, or persistence parity cannot substitute for visibly readable gameplay.
+This document records the reconstruction contract and the current evidence boundary. The implementation head has fresh seven-gate Node, seven-suite synchronized-Studio, deterministic camera/line-of-sight, double-authoring, targeted manual visual checks, 15/15 accepted screenshot frames, exact-head Actions, normal cloud publish, complete Studio close, direct no-sync cloud reopen, and final parity. It does **not** claim final live visual acceptance or an accepted continuous recording. Phase 07 remains unaccepted until the replacement unedited continuous-recording gate passes on the final candidate. Passing configuration, deterministic tests, screenshots, or persistence parity cannot substitute for the required continuous visibly readable gameplay flow.
 
 [Issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open. Its Phase 07 QA comment is not due until Phase 07 acceptance and has not been represented as posted.
 
@@ -108,7 +108,7 @@ Station_01, Station_03, Station_05, and Station_07 require explicit projection c
 
 For every gameplay anchor, deterministic rays target all 25 layer-zero centers, four upper-layer corner centers, `CrateFocus`, `GridOrigin`, and the current ghost center. Only compliant transparent side/back panes may intersect those rays. The console, front rim, stand, sign, shelf, labels, light support, neighboring station, shell, and center dispatch may not.
 
-The current authored candidate uses FOV `48`. Relative to each rotated station frame, its desktop camera is at approximately `(0, 19.2659, 9.2203)` with `55.6` degrees downward pitch; touch landscape is at `(0, 16.2375, 8.7548)` with approximately `50.0` degrees pitch; touch portrait is at `(0, 28.4608, 18.9810)` with approximately `50.0` degrees pitch. The Phase 07 Studio suite passed the deterministic projection fixtures and all `768/768` line-of-sight rays (`32` samples x eight stations x three anchor profiles). Exact 1100x700, touch portrait, touch landscape, legitimate Station_05 pointer/Place/Ship, and Station_03/07 clearance spot checks passed. The accepted 1920x1080 evidence replacement, documented 1366x768 final review, and complete avatar/UI obstruction evidence remain pending.
+The current authored candidate uses FOV `48`. Relative to each rotated station frame, its desktop camera is at approximately `(0, 19.2659, 9.2203)` with `55.6` degrees downward pitch; touch landscape is at `(0, 16.2375, 8.7548)` with approximately `50.0` degrees pitch; touch portrait is at `(0, 28.4608, 18.9810)` with approximately `50.0` degrees pitch. The Phase 07 Studio suite passed the deterministic projection fixtures and all `768/768` line-of-sight rays (`32` samples x eight stations x three anchor profiles). Exact 1920x1080, 1366x768, 1100x700, touch portrait, touch landscape, legitimate Station_05 pointer/Place/Ship, and Station_03/07 clearance spot checks passed. The accepted 15-frame screenshot set includes the required viewport and obstruction evidence; the continuous recording remains the sole visual-acceptance blocker.
 
 ## Crate, panes, grid, and item presentation
 
@@ -227,12 +227,12 @@ The direct-reopen Studio run reported no fresh game-owned warning or error. The 
 | Narrow desktop 1100 x 700 | Exact-size visual spot check passed. |
 | Touch portrait and landscape | Both required Phase 07 emulator spot checks passed; no physical-phone result is claimed. |
 | Station_05 opposite-side view | Legitimate assignment, opposite-side camera, pointer, Place, and Ship passed; Station_03/07 clearance also passed. |
-| Four-client arena and label tiers | Exact four-client cold-start assignment and four distinct occupied bays passed; the final evidence image must show that state more clearly. |
+| Four-client arena and label tiers | Exact four-client cold-start assignment and four distinct occupied bays passed. Accepted frame 12 is a genuine 2x2 tiled contact sheet of four views from the same concurrent session, showing Station_01/Player1 through Station_04/Player4; SHA-256 `B5EA6DE52397200227823E8500CB59AFC2FBA55693032004EA35121376F52A7A`. |
 | Shipping, failure, reset, Collection, and Starter Path | Individual live checks passed; one complete accepted continuous flow remains required. |
 | Edit-mode top-down, entrance, ring, dispatch, loop, and shelf inspection | All required inspection angles passed; the accepted recording must retain the flyover and Station_05 view. |
 | Post-publish seven suites and clean Output | Passed after normal publish, verified zero-process close, and direct no-sync reopen. |
 
-The required 15 screenshots and one unedited continuous recording of approximately 3-6 minutes must remain outside Git. No complete accepted set is claimed by this document. Thirteen screenshot frames are usable; frame 12 must clearly prove the four-client arena and frame 15 must show the physical authored collection shelf. Existing recordings are explicitly rejected because none contains all 13 required moments. The user is supplying the replacement continuous recording. Rejected material remains recovery-only and may not be counted toward acceptance.
+The required 15 screenshots and one unedited continuous recording of approximately 3-6 minutes remain outside Git. All 15/15 screenshot frames are accepted. Frame 12 is the genuine same-session four-client tiled contact sheet (SHA-256 `B5EA6DE52397200227823E8500CB59AFC2FBA55693032004EA35121376F52A7A`), and frame 15 shows the physical authored collection shelf with its geometric development proxies (SHA-256 `09C0D21E22A28A308C5507F3D73E32A1E36F2668CBED16482EDF729AA0B993ED`). The replacement unedited continuous recording is the sole remaining visual-acceptance blocker. Rejected material remains recovery-only and may not be counted toward acceptance.
 
 ## Canonical synchronization and cloud persistence
 
@@ -242,7 +242,7 @@ The synchronized audit and one later direct no-sync read-only reopen audit each 
 
 The final persistence sequence passed: Studio published normally to the original private cloud place with all Phase 05 fixture attributes absent, every Studio process closed to a verified zero count, and the correct original place reopened directly from Roblox. No synchronization occurred after reopen. The reopened place passed one successful round, one failure, all seven suites, clean Output, and the parity counts above.
 
-Canonical double synchronization, normal cloud publish, full close, post-publish direct reopen, and final post-reopen parity are green. These persistence results do not waive the remaining external visual-evidence gates.
+Canonical double synchronization, normal cloud publish, full close, post-publish direct reopen, and final post-reopen parity are green. These persistence results and the accepted 15-frame screenshot set do not waive the remaining continuous-recording gate.
 
 ## Known limitations and deferred pre-release QA
 
@@ -252,4 +252,4 @@ After Phase 07 acceptance, issue #4 should receive one concise `Phase 07 visual 
 
 ## Exact next step
 
-Complete and verify Phase 07 only on `codex/phase-07-visual-readability-arena-rebuild`, keep PR #8 draft and unmerged, preserve issue #4, and do not begin Phase 08.
+Complete and verify the replacement unedited continuous recording for Phase 07 only on `codex/phase-07-visual-readability-arena-rebuild`, keep PR #8 open, draft, and unmerged, keep issue #4 open with its Phase 07 acceptance-time comment unposted until acceptance, and do not begin Phase 08.

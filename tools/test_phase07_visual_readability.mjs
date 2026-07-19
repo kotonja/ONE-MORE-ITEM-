@@ -1168,19 +1168,28 @@ try {
   criterion("Phase 07 branch and active-unaccepted status are documented without Phase 08 work", () => {
     const developmentStatus = readText("docs/DEVELOPMENT_STATUS.md");
     const phase07 = readText("docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md");
-    const status = `${readText("README.md")}\n${developmentStatus}`;
+    const readme = readText("README.md");
+    const status = `${readme}\n${developmentStatus}`;
     assert.match(status, /codex\/phase-07-visual-readability-arena-rebuild/);
     assert.match(status, /Phase 07[^\n]*(?:active|Current phase)/i);
     assert.match(status, /Phase 07[^\n]*unaccepted/i);
     assert.match(status, /No Phase 08|Do not begin Phase 08/i);
     assert.match(developmentStatus, /\*\*Phase result:\*\*\s+\*\*In progress and unaccepted\.\*\*/i);
     assert.match(developmentStatus, /PR #8[^\n]*open, draft, and unmerged/i);
+    assert.match(developmentStatus, /Issue #4[^\n]*remains open/i);
+    assert.match(developmentStatus, /acceptance-time comment[^\n]*(?:has not been posted|unposted)/i);
     assert.match(developmentStatus, /\| Cloud save \|[^\n]*Passed normal publish/i);
     assert.match(developmentStatus, /\| Direct no-sync reopen \|[^\n]*Passed[^\n]*without synchronization/i);
-    assert.match(developmentStatus, /frame 12[^\n]*four-client[^\n]*frame 15[^\n]*physical authored collection shelf/i);
-    assert.match(developmentStatus, /user[^\n]*replacement unedited 3-6 minute recording/i);
+    assert.match(readme, /15\/15[^\n]*required screenshots[^\n]*accepted/i);
+    assert.match(developmentStatus, /15\/15[^\n]*screenshot frames accepted/i);
+    assert.match(developmentStatus, /frame 12[^\n]*(?:genuine|same-session)[^\n]*four-client/i);
+    assert.match(developmentStatus, /frame 15[^\n]*physical authored collection shelf/i);
+    assert.doesNotMatch(developmentStatus, /(?:clearer\s+)?screenshot frames? 12 and 15[^\n]*(?:remain|pending|must|need)/i);
+    assert.match(developmentStatus, /unedited continuous recording remains pending/i);
+    assert.match(developmentStatus, /replacement unedited continuous recording[^\n]*(?:3-6|3\u20136) minutes/i);
     assert.match(phase07, /\*\*Active and unaccepted\.\*\*/i);
     assert.match(phase07, /does \*\*not\*\* claim[^\n]*accepted continuous recording/i);
+    assert.match(phase07, /replacement unedited continuous recording is the sole remaining visual-acceptance blocker/i);
   });
 
   assert.ok(criterionCount >= 160, `Phase 07 Node gate requires at least 160 criteria, got ${criterionCount}`);

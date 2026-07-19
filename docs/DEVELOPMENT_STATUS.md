@@ -10,12 +10,12 @@
 - **Latest committed Phase 07 implementation head:** `a057cbb7fd23cb16f387142dec3e988efa213247`. This is the last committed implementation head observed while this documentation was prepared; later documentation commits must be recorded in PR #8 and the handoff because a commit cannot contain its own SHA.
 - **Current pull request:** [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged.
 - **Pre-release QA:** [Issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open. Its [Phase 06 onboarding and analytics QA additions](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4#issuecomment-5007354615) keep the broad checks explicitly unpassed.
-- **Scope:** Phase 07 changes visual presentation only. Automated, cloud, complete-close, direct-reopen, and parity gates are green; Phase 07 remains unaccepted until its final screenshot and continuous-recording gates pass. No Phase 08 system, monetization, production-store rollout, final external asset, audio, or unrelated gameplay change is permitted.
+- **Scope:** Phase 07 changes visual presentation only. Automated, screenshot, cloud, complete-close, direct-reopen, and parity gates are green; Phase 07 remains unaccepted until its unedited continuous-recording gate passes. No Phase 08 system, monetization, production-store rollout, final external asset, audio, or unrelated gameplay change is permitted.
 - **Evidence warning:** source, manifest, configuration, or deterministic-test success does not by itself prove that the crate, arena, UI, or motion is visibly correct.
 
 ## Phase 07 implementation and evidence ledger
 
-The reconstruction contract is documented in `docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md`. The current implementation candidate has fresh automated, synchronized-Studio, double-authoring, viewport/opposite-station/four-client/Edit-mode spot-check, exact-head Actions, normal cloud publish, complete-close, direct no-sync reopen, and final read-only parity evidence. It is not an accepted Phase 07 release candidate until the remaining screenshot and continuous-recording evidence is accepted.
+The reconstruction contract is documented in `docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md`. The current implementation candidate has fresh automated, synchronized-Studio, double-authoring, viewport/opposite-station/four-client/Edit-mode spot-check, 15/15 accepted screenshot frames, exact-head Actions, normal cloud publish, complete-close, direct no-sync reopen, and final read-only parity evidence. It is not an accepted Phase 07 release candidate until the remaining unedited continuous-recording evidence is accepted.
 
 | Required status field | Current truthful state |
 | --- | --- |
@@ -39,16 +39,16 @@ The reconstruction contract is documented in `docs/PHASE07_VISUAL_READABILITY_AR
 | Phase 04 result | Node `42` criteria; Studio 13 suites / `119/119`, seed `14072026`. |
 | Phase 05 result | Node `64` criteria; Studio 16 suites / `130/130`, seed `15072026`, memory adapter. |
 | Phase 06 result | Node `76` criteria; Studio 18 suites / `75/75`, seed `16072026`, profile/analytics memory adapters. |
-| Phase 07 result | Node `160` criteria; final direct-reopen Studio 12 suites / `64/64`, seed `17072026`, 768 LOS rays. Final external visual evidence remains pending. |
+| Phase 07 result | Node `160` criteria; final direct-reopen Studio 12 suites / `64/64`, seed `17072026`, 768 LOS rays; 15/15 external screenshot frames accepted. The unedited continuous recording remains pending. |
 | All seven Node summaries | Green at implementation head `a057cbb7fd23cb16f387142dec3e988efa213247`: Phase 01 `16`; Phase 02 `28`; Phase 03 `31`; Phase 04 `42`; Phase 05 `64`; Phase 06 `76`; Phase 07 `160`. A later documentation head requires a fresh run. |
 | Opening sequence | Passed first-frame curtain and controlled arrival checks; the accepted continuous recording must retain this sequence. |
 | Desktop / narrow desktop | Exact 1920x1080, 1366x768, and 1100x700 visual checks passed. |
 | Touch portrait / landscape | Both required Phase 07 emulator visual spot checks passed. No physical-phone result is claimed. |
 | Station_05 | Passed legitimate opposite-side assignment, camera, pointer, Place, and Ship. Station_03 and Station_07 camera-clearance spot checks also passed. |
-| Four-client visual flow | Exact four-client cold-start assignment and four distinct occupied station bays passed with clean station allocation; the final evidence frame must more clearly prove the four-client state. |
+| Four-client visual flow | Exact four-client cold-start assignment and four distinct occupied station bays passed with clean station allocation. Accepted frame 12 is a genuine 2x2 tiled contact sheet of four views from that same concurrent four-client session, showing Station_01/Player1 through Station_04/Player4; SHA-256 `B5EA6DE52397200227823E8500CB59AFC2FBA55693032004EA35121376F52A7A`. |
 | Shipping / failure / reset | Successful shipment, visible closure, failure burst, Pack Again, and clean reset passed in Play; one continuous accepted recording must still contain the full sequence. |
 | Edit-mode arena inspection | Top-down, entrance, eye-level ring, dispatch, showcase, Station_01, Station_05, and shelf views passed; the accepted recording must retain the flyover and Station_05 views. |
-| Screenshot and recording status | Required evidence remains outside Git. Thirteen screenshot frames are usable; frame 12 must clearly prove the four-client arena and frame 15 must show the physical authored collection shelf. Existing continuous captures are rejected because none contains all 13 required moments; the user is supplying the replacement unedited 3-6 minute recording. |
+| Screenshot and recording status | Required evidence remains outside Git. All 15/15 screenshot frames are accepted. Frame 12 is the genuine same-session four-client tiled contact sheet (SHA-256 `B5EA6DE52397200227823E8500CB59AFC2FBA55693032004EA35121376F52A7A`); frame 15 shows the physical authored collection shelf and its geometric development proxies (SHA-256 `09C0D21E22A28A308C5507F3D73E32A1E36F2668CBED16482EDF729AA0B993ED`). The sole remaining visual-acceptance blocker is the replacement unedited continuous recording of approximately 3-6 minutes. |
 | Canonical synchronization | Two ordered Phase 01 then Phase 02-07 passes completed. Phase 01 reused 17 operations; each extended pass updated 1,443 operations and preserved 87 backups with zero creation/failure. Each extended pass emitted one known protected `Lighting.Technology` capability warning. |
 | Direct no-sync read-only checkpoint | Passed against PlaceId `134193642444044` / GameId `10493030248` without synchronization: paths `1,453` expected / `1,454` unique live with one allowlisted extra and zero missing/duplicate/wrong-class; sources `97/97`; properties `7,813/7,813` bridge-exposed from 9,512 declared with 1,699 unexposed; attributes 94 targets / 152 keys with zero mismatch. |
 | Cloud save | Passed normal publish to the original private cloud place with all Phase 05 fixture attributes absent. |
@@ -84,7 +84,7 @@ Fresh direct-reopen Studio Output passed without any post-reopen synchronization
 [ONE_MORE_ITEM][Phase07Tests] RESULT suites=12 tests=64 passed=64 failed=0 duration=1.654351s seed=17072026 losRays=768
 ```
 
-No fresh game-owned warning or error was present in the direct-reopen run. Exact wide/narrow/touch, Station_05, Station_03/07, four-client, top-down Edit-mode, successful shipment, and failure/reset checks passed. Final acceptance remains blocked only by clearer screenshot frames 12 and 15, the complete continuous recording, the issue #4 acceptance-time comment, final documentation, and exact-head CI.
+No fresh game-owned warning or error was present in the direct-reopen run. Exact wide/narrow/touch, Station_05, Station_03/07, four-client, top-down Edit-mode, successful shipment, and failure/reset checks passed, and all 15/15 screenshot frames are accepted. Visual acceptance remains blocked only by the complete unedited continuous recording; the issue #4 acceptance-time comment has not been posted, and final documentation plus exact-head CI follow only after that recording passes.
 
 ## Accepted Phase 06 implementation
 
@@ -228,7 +228,7 @@ Phase 06 implementation head `f877667b3ce9f032d0a0c676dafb348bb2ad6d8f` was revi
 
 No known Phase 06 production blocker remains.
 
-Phase 07 is active and unaccepted. Automated Node/Studio gates, double synchronization, targeted viewport/opposite-station/four-client/Edit-mode checks, normal cloud publish, complete close, fresh direct no-sync reopen, post-reopen parity/suites/success/failure, and clean Output are green. Clearer screenshot frames 12 and 15, the user-supplied complete continuous recording, and the issue #4 Phase 07 comment remain pending.
+Phase 07 is active and unaccepted. Automated Node/Studio gates, double synchronization, targeted viewport/opposite-station/four-client/Edit-mode checks, all 15/15 screenshot frames, normal cloud publish, complete close, fresh direct no-sync reopen, post-reopen parity/suites/success/failure, and clean Output are green. The complete unedited 3-6 minute replacement recording remains the sole visual-acceptance blocker; the issue #4 Phase 07 acceptance-time comment remains intentionally unposted until that recording passes.
 
 ## Deferred pre-release QA
 

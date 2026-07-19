@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-07-19 - Phase 07 screenshot-evidence checkpoint
+
+- Accepted all `15/15` required Phase 07 screenshots. Frame 12 is a genuine contact sheet assembled from four views captured in the same concurrent four-client session, and frame 15 shows the authored collection shelf and its proxies.
+- The complete unedited 3–6 minute replacement recording remains pending, so Phase 07 remains active and unaccepted. [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged; [issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open; and no Phase 08 work has begun.
+
 ## 2026-07-18 - Phase 07 visual reconstruction candidate and final persistence verification
 
 - Recorded the completed Phase 06 squash merge: [PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7) is merged into `main` as `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`. Opened and pushed `codex/phase-07-visual-readability-arena-rebuild` from that exact merge without changing `main`; [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged.
