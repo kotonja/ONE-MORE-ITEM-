@@ -64,6 +64,7 @@ local ResponsiveLayout = {}
 local PORTRAIT_RATIO = 1.10
 local COMPACT_RATIO = 1.45
 local COMPACT_MAX_HEIGHT = 500
+local CONTAINMENT_EPSILON = 1e-4
 
 local ZERO_INSETS: SafeInsets = table.freeze({
 	Left = 0,
@@ -96,57 +97,57 @@ local function geometry(
 end
 
 local WIDE_TARGETS: TargetMap = table.freeze({
-	CurrentItemCard = geometry("Root", 0.025, 0.04, 0.22, 0.27, 0, 0),
-	ShipmentCard = geometry("Root", 0.975, 0.04, 0.22, 0.27, 1, 0),
-	PlacementControls = geometry("Root", 0.5, 0.97, 0.38, 0.10, 0.5, 1),
-	DecisionPanel = geometry("Root", 0.5, 0.96, 0.50, 0.30, 0.5, 1),
-	ResultsPanel = geometry("Root", 0.5, 0.5, 0.38, 0.38, 0.5, 0.5),
-	StatusBanner = geometry("Root", 0.5, 0.035, 0.30, 0.065, 0.5, 0),
+	CurrentItemCard = geometry("Root", 0.025, 0.115, 0.19, 0.19, 0, 0),
+	ShipmentCard = geometry("Root", 0.975, 0.115, 0.19, 0.19, 1, 0),
+	PlacementControls = geometry("Root", 0.5, 0.974, 0.38, 0.10, 0.5, 1),
+	DecisionPanel = geometry("Root", 0.5, 0.96, 0.46, 0.27, 0.5, 1),
+	ResultsPanel = geometry("Root", 0.5, 0.52, 0.34, 0.34, 0.5, 0.5),
+	StatusBanner = geometry("Root", 0.5, 0.11, 0.27, 0.05, 0.5, 0),
 	RotateButton = geometry("PlacementControls", 0.05, 0.45, 0.43, 0.42, 0, 0),
 	PlaceButton = geometry("PlacementControls", 0.52, 0.45, 0.43, 0.42, 0, 0),
 	ShipButton = geometry("DecisionPanel", 0.30, 0.61, 0.30, 0.25, 0, 0),
 	OneMoreButton = geometry("DecisionPanel", 0.64, 0.61, 0.32, 0.25, 0, 0),
 	PackAgainButton = geometry("ResultsPanel", 0.15, 0.76, 0.70, 0.16, 0, 0),
 	OnboardingOverlay = geometry("Root", 0.5, 0.5, 1, 1, 0.5, 0.5),
-	StarterMissionCard = geometry("Root", 0.025, 0.58, 0.22, 0.24, 0, 0.5),
-	StarterPathPanel = geometry("Root", 0.5, 0.53, 0.68, 0.72, 0.5, 0.5),
-	MissionCompleteBanner = geometry("Root", 0.5, 0.20, 0.38, 0.11, 0.5, 0),
+	StarterMissionCard = geometry("Root", 0.025, 0.57, 0.19, 0.18, 0, 0.5),
+	StarterPathPanel = geometry("Root", 0.5, 0.53, 0.64, 0.70, 0.5, 0.5),
+	MissionCompleteBanner = geometry("Root", 0.5, 0.17, 0.34, 0.09, 0.5, 0),
 }) :: TargetMap
 
 local COMPACT_TARGETS: TargetMap = table.freeze({
-	CurrentItemCard = geometry("Root", 0.03, 0.04, 0.28, 0.38, 0, 0),
-	ShipmentCard = geometry("Root", 0.97, 0.04, 0.28, 0.38, 1, 0),
-	PlacementControls = geometry("Root", 0.5, 0.98, 0.62, 0.28, 0.5, 1),
-	DecisionPanel = geometry("Root", 0.5, 0.98, 0.76, 0.55, 0.5, 1),
-	ResultsPanel = geometry("Root", 0.5, 0.52, 0.62, 0.70, 0.5, 0.5),
-	StatusBanner = geometry("Root", 0.5, 0.03, 0.38, 0.10, 0.5, 0),
-	RotateButton = geometry("PlacementControls", 0.05, 0.20, 0.43, 0.72, 0, 0),
-	PlaceButton = geometry("PlacementControls", 0.52, 0.20, 0.43, 0.72, 0, 0),
-	ShipButton = geometry("DecisionPanel", 0.05, 0.56, 0.42, 0.38, 0, 0),
-	OneMoreButton = geometry("DecisionPanel", 0.53, 0.56, 0.42, 0.38, 0, 0),
-	PackAgainButton = geometry("ResultsPanel", 0.15, 0.65, 0.70, 0.28, 0, 0),
+	CurrentItemCard = geometry("Root", 0.03, 0.03, 0.235, 0.18, 0, 0),
+	ShipmentCard = geometry("Root", 0.97, 0.03, 0.235, 0.18, 1, 0),
+	PlacementControls = geometry("Root", 0.5, 0.997, 1.0, 0.225, 0.5, 1),
+	DecisionPanel = geometry("Root", 0.5, 0.98, 0.70, 0.55, 0.5, 1),
+	ResultsPanel = geometry("Root", 0.5, 0.53, 0.58, 0.70, 0.5, 0.5),
+	StatusBanner = geometry("Root", 0.5, 0.13, 0.34, 0.08, 0.5, 0),
+	RotateButton = geometry("PlacementControls", 0, 0.025, 0.12, 0.95, 0, 0),
+	PlaceButton = geometry("PlacementControls", 0.88, 0.025, 0.12, 0.95, 0, 0),
+	ShipButton = geometry("DecisionPanel", 0.05, 0.54, 0.42, 0.42, 0, 0),
+	OneMoreButton = geometry("DecisionPanel", 0.53, 0.54, 0.42, 0.42, 0, 0),
+	PackAgainButton = geometry("ResultsPanel", 0.15, 0.64, 0.70, 0.33, 0, 0),
 	OnboardingOverlay = geometry("Root", 0.5, 0.5, 1, 1, 0.5, 0.5),
-	StarterMissionCard = geometry("Root", 0.03, 0.52, 0.28, 0.40, 0, 0.5),
-	StarterPathPanel = geometry("Root", 0.5, 0.53, 0.90, 0.84, 0.5, 0.5),
-	MissionCompleteBanner = geometry("Root", 0.5, 0.14, 0.54, 0.16, 0.5, 0),
+	StarterMissionCard = geometry("Root", 0.02, 0.255, 0.19, 0.08, 0, 0.5),
+	StarterPathPanel = geometry("Root", 0.5, 0.53, 0.88, 0.82, 0.5, 0.5),
+	MissionCompleteBanner = geometry("Root", 0.5, 0.24, 0.48, 0.14, 0.5, 0),
 }) :: TargetMap
 
 local PORTRAIT_TARGETS: TargetMap = table.freeze({
-	CurrentItemCard = geometry("Root", 0.03, 0.03, 0.46, 0.24, 0, 0),
-	ShipmentCard = geometry("Root", 0.97, 0.03, 0.46, 0.24, 1, 0),
+	CurrentItemCard = geometry("Root", 0.03, 0.115, 0.45, 0.15, 0, 0),
+	ShipmentCard = geometry("Root", 0.97, 0.115, 0.45, 0.15, 1, 0),
 	PlacementControls = geometry("Root", 0.5, 0.98, 0.94, 0.20, 0.5, 1),
 	DecisionPanel = geometry("Root", 0.5, 0.98, 0.94, 0.42, 0.5, 1),
 	ResultsPanel = geometry("Root", 0.5, 0.54, 0.92, 0.52, 0.5, 0.5),
-	StatusBanner = geometry("Root", 0.5, 0.29, 0.72, 0.08, 0.5, 0),
+	StatusBanner = geometry("Root", 0.5, 0.405, 0.68, 0.055, 0.5, 0),
 	RotateButton = geometry("PlacementControls", 0.04, 0.38, 0.44, 0.56, 0, 0),
 	PlaceButton = geometry("PlacementControls", 0.52, 0.38, 0.44, 0.56, 0, 0),
 	ShipButton = geometry("DecisionPanel", 0.04, 0.66, 0.44, 0.28, 0, 0),
 	OneMoreButton = geometry("DecisionPanel", 0.52, 0.66, 0.44, 0.28, 0, 0),
 	PackAgainButton = geometry("ResultsPanel", 0.15, 0.66, 0.70, 0.26, 0, 0),
 	OnboardingOverlay = geometry("Root", 0.5, 0.5, 1, 1, 0.5, 0.5),
-	StarterMissionCard = geometry("Root", 0.5, 0.42, 0.94, 0.15, 0.5, 0),
+	StarterMissionCard = geometry("Root", 0.5, 0.275, 0.90, 0.11, 0.5, 0),
 	StarterPathPanel = geometry("Root", 0.5, 0.56, 0.94, 0.78, 0.5, 0.5),
-	MissionCompleteBanner = geometry("Root", 0.5, 0.30, 0.82, 0.10, 0.5, 0),
+	MissionCompleteBanner = geometry("Root", 0.5, 0.405, 0.78, 0.08, 0.5, 0),
 }) :: TargetMap
 
 local function validatedInsets(viewportWidth: number, viewportHeight: number, insets: SafeInsets?): (SafeInsets, number, number)
@@ -246,6 +247,10 @@ local function resolvedTargets(
 		ShipButton = profile.ShipButton,
 		OneMoreButton = profile.OneMoreButton,
 		PackAgainButton = profile.PackAgainButton,
+		OnboardingOverlay = adjustRootGeometry(profile.OnboardingOverlay, viewportWidth, viewportHeight, insets, usableWidth, usableHeight),
+		StarterMissionCard = adjustRootGeometry(profile.StarterMissionCard, viewportWidth, viewportHeight, insets, usableWidth, usableHeight),
+		StarterPathPanel = adjustRootGeometry(profile.StarterPathPanel, viewportWidth, viewportHeight, insets, usableWidth, usableHeight),
+		MissionCompleteBanner = adjustRootGeometry(profile.MissionCompleteBanner, viewportWidth, viewportHeight, insets, usableWidth, usableHeight),
 	}) :: TargetMap
 end
 
@@ -347,10 +352,10 @@ function ResponsiveLayout.BoundsForTarget(layout: Layout, targetName: TargetName
 end
 
 function ResponsiveLayout.IsContained(inner: Bounds, outer: Bounds): boolean
-	return inner.Left >= outer.Left
-		and inner.Top >= outer.Top
-		and inner.Right <= outer.Right
-		and inner.Bottom <= outer.Bottom
+	return inner.Left >= outer.Left - CONTAINMENT_EPSILON
+		and inner.Top >= outer.Top - CONTAINMENT_EPSILON
+		and inner.Right <= outer.Right + CONTAINMENT_EPSILON
+		and inner.Bottom <= outer.Bottom + CONTAINMENT_EPSILON
 end
 
 return table.freeze(ResponsiveLayout)

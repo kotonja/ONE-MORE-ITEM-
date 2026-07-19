@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 06 is implementation-complete and accepted on `codex/phase-06-onboarding-starter-missions` at implementation head `f877667b3ce9f032d0a0c676dafb348bb2ad6d8f`. Draft PR #7 remains open, draft, and unmerged. Phase 05 is the protected baseline, squash-merged through PR #6 at `d644411b48e20cd9bb256d3d2c55a647efc2adfd`.
+Phase 06 is implementation-complete and accepted on `codex/phase-06-onboarding-starter-missions` at implementation head `f877667b3ce9f032d0a0c676dafb348bb2ad6d8f`. [PR #7](https://github.com/kotonja/ONE-MORE-ITEM-/pull/7) was subsequently squash-merged into `main` as `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`. Phase 07 is now active and unaccepted on `codex/phase-07-visual-readability-arena-rebuild`; [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged.
 
 This document defines the Phase 06 implementation and accepted evidence boundary. `docs/DEVELOPMENT_STATUS.md` records the current fresh Studio, persistence, cloud-reopen, analytics, and CI evidence. Broad pre-release QA remains explicitly unpassed as listed below.
 
@@ -308,7 +308,7 @@ Phase 06 excludes daily challenges/rewards, login streaks, offline income, addit
 
 ## Current acceptance evidence - accepted (2026-07-17)
 
-**Implementation complete and accepted.** The accepted implementation head is `f877667b3ce9f032d0a0c676dafb348bb2ad6d8f`. Draft PR #7 remains open, draft, and unmerged; Phase 07 has not begun.
+**Implementation complete and accepted.** The accepted implementation head is `f877667b3ce9f032d0a0c676dafb348bb2ad6d8f`. PR #7 subsequently squash-merged as `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`; current Phase 07 status is recorded in `docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md` and `docs/DEVELOPMENT_STATUS.md`.
 
 ### Automated evidence
 
@@ -380,4 +380,4 @@ No known Phase 06 production blocker remains. Two non-game-owned Studio/plugin i
 
 Issue #4 remains open for the explicitly unpassed physical-device, expanded emulator, multiplayer, production Analytics, public-traffic retention, soak, low-connectivity, and mission-balance checks. Studio uses the memory adapter; no published Analytics or production DataStore result is inferred. These are pre-release QA, not Phase 06 implementation blockers.
 
-PR #7 is ready for final review but remains draft and unmerged. Do not begin Phase 07. Merge or advance phases only after explicit authorization.
+PR #7 subsequently squash-merged as `4c606ae4f5e7a5e3d5fa431775c94469ecea1b67`. Phase 07 remains active and unaccepted; PR #8 remains open, draft, and unmerged. Its current candidate has green automated, synchronized-Studio, canonical double-synchronization, manual spot-check, normal cloud publish, complete-close, direct no-sync reopen, and final parity evidence. All `15/15` screenshots are now accepted, including the genuine same-session four-client contact sheet in frame 12 and the authored collection shelf/proxies in frame 15, but the complete unedited 3–6 minute replacement recording remains pending. Issue #4 remains open. Those Phase 07 results do not alter this Phase 06 acceptance record. Do not begin Phase 08.

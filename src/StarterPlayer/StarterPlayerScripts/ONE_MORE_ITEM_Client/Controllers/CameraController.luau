@@ -13,11 +13,22 @@ export type TransitionKind = "INACTIVE" | "ARRIVAL" | "RETARGET" | "UNCHANGED"
 type InputMode = InputModeStore.InputMode
 type LayoutClass = ResponsiveLayout.LayoutClass
 
+export type ReadinessState = {
+	Safe: boolean,
+	Settled: boolean,
+	StationId: string?,
+}
+
+type ReadinessListener = (state: ReadinessState) -> ()
+
 export type Controller = {
+	PrepareWaitingView: (self: Controller, anchor: BasePart?, focus: BasePart?, fallbackCenter: Vector3) -> boolean,
 	Activate: (self: Controller, station: Model) -> (),
 	SetPresentation: (self: Controller, layoutClass: LayoutClass, inputMode: InputMode) -> (),
 	Deactivate: (self: Controller) -> (),
 	PlayImpulse: (self: Controller, kind: ImpulseKind) -> (),
+	GetReadiness: (self: Controller) -> ReadinessState,
+	SubscribeReadiness: (self: Controller, listener: ReadinessListener) -> (() -> ()),
 	Destroy: (self: Controller) -> (),
 }
 
@@ -37,8 +48,12 @@ type InternalController = Controller & {
 	_layoutClass: LayoutClass,
 	_inputMode: InputMode,
 	_target: CFrame?,
+	_waitingTarget: CFrame?,
 	_tween: Tween?,
 	_impulseEpoch: number,
+	_readiness: ReadinessState,
+	_readinessListeners: { [number]: ReadinessListener },
+	_nextReadinessListenerId: number,
 	_destroyed: boolean,
 }
 
@@ -70,6 +85,64 @@ local function restoredCameraSubject(savedSubject: Humanoid | BasePart?): Humano
 		return character:FindFirstChildOfClass("Humanoid")
 	end
 	return nil
+end
+
+local function copyReadiness(state: ReadinessState): ReadinessState
+	return table.freeze({
+		Safe = state.Safe,
+		Settled = state.Settled,
+		StationId = state.StationId,
+	}) :: ReadinessState
+end
+
+local function publishReadiness(
+	self: InternalController,
+	safe: boolean,
+	settled: boolean,
+	stationId: string?
+)
+	local current = self._readiness
+	if current.Safe == safe and current.Settled == settled and current.StationId == stationId then
+		return
+	end
+	local nextState = copyReadiness({
+		Safe = safe,
+		Settled = settled,
+		StationId = stationId,
+	})
+	self._readiness = nextState
+	for _, listener in pairs(self._readinessListeners) do
+		listener(nextState)
+	end
+end
+
+local function stationIdFor(station: Model): string
+	local stationId = station:GetAttribute("StationId")
+	return if type(stationId) == "string" and stationId ~= "" then stationId else station.Name
+end
+
+local function saveCameraIfNeeded(self: InternalController, camera: Camera)
+	if self._saved ~= nil then
+		return
+	end
+	self._saved = {
+		CameraType = camera.CameraType,
+		CameraSubject = camera.CameraSubject,
+		CFrame = camera.CFrame,
+		FieldOfView = camera.FieldOfView,
+	}
+end
+
+local function restoreSavedCamera(self: InternalController)
+	local camera = self._camera
+	local saved = self._saved
+	if camera ~= nil and saved ~= nil then
+		camera.CameraType = saved.CameraType
+		camera.CameraSubject = restoredCameraSubject(saved.CameraSubject)
+		camera.CFrame = saved.CFrame
+		camera.FieldOfView = saved.FieldOfView
+	end
+	self._saved = nil
 end
 
 function CameraController.SelectAnchorName(layoutClass: LayoutClass, inputMode: InputMode): string
@@ -104,9 +177,10 @@ function CameraController.IsCurrentImpulseEpoch(impulseEpoch: number, currentEpo
 end
 
 local function stopTween(self: InternalController)
-	if self._tween ~= nil then
-		self._tween:Cancel()
+	local tween = self._tween
+	if tween ~= nil then
 		self._tween = nil
+		tween:Cancel()
 	end
 end
 
@@ -131,6 +205,7 @@ local function retarget(self: InternalController)
 	self._impulseEpoch += 1
 	stopTween(self)
 	camera.CameraType = Enum.CameraType.Scriptable
+	publishReadiness(self, true, false, stationIdFor(station))
 	local tween = TweenService:Create(
 		camera,
 		TweenInfo.new(PresentationTokens.Timing.CameraRetarget, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
@@ -140,6 +215,7 @@ local function retarget(self: InternalController)
 	tween.Completed:Once(function()
 		if self._tween == tween then
 			self._tween = nil
+			publishReadiness(self, true, true, stationIdFor(station))
 		end
 	end)
 	tween:Play()
@@ -155,11 +231,53 @@ function CameraController.new(): Controller
 		_layoutClass = "Wide",
 		_inputMode = "KeyboardMouse",
 		_target = nil,
+		_waitingTarget = nil,
 		_tween = nil,
 		_impulseEpoch = 0,
+		_readiness = copyReadiness({ Safe = false, Settled = false, StationId = nil }),
+		_readinessListeners = {},
+		_nextReadinessListenerId = 0,
 		_destroyed = false,
 	}, ControllerMethods) :: InternalController
 	return self
+end
+
+function ControllerMethods.PrepareWaitingView(
+	self: InternalController,
+	anchor: BasePart?,
+	focus: BasePart?,
+	fallbackCenter: Vector3
+): boolean
+	if self._destroyed then
+		return false
+	end
+	local camera = Workspace.CurrentCamera
+	if camera == nil then
+		publishReadiness(self, false, false, nil)
+		return false
+	end
+	local target: CFrame
+	if anchor ~= nil and focus ~= nil and anchor.Parent ~= nil and focus.Parent ~= nil then
+		target = targetFrom(anchor, focus)
+	else
+		local position = fallbackCenter + Vector3.new(0, 38, 28)
+		target = CFrame.lookAt(position, fallbackCenter + Vector3.new(0, 2, 0), Vector3.yAxis)
+	end
+
+	saveCameraIfNeeded(self, camera)
+	stopTween(self)
+	self._camera = camera
+	self._station = nil
+	self._focus = nil
+	self._anchorName = nil
+	self._target = nil
+	self._waitingTarget = target
+	self._impulseEpoch += 1
+	camera.CameraType = Enum.CameraType.Scriptable
+	camera.CFrame = target
+	camera.FieldOfView = 50
+	publishReadiness(self, true, true, nil)
+	return true
 end
 
 function ControllerMethods.Activate(self: InternalController, station: Model)
@@ -192,14 +310,7 @@ function ControllerMethods.Activate(self: InternalController, station: Model)
 	local anchor = requirePart(station, anchorName)
 	local focus = requirePart(station, "CameraFocus")
 	local target = targetFrom(anchor, focus)
-	if self._saved == nil then
-		self._saved = {
-			CameraType = camera.CameraType,
-			CameraSubject = camera.CameraSubject,
-			CFrame = camera.CFrame,
-			FieldOfView = camera.FieldOfView,
-		}
-	end
+	saveCameraIfNeeded(self, camera)
 
 	stopTween(self)
 	self._camera = camera
@@ -215,6 +326,7 @@ function ControllerMethods.Activate(self: InternalController, station: Model)
 		anchor.CFrame.UpVector
 	)
 	camera.FieldOfView = math.min(55, PresentationTokens.Camera.FieldOfView + 5)
+	publishReadiness(self, true, false, stationIdFor(station))
 
 	local tween = TweenService:Create(
 		camera,
@@ -225,6 +337,7 @@ function ControllerMethods.Activate(self: InternalController, station: Model)
 	tween.Completed:Once(function()
 		if self._tween == tween then
 			self._tween = nil
+			publishReadiness(self, true, true, stationIdFor(station))
 		end
 	end)
 	tween:Play()
@@ -243,19 +356,47 @@ function ControllerMethods.Deactivate(self: InternalController)
 	self._impulseEpoch += 1
 	stopTween(self)
 	local camera = self._camera
-	local saved = self._saved
-	if camera ~= nil and saved ~= nil then
-		camera.CameraType = saved.CameraType
-		camera.CameraSubject = restoredCameraSubject(saved.CameraSubject)
-		camera.CFrame = saved.CFrame
-		camera.FieldOfView = saved.FieldOfView
+	local waitingTarget = self._waitingTarget
+	if camera ~= nil and waitingTarget ~= nil then
+		camera.CameraType = Enum.CameraType.Scriptable
+		camera.CFrame = waitingTarget
+		camera.FieldOfView = 50
+		publishReadiness(self, true, true, nil)
+	else
+		restoreSavedCamera(self)
+		publishReadiness(self, false, false, nil)
 	end
-	self._camera = nil
-	self._saved = nil
 	self._station = nil
 	self._focus = nil
 	self._anchorName = nil
 	self._target = nil
+	if waitingTarget == nil then
+		self._camera = nil
+	end
+end
+
+function ControllerMethods.GetReadiness(self: InternalController): ReadinessState
+	return copyReadiness(self._readiness)
+end
+
+function ControllerMethods.SubscribeReadiness(
+	self: InternalController,
+	listener: ReadinessListener
+): () -> ()
+	if self._destroyed then
+		error("Cannot subscribe to a destroyed CameraController", 2)
+	end
+	self._nextReadinessListenerId += 1
+	local listenerId = self._nextReadinessListenerId
+	self._readinessListeners[listenerId] = listener
+	listener(copyReadiness(self._readiness))
+	local connected = true
+	return function()
+		if connected then
+			connected = false
+			self._readinessListeners[listenerId] = nil
+		end
+	end
 end
 
 function ControllerMethods.PlayImpulse(self: InternalController, kind: ImpulseKind)
@@ -315,6 +456,11 @@ function ControllerMethods.Destroy(self: InternalController)
 		return
 	end
 	self:Deactivate()
+	restoreSavedCamera(self)
+	self._camera = nil
+	self._waitingTarget = nil
+	publishReadiness(self, false, false, nil)
+	table.clear(self._readinessListeners)
 	self._destroyed = true
 end
 

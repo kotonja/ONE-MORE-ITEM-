@@ -117,38 +117,38 @@ local ALL_TARGETS: { TargetName } = {
 local WIDE_EXPECTED: { [TargetName]: ExpectedGeometry } = {
 	CurrentItemCard = {
 		Parent = "Root",
-		Position = UDim2.fromScale(0.025, 0.04),
-		Size = UDim2.fromScale(0.22, 0.27),
+		Position = UDim2.fromScale(0.025, 0.115),
+		Size = UDim2.fromScale(0.19, 0.19),
 		AnchorPoint = Vector2.new(0, 0),
 	},
 	ShipmentCard = {
 		Parent = "Root",
-		Position = UDim2.fromScale(0.975, 0.04),
-		Size = UDim2.fromScale(0.22, 0.27),
+		Position = UDim2.fromScale(0.975, 0.115),
+		Size = UDim2.fromScale(0.19, 0.19),
 		AnchorPoint = Vector2.new(1, 0),
 	},
 	PlacementControls = {
 		Parent = "Root",
-		Position = UDim2.fromScale(0.5, 0.97),
+		Position = UDim2.fromScale(0.5, 0.974),
 		Size = UDim2.fromScale(0.38, 0.10),
 		AnchorPoint = Vector2.new(0.5, 1),
 	},
 	DecisionPanel = {
 		Parent = "Root",
 		Position = UDim2.fromScale(0.5, 0.96),
-		Size = UDim2.fromScale(0.50, 0.30),
+		Size = UDim2.fromScale(0.46, 0.27),
 		AnchorPoint = Vector2.new(0.5, 1),
 	},
 	ResultsPanel = {
 		Parent = "Root",
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(0.38, 0.38),
+		Position = UDim2.fromScale(0.5, 0.52),
+		Size = UDim2.fromScale(0.34, 0.34),
 		AnchorPoint = Vector2.new(0.5, 0.5),
 	},
 	StatusBanner = {
 		Parent = "Root",
-		Position = UDim2.fromScale(0.5, 0.035),
-		Size = UDim2.fromScale(0.30, 0.065),
+		Position = UDim2.fromScale(0.5, 0.11),
+		Size = UDim2.fromScale(0.27, 0.05),
 		AnchorPoint = Vector2.new(0.5, 0),
 	},
 	RotateButton = {

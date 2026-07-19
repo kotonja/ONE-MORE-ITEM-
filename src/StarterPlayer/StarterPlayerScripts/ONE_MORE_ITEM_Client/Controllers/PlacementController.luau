@@ -90,6 +90,7 @@ type InternalController = Controller & {
 	_placementY: number?,
 	_ghost: Model?,
 	_highlight: Highlight?,
+	_grounding: BasePart?,
 	_presentationModel: Model?,
 	_clientSequence: number,
 	_pendingPlacement: PendingPlacement?,
@@ -249,8 +250,12 @@ local function clearGhost(self: InternalController)
 	if self._ghost ~= nil then
 		self._ghost:Destroy()
 	end
+	if self._grounding ~= nil then
+		self._grounding:Destroy()
+	end
 	self._ghost = nil
 	self._highlight = nil
+	self._grounding = nil
 	self._visualCells = {}
 	self._callbacks.ClearGridFeedback()
 	self._callbacks.FitChanged(nil, nil, nil, nil)
@@ -262,10 +267,59 @@ local function createGhostHighlight(self: InternalController, model: Model)
 	highlight.Name = "GhostOutline"
 	highlight.Adornee = model
 	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	highlight.FillTransparency = 0.82
-	highlight.OutlineTransparency = 0.08
+	highlight.FillTransparency = 0.90
+	highlight.OutlineTransparency = 0.14
 	highlight.Parent = model
 	self._highlight = highlight
+end
+
+local function updateGrounding(self: InternalController, result: VisualResult)
+	if #result.Cells == 0 then
+		if self._grounding ~= nil then
+			self._grounding:Destroy()
+			self._grounding = nil
+		end
+		return
+	end
+	local minimumX = math.huge
+	local minimumY = math.huge
+	local minimumZ = math.huge
+	local maximumX = -math.huge
+	local maximumZ = -math.huge
+	for _, cell in ipairs(result.Cells) do
+		minimumX = math.min(minimumX, cell.X)
+		minimumY = math.min(minimumY, cell.Y)
+		minimumZ = math.min(minimumZ, cell.Z)
+		maximumX = math.max(maximumX, cell.X)
+		maximumZ = math.max(maximumZ, cell.Z)
+	end
+	local grounding = self._grounding
+	if grounding == nil then
+		grounding = Instance.new("Part")
+		grounding.Name = "LocalPlacementGrounding"
+		grounding.Anchored = true
+		grounding.CanCollide = false
+		grounding.CanTouch = false
+		grounding.CanQuery = false
+		grounding.CastShadow = false
+		grounding.Material = Enum.Material.SmoothPlastic
+		grounding.Parent = self._runtimeContainer
+		self._grounding = grounding
+	end
+	local centerX = (minimumX + maximumX) * 0.5
+	local centerZ = (minimumZ + maximumZ) * 0.5
+	local width = ((maximumX - minimumX) * PresentationTokens.Grid.CellSize) + self._template.Size.X
+	local depth = ((maximumZ - minimumZ) * PresentationTokens.Grid.CellSize) + self._template.Size.Z
+	local localY = (minimumY * PresentationTokens.Grid.CellSize) - (self._template.Size.Y * 0.5) - 0.035
+	grounding.Size = Vector3.new(width, 0.06, depth)
+	grounding.CFrame = self._gridOrigin.CFrame * CFrame.new(
+		centerX * PresentationTokens.Grid.CellSize,
+		localY,
+		centerZ * PresentationTokens.Grid.CellSize
+	)
+	local semantic = if result.Valid then PresentationTokens.Color.Green else PresentationTokens.Color.Red
+	grounding.Color = PresentationTokens.Color.Background:Lerp(semantic, 0.24)
+	grounding.Transparency = if result.Valid then 0.42 else 0.52
 end
 
 local function solveVisual(self: InternalController, snapshot: Snapshot): VisualResult?
@@ -326,11 +380,12 @@ local function setGhostAppearance(self: InternalController, result: VisualResult
 		self._highlight.OutlineColor = targetColor
 	end
 	for _, part in ipairs(parts) do
-		part.Color = targetColor:Lerp(result.Color, 0.28)
+		part.Color = result.Color:Lerp(targetColor, 0.22)
 		part.Transparency = if result.Valid
 			then PresentationTokens.Ghost.Transparency
 			else PresentationTokens.Ghost.InvalidTransparency
 	end
+	updateGrounding(self, result)
 end
 
 local function renderGhost(self: InternalController, result: VisualResult, immediate: boolean)
@@ -686,6 +741,7 @@ function PlacementController.new(
 		_placementY = nil,
 		_ghost = nil,
 		_highlight = nil,
+		_grounding = nil,
 		_presentationModel = nil,
 		_clientSequence = 0,
 		_pendingPlacement = nil,

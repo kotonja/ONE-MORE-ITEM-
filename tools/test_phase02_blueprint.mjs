@@ -13,7 +13,7 @@ const phase01TestPath = path.join(toolsDirectory, "test_studio_blueprint.mjs");
 const manifestPath = path.join(repositoryRoot, "studio", "phase02.manifest.json");
 const blueprintPath = path.join(repositoryRoot, ".codex-cache", "phase02-blueprint.json");
 const commandBarPath = path.join(repositoryRoot, ".codex-cache", "phase02-command-bar.json");
-const serviceRoots = new Set(["ReplicatedStorage", "ServerScriptService", "StarterPlayer", "StarterGui", "Workspace"]);
+const serviceRoots = new Set(["Lighting", "ReplicatedFirst", "ReplicatedStorage", "ServerScriptService", "StarterPlayer", "StarterGui", "Workspace"]);
 const supportedTypes = new Set(["boolean", "number", "string", "EnumItem", "Color3", "Vector2", "Vector3", "UDim", "UDim2", "CFrame"]);
 const expectedRemotes = ["ClientReadyRequest", "DecisionRequest", "PlaceItemRequest", "PlacementResponse", "RestartRequest", "RoundSnapshot"];
 const worldRoot = "Workspace.ONE_MORE_ITEM_WORLD.PlaytestArena";
@@ -273,18 +273,25 @@ try {
 
   criterion("manifest parses", () => {
     assert.equal(manifest.mode, "edit", "Phase 02 authoring must be Edit-mode only");
-    assert.deepEqual(Object.keys(manifest).sort(), ["builtInParents", "instances", "mode", "name", "scripts", "stationPlacements"]);
+    assert.deepEqual(Object.keys(manifest).sort(), ["builtInParents", "instances", "managedServices", "mode", "name", "scripts", "stationPlacements"]);
+    assert.equal(manifest.managedServices.length, 1);
+    assert.equal(manifest.managedServices[0].path, "Lighting");
+    assert.equal(manifest.managedServices[0].className, "Lighting");
+    assert.deepEqual(Object.keys(manifest.managedServices[0].properties).sort(), [
+      "Ambient", "Brightness", "ClockTime", "EnvironmentDiffuseScale", "EnvironmentSpecularScale",
+      "ExposureCompensation", "GlobalShadows", "OutdoorAmbient", "ShadowSoftness", "Technology",
+    ]);
     assert.ok(Array.isArray(manifest.instances), "Manifest instances array is required");
     assert.ok(Array.isArray(manifest.scripts), "Manifest scripts array is required");
     assert.deepEqual(manifest.stationPlacements, [
-      { name: "Station_01", stationId: "station_01", stationIndex: 1, direction: "North", radius: 38, angleDegrees: -90, yawDegrees: 180 },
-      { name: "Station_02", stationId: "station_02", stationIndex: 2, direction: "NE", radius: 38, angleDegrees: -45, yawDegrees: 135 },
-      { name: "Station_03", stationId: "station_03", stationIndex: 3, direction: "East", radius: 38, angleDegrees: 0, yawDegrees: 90 },
-      { name: "Station_04", stationId: "station_04", stationIndex: 4, direction: "SE", radius: 38, angleDegrees: 45, yawDegrees: 45 },
-      { name: "Station_05", stationId: "station_05", stationIndex: 5, direction: "South", radius: 38, angleDegrees: 90, yawDegrees: 0 },
-      { name: "Station_06", stationId: "station_06", stationIndex: 6, direction: "SW", radius: 38, angleDegrees: 135, yawDegrees: -45 },
-      { name: "Station_07", stationId: "station_07", stationIndex: 7, direction: "West", radius: 38, angleDegrees: 180, yawDegrees: -90 },
-      { name: "Station_08", stationId: "station_08", stationIndex: 8, direction: "NW", radius: 38, angleDegrees: -135, yawDegrees: -135 },
+      { name: "Station_01", stationId: "station_01", stationIndex: 1, direction: "North", radius: 50, angleDegrees: -90, yawDegrees: 180 },
+      { name: "Station_02", stationId: "station_02", stationIndex: 2, direction: "NE", radius: 50, angleDegrees: -45, yawDegrees: 135 },
+      { name: "Station_03", stationId: "station_03", stationIndex: 3, direction: "East", radius: 50, angleDegrees: 0, yawDegrees: 90 },
+      { name: "Station_04", stationId: "station_04", stationIndex: 4, direction: "SE", radius: 50, angleDegrees: 45, yawDegrees: 45 },
+      { name: "Station_05", stationId: "station_05", stationIndex: 5, direction: "South", radius: 50, angleDegrees: 90, yawDegrees: 0 },
+      { name: "Station_06", stationId: "station_06", stationIndex: 6, direction: "SW", radius: 50, angleDegrees: 135, yawDegrees: -45 },
+      { name: "Station_07", stationId: "station_07", stationIndex: 7, direction: "West", radius: 50, angleDegrees: 180, yawDegrees: -90 },
+      { name: "Station_08", stationId: "station_08", stationIndex: 8, direction: "NW", radius: 50, angleDegrees: -135, yawDegrees: -135 },
     ]);
   });
 
@@ -321,7 +328,7 @@ try {
       (entry.path === stationTemplateRoot || entry.path.startsWith(`${stationTemplateRoot}.`))
       && !entry.path.startsWith(`${stationTemplateRoot}.CollectionShelf`)
     );
-    assert.equal(rawStationEntries.length, 60, "Raw Station_01 must remain the single complete source template");
+    assert.equal(rawStationEntries.length, 87, "Raw Station_01 must remain the single complete Phase 02-07 source template");
     assert.equal(
       manifest.instances.some((entry) => entry.path.startsWith(`${worldRoot}.Stations.Station_02`)),
       false,
@@ -334,8 +341,9 @@ try {
       { Active: true, CellSize: 2, GridDepth: 5, GridHeight: 4, GridWidth: 5, StationId: "station_01", StationIndex: 1 },
     );
     const touchCameraAnchors = [
-      ["CameraAnchorTouchLandscape", [0, 21, 22], [-40, 0, 0]],
-      ["CameraAnchorTouchPortrait", [0, 28, 30], [-43, 0, 0]],
+      ["CameraAnchor", [0, 19.2659, 9.2203], [-55.6, 0, 0]],
+      ["CameraAnchorTouchLandscape", [0, 16.2375, 8.7548], [-50.01, 0, 0]],
+      ["CameraAnchorTouchPortrait", [0, 28.4608, 18.981], [-50.05, 0, 0]],
     ];
     for (const [name, position, rotationDegrees] of touchCameraAnchors) {
       const anchor = manifest.instances.find((entry) => entry.path === `${stationTemplateRoot}.${name}`);
@@ -348,6 +356,9 @@ try {
       assert.deepEqual(anchor.properties.CFrame?.position, position, `${name} position drifted`);
       assert.deepEqual(anchor.properties.CFrame?.rotationDegrees, rotationDegrees, `${name} orientation drifted`);
     }
+    const cameraFocus = manifest.instances.find((entry) => entry.path === `${stationTemplateRoot}.CameraFocus`);
+    assert.equal(cameraFocus?.className, "Part", "CameraFocus must be a permanently authored Part");
+    assert.deepEqual(cameraFocus.properties.CFrame?.position, [0, 5.8, 0], "CameraFocus position drifted");
   });
 
   criterion("UI is authored under StarterGui", () => {
@@ -529,6 +540,14 @@ try {
   criterion("conflicts never destroy content", () => {
     assert.ok(operations.length > 0, "Generated operations are required");
     for (const operation of operations) {
+      if (operation.type === "setLighting") {
+        assert.equal(operation.path, "Lighting");
+        assert.match(operation.command, /Edit-mode only/);
+        assert.match(operation.command, /game:GetService\("Lighting"\)/);
+        assert.match(operation.command, /pcall/);
+        assert.doesNotMatch(operation.command, /:Destroy\s*\(|Instance\.new\s*\(/);
+        continue;
+      }
       const synchronizationPrefix = operation.type === "writeScript" ? operation.command.split("local sourceOk")[0] : operation.command;
       assert.match(operation.command, /Edit-mode only/, `Missing Edit-mode guard: ${operation.path}`);
       assert.match(operation.command, /sync conflict/, `Missing visible conflict handling: ${operation.path}`);
@@ -565,8 +584,10 @@ try {
     const arenaFloorStep = blueprint.steps.find((step) => step.path === `${worldRoot}.ArenaFloor`);
     assert.equal(arenaFloorStep.properties.Anchored, true);
     assert.deepEqual(arenaFloorStep.properties.Material, { __type: "EnumItem", enumType: "Material", name: "Concrete" });
-    assert.deepEqual(arenaFloorStep.properties.Color, { __type: "Color3", mode: "rgb", r: 22, g: 33, b: 44 });
-    assert.deepEqual(arenaFloorStep.properties.CFrame, { __type: "CFrame", components: [0, -0.5, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1] });
+    assert.deepEqual(arenaFloorStep.properties.Color, { __type: "Color3", mode: "rgb", r: 42, g: 48, b: 56 });
+    assert.deepEqual(arenaFloorStep.properties.CFrame, { __type: "CFrame", components: [0, -0.25, 0, 0, -1, 0, 1, 0, 0, 0, 0, 1] });
+    assert.deepEqual(arenaFloorStep.properties.Size, { __type: "Vector3", x: 0.5, y: 134, z: 134 });
+    assert.deepEqual(arenaFloorStep.properties.Shape, { __type: "EnumItem", enumType: "PartType", name: "Cylinder" });
     const rootFrameStep = blueprint.steps.find((step) => step.path === uiRoot);
     assert.equal(rootFrameStep.properties.Position.__type, "UDim2");
     assert.equal(rootFrameStep.properties.AnchorPoint.__type, "Vector2");
@@ -587,7 +608,7 @@ try {
       const stationNumber = blueprint.steps.find((step) => step.path === `${stationRoot}.OwnerDisplay.BillboardGui.StationNumber`);
       assert.equal(stationNumber.properties.Text, `STATION ${String(index + 1).padStart(2, "0")}`);
 
-      for (const [relativePath, localPosition] of [["StationRoot", [0, 0.75, 0]], ["DispatchPort", [0, 3.5, -15]]]) {
+      for (const [relativePath, localPosition] of [["StationRoot", [0, 0.25, 0]], ["DispatchPort", [0, 3.5, -15]]]) {
         const transformed = blueprint.steps.find((step) => step.path === `${stationRoot}.${relativePath}`).properties.CFrame.components;
         const expectedPosition = expectedWorldPosition(placement, localPosition);
         for (let component = 0; component < 3; component += 1) {
@@ -599,16 +620,16 @@ try {
           const forwardZ = -transformed[11];
           const centerX = -transformed[0] / radius;
           const centerZ = -transformed[2] / radius;
-          assertNear(radius, 38, `${stationRoot} ring radius`);
+          assertNear(radius, 50, `${stationRoot} ring radius`);
           assertNear((forwardX * centerX) + (forwardZ * centerZ), 1, `${stationRoot} local -Z faces center`);
         }
       }
     }
     const pitchedDiagonalCamera = blueprint.steps.find((step) => step.path === `${stationRoots[1]}.CameraAnchor`).properties.CFrame.components;
-    assertNear(pitchedDiagonalCamera[4], -0.473146789256, "Diagonal camera preserves composed pitch in r01", 1e-12);
-    assertNear(pitchedDiagonalCamera[5], 0.525482745499, "Diagonal camera preserves composed pitch in r02", 1e-12);
-    assertNear(pitchedDiagonalCamera[10], 0.473146789256, "Diagonal camera preserves composed pitch in r21", 1e-12);
-    assertNear(pitchedDiagonalCamera[11], -0.525482745499, "Diagonal camera preserves composed pitch in r22", 1e-12);
+    assertNear(pitchedDiagonalCamera[4], -0.583443349881, "Diagonal camera preserves composed pitch in r01", 1e-12);
+    assertNear(pitchedDiagonalCamera[5], 0.399491999269, "Diagonal camera preserves composed pitch in r02", 1e-12);
+    assertNear(pitchedDiagonalCamera[10], 0.583443349881, "Diagonal camera preserves composed pitch in r21", 1e-12);
+    assertNear(pitchedDiagonalCamera[11], -0.399491999269, "Diagonal camera preserves composed pitch in r22", 1e-12);
 
     for (const step of blueprint.steps.filter((entry) => entry.type === "writeScript")) {
       assert.equal(step.overwrite, true, `Script reapply must be explicit: ${step.path}`);
@@ -646,7 +667,7 @@ try {
         (operation.path === stationRoot || operation.path.startsWith(`${stationRoot}.`))
         && !operation.path.startsWith(`${stationRoot}.CollectionShelf`)
       );
-      assert.equal(stationOperations.length, 60, `${stationRoot} must expand to the complete 60-instance template`);
+      assert.equal(stationOperations.length, 87, `${stationRoot} must expand to the complete 87-instance Phase 02-07 template`);
       const tiles = operations.filter((operation) => operation.path.startsWith(`${stationRoot}.Crate.GridTiles.Cell_`));
       assert.equal(tiles.length, 25, `${stationRoot} needs all 25 grid tiles`);
       for (let x = 0; x < 5; x += 1) {
@@ -671,8 +692,8 @@ try {
       assert.equal(entry.properties.Transparency?.value, 1);
       assert.equal(entry.attributes.PathIndex?.value, index);
       const [x, y, z] = entry.properties.CFrame.position;
-      assertNear(y, 19, `${pathNode} height`);
-      assertNear(Math.hypot(x, z), 25, `${pathNode} radius`, 1e-9);
+      assertNear(y, 20, `${pathNode} height`);
+      assertNear(Math.hypot(x, z), 28.5, `${pathNode} radius`, 1e-6);
       const key = `${x},${y},${z}`;
       assert.ok(!positions.has(key), `${pathNode} duplicates another path position`);
       positions.add(key);
@@ -767,10 +788,17 @@ try {
     );
     for (const clientSourcePath of listLuauFiles(path.resolve(repositoryRoot, "src/StarterPlayer/StarterPlayerScripts/ONE_MORE_ITEM_Client"))) {
       const clientSource = fs.readFileSync(clientSourcePath, "utf8");
+      const relativeClientSource = path.relative(repositoryRoot, clientSourcePath).replaceAll("\\", "/");
+      if (relativeClientSource.endsWith("/ArrivalCurtainController.luau")) {
+        assert.match(clientSource, /local function optionalPart\s*\(/);
+        assert.match(clientSource, /ArrivalCameraAnchor/);
+        assert.match(clientSource, /ArrivalCameraFocus/);
+        continue;
+      }
       assert.doesNotMatch(
         clientSource,
         /local child = parent:FindFirstChild\(name\)/,
-        `Required authored descendants must tolerate multiplayer replication delay: ${path.relative(repositoryRoot, clientSourcePath)}`,
+        `Required authored descendants must tolerate multiplayer replication delay: ${relativeClientSource}`,
       );
     }
   });
@@ -806,13 +834,32 @@ try {
       "StarterGui.ONE_MORE_ITEM_Gameplay.Root.ResultsPanel.RankProgress",
       "StarterGui.ONE_MORE_ITEM_Gameplay.Root.ResultsPanel.DiscoverySummary",
     ]);
+    const phase07StationAdditions = /\.(?:BayDetails(?:\.|$)|ControlConsole\.(?:ConsoleBase|ConsoleDeck|ConsoleFace)$|Crate\.(?:Frame(?:\.|$)|InteriorFloor$|TaskLight(?:\.|$))|DispatchPort\.RouteAccent$|RiskIndicator\.Backplate$|TaskLightSupport(?:\.|$))/;
+    const isPhase07VisualInstance = (managedPath) => managedPath === "Workspace.Baseplate"
+      || managedPath.startsWith("Lighting.")
+      || managedPath === "ReplicatedFirst.ONE_MORE_ITEM_FirstFrame"
+      || managedPath.startsWith("ReplicatedFirst.ONE_MORE_ITEM_FirstFrame.")
+      || managedPath === "ReplicatedStorage.ONE_MORE_ITEM.Shared.Presentation"
+      || managedPath.startsWith("StarterGui.ONE_MORE_ITEM_Gameplay.ArrivalCurtain")
+      || managedPath.startsWith(`${worldRoot}.ArenaShell`)
+      || managedPath.startsWith(`${worldRoot}.ArenaFloorMarkings`)
+      || new RegExp(`^${worldRoot.replaceAll(".", "\\.")}\\.ArenaRails\\.Segment_`).test(managedPath)
+      || managedPath === `${worldRoot}.ArrivalCameraAnchor`
+      || managedPath === `${worldRoot}.ArrivalCameraFocus`
+      || managedPath.startsWith(`${worldRoot}.CenterDispatch.DispatchPit`)
+      || managedPath.startsWith(`${worldRoot}.CenterDispatch.CentralColumn`)
+      || managedPath.startsWith(`${worldRoot}.CenterDispatch.RouteStrips`)
+      || managedPath.startsWith(`${worldRoot}.CenterDispatch.ShowcaseSupports`)
+      || managedPath.startsWith(`${worldRoot}.ShowcaseLoop.Rail`)
+      || (managedPath.startsWith(`${worldRoot}.Stations.Station_`) && phase07StationAdditions.test(managedPath));
     const inheritedInstances = operations.filter((operation) =>
       operation.type === "ensureInstance"
       && !laterPhaseInstancePrefixes.some((prefix) => operation.path === prefix || operation.path.startsWith(`${prefix}.`))
       && !phase05ExactInstances.has(operation.path)
       && !operation.path.includes(".CollectionShelf")
+      && !isPhase07VisualInstance(operation.path)
     );
-    const laterPhaseSourcePattern = /(?:^|\/)(?:Profile\/|Analytics\/|OnboardingRequestValidator\.luau$|CollectionShelfService\.luau$|ClientProfileStore\.luau$|ProfileResponsiveLayout\.luau$|ProfileUIController\.luau$|OnboardingUIController\.luau$|StarterMissionUIController\.luau$|Phase0[56]TestSuite\.luau$|RunPhase0[56]Tests\.server\.luau$)/;
+    const laterPhaseSourcePattern = /(?:^|\/)(?:Profile\/|Presentation\/|Analytics\/|OnboardingRequestValidator\.luau$|CollectionShelfService\.luau$|ClientProfileStore\.luau$|ProfileResponsiveLayout\.luau$|ProfileUIController\.luau$|OnboardingUIController\.luau$|StarterMissionUIController\.luau$|ArrivalCurtainController\.luau$|WorldLabelController\.luau$|FirstFrameBootstrap\.client\.luau$|Phase0[567]TestSuite\.luau$|RunPhase0[567]Tests\.server\.luau$)/;
     const inheritedScripts = manifest.scripts.filter((entry) => !laterPhaseSourcePattern.test(entry.sourceFile));
     assert.equal(inheritedInstances.length, 616, "The accepted Phase 04 instance baseline must remain exactly 616 paths");
     assert.equal(inheritedScripts.length, 45, "The accepted Phase 04 source baseline must remain exactly 45 scripts");

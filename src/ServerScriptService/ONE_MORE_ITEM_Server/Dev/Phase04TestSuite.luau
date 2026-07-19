@@ -24,6 +24,7 @@ local WorldItemService = require(Services:WaitForChild("WorldItemService"))
 local ClientControllers = StarterPlayer:WaitForChild("StarterPlayerScripts")
 	:WaitForChild("ONE_MORE_ITEM_Client")
 	:WaitForChild("Controllers")
+local PresentationTokens = require(ClientControllers:WaitForChild("PresentationTokens"))
 local StationContextController = require(ClientControllers:WaitForChild("StationContextController"))
 
 type TestCase = {
@@ -1178,6 +1179,8 @@ addSuite("Client station binding lifecycle", {
 			harness.Controller:ApplySnapshot(clientSnapshot("station_06", 1, 1, "Preparing"))
 			harness.Controller:ApplySnapshot(clientSnapshot("station_06", 1, 2, "Shipping"))
 			harness.Controller:ApplySnapshot(clientSnapshot("station_06", 1, 3, "Shipping"))
+			task.wait(PresentationTokens.Timing.LidClose + 0.02)
+			expectEqual(table.concat(harness.Log.Impulses, ","), "SHIPPING")
 			harness.Controller:ApplySnapshot(clientSnapshot("station_06", 1, 4, "Failing"))
 			expectEqual(#harness.Log.WorldStates, 3)
 			expectEqual(table.concat(harness.Log.Impulses, ","), "SHIPPING,FAILURE")

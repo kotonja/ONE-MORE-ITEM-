@@ -1,6 +1,6 @@
 # Game direction
 
-ONE MORE ITEM! — PACK THE BOX is a premium, mobile-first Roblox packing game. The core promise is: **Fit it. Ship it. Or risk one more.**
+ONE MORE ITEM! — PACK THE BOX is a mobile-first Roblox packing game targeting a premium visual bar. The core promise is: **Fit it. Ship it. Or risk one more.**
 
 ## Frozen foundation
 
@@ -15,8 +15,9 @@ ONE MORE ITEM! — PACK THE BOX is a premium, mobile-first Roblox packing game. 
 
 ## Permanent authoring direction
 
-- Permanent UI is authored as actual `StarterGui` instances, never generated wholesale at runtime.
+- Permanent gameplay UI is authored as actual `StarterGui` instances. The permanent pre-game first-frame curtain is authored under `ReplicatedFirst`; neither surface is generated wholesale at runtime.
 - The permanent arena and stations are authored as actual `Workspace` instances, never generated at runtime.
+- Permanent environment lighting and post-processing are authored under `Lighting`, never synthesized by gameplay scripts.
 - Temporary ghosts, cloned active items, particles, debris, beams, tokens, and showcase copies may be created at runtime from prepared templates.
 
 Phase 01 contains only the mathematical grid foundation, its development shapes, automated tests, and documentation.
@@ -56,3 +57,15 @@ Starter missions observe authoritative placement, decision, shipment, discovery,
 Permanent onboarding and mission surfaces remain authored under `StarterGui`, adapt to keyboard/mouse, touch, and gamepad, and leave the crate and core controls unobstructed. Studio uses a deterministic memory analytics adapter that makes no Roblox analytics call; published non-Studio servers use current Roblox `AnalyticsService` log methods behind a best-effort server boundary. Analytics failure cannot change gameplay, progression, station assignment, saving, or presentation truth.
 
 Phase 06 introduces no daily system, store, monetization, final art, external asset, audio, functional bonus, or Phase 07 system.
+
+## Phase 07 crate-first visual reconstruction
+
+Phase 07 changes presentation, not the game contract. The crate becomes the dominant readable object in every active view: all 25 floor cells, the four-cell vertical capacity, placed items, ghost validity, and resting height must remain legible. A low matte console and low front rim frame the crate without hiding it; thin non-refractive side/rear panes, a warm opaque floor, restrained task light, and controlled camera replace the obstructed recording baseline.
+
+The first rendered frame is authored and controlled. A dark curtain hides the world until profile/waiting state and a safe Scriptable camera are ready, so players do not see raw sky, a default avatar camera, uninitialized geometry, or an uncontrolled snap. Responsive station framing remains local presentation; it adds no orbit and sends no remote.
+
+The eight deterministic stations become separate bays on a wider ring inside one coherent circular/octagonal toy-industrial warehouse. The center dispatch is the landmark and the existing showcase route explains where successful crates travel. Lighting, bloom, Neon, world labels, and screen UI all support the packing volume rather than compete with it. Semantic green/red remain state-only, amber remains shipping/reward, purple remains collection/mastery, and cyan remains navigation/station identity.
+
+Shipping must visibly close around the player's arrangement, failure must visibly break containment, and reset must return a clean open crate. These are local visual refinements around the accepted server-authoritative state machine, rewards, progression, profile, mission, and analytics boundaries.
+
+Final item models, external assets, textures, images, audio, music, final particles/VFX, haptics, monetization, new systems, and Phase 08 remain deferred. Phase 07 is active and unaccepted on `codex/phase-07-visual-readability-arena-rebuild`; [PR #8](https://github.com/kotonja/ONE-MORE-ITEM-/pull/8) remains open, draft, and unmerged. Automated, manual, cloud, complete-close, direct-reopen, and parity checks are green, and all `15/15` screenshots are accepted, including the genuine same-session four-client contact sheet in frame 12 and the authored collection shelf/proxies in frame 15. The complete unedited 3–6 minute replacement recording remains pending; [issue #4](https://github.com/kotonja/ONE-MORE-ITEM-/issues/4) remains open, and no Phase 08 work has begun. See `docs/PHASE07_VISUAL_READABILITY_ARENA_REBUILD.md` for the remaining evidence gate.

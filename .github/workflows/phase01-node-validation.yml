@@ -1,4 +1,4 @@
-name: Phase 01–06 Node Validation
+name: Phase 01–07 Node Validation
 
 on:
   pull_request:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   node-validation:
-    name: Phase 01–06 Node Validation
+    name: Phase 01–07 Node Validation
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -43,3 +43,6 @@ jobs:
 
       - name: Run Phase 06 onboarding, starter missions, and analytics smoke test
         run: node tools/test_phase06_onboarding_missions_analytics.mjs
+
+      - name: Run Phase 07 visual readability and arena smoke test
+        run: node tools/test_phase07_visual_readability.mjs

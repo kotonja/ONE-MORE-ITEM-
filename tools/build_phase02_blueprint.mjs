@@ -10,6 +10,8 @@ const defaultManifestPath = path.join(repositoryRoot, "studio", "phase02.manifes
 const defaultOutputDirectory = path.join(repositoryRoot, ".codex-cache");
 
 const supportedServices = new Map([
+  ["Lighting", "Lighting"],
+  ["ReplicatedFirst", "ReplicatedFirst"],
   ["ReplicatedStorage", "ReplicatedStorage"],
   ["ServerScriptService", "ServerScriptService"],
   ["StarterPlayer", "StarterPlayer"],
@@ -18,6 +20,8 @@ const supportedServices = new Map([
 ]);
 const supportedClasses = new Set([
   "BillboardGui",
+  "BloomEffect",
+  "ColorCorrectionEffect",
   "Folder",
   "Frame",
   "LocalScript",
@@ -30,6 +34,7 @@ const supportedClasses = new Set([
   "Script",
   "TextButton",
   "TextLabel",
+  "SurfaceGui",
   "UICorner",
   "UIPadding",
   "UISizeConstraint",
@@ -374,7 +379,7 @@ function validateStationPlacements(entries) {
     if (entry.stationId !== `station_${suffix}`) fail(`${label}.stationId must be station_${suffix}`);
     if (entry.stationIndex !== expectedIndex) fail(`${label}.stationIndex must be ${expectedIndex}`);
     if (entry.direction !== expected.direction) fail(`${label}.direction must be ${expected.direction}`);
-    if (entry.radius !== 38) fail(`${label}.radius must be 38`);
+    if (entry.radius !== 50) fail(`${label}.radius must be 50`);
     if (entry.angleDegrees !== expected.angleDegrees) fail(`${label}.angleDegrees must be ${expected.angleDegrees}`);
     if (entry.yawDegrees !== expected.yawDegrees) fail(`${label}.yawDegrees must be ${expected.yawDegrees}`);
     for (const [field, value] of [["radius", entry.radius], ["angleDegrees", entry.angleDegrees], ["yawDegrees", entry.yawDegrees]]) {
@@ -389,6 +394,23 @@ function validateStationPlacements(entries) {
     normalized.push({ ...entry });
   }
   return normalized;
+}
+
+function validateManagedServices(entries) {
+  if (!Array.isArray(entries) || entries.length !== 1) {
+    fail("Manifest managedServices must contain exactly one Lighting descriptor");
+  }
+  const entry = entries[0];
+  if (!isObject(entry)) fail("managedServices[0] must be an object");
+  assertKeys(entry, new Set(["path", "className", "properties"]), "managedServices[0]");
+  if (entry.path !== "Lighting" || entry.className !== "Lighting") {
+    fail("managedServices[0] must describe the Lighting service");
+  }
+  return [{
+    path: entry.path,
+    className: entry.className,
+    properties: validatePropertyMap(entry.properties, "managedServices[0].properties"),
+  }];
 }
 
 function validateRawInstanceShapes(entries) {
@@ -446,12 +468,13 @@ function loadAndValidateManifest(manifestPath) {
     fail(`Unable to parse manifest: ${error instanceof Error ? error.message : String(error)}`);
   }
   if (!isObject(manifest)) fail("Manifest root must be an object");
-  assertKeys(manifest, new Set(["name", "mode", "builtInParents", "stationPlacements", "instances", "scripts"]), "Manifest root");
+  assertKeys(manifest, new Set(["name", "mode", "builtInParents", "managedServices", "stationPlacements", "instances", "scripts"]), "Manifest root");
   if (typeof manifest.name !== "string" || manifest.name.length === 0) fail("Manifest name must be a non-empty string");
   if (manifest.mode !== "edit") fail("Manifest mode must be edit");
   if (!Array.isArray(manifest.scripts)) fail("Manifest scripts must be an array");
 
   const declaredBuiltIns = validateBuiltInParents(manifest.builtInParents);
+  const managedServices = validateManagedServices(manifest.managedServices);
   const stationPlacements = validateStationPlacements(manifest.stationPlacements);
   validateRawInstanceShapes(manifest.instances);
   const concreteInstanceEntries = expandStationInstances(manifest.instances, stationPlacements);
@@ -512,7 +535,7 @@ function loadAndValidateManifest(manifestPath) {
 
   instances.sort(compareManagedEntries);
   scripts.sort(compareManagedEntries);
-  return { name: manifest.name, mode: manifest.mode, builtInParents: declaredBuiltIns, instances, scripts, classByPath: guaranteedClasses };
+  return { name: manifest.name, mode: manifest.mode, builtInParents: declaredBuiltIns, managedServices, instances, scripts, classByPath: guaranteedClasses };
 }
 
 function editModeGuard() {
@@ -585,6 +608,24 @@ function buildWriteScriptCommand(entry, classByPath) {
 function buildArtifacts(manifest) {
   const operations = [];
   const blueprintSteps = [];
+  for (const entry of manifest.managedServices) {
+    const bridgeProperties = valueMapToBridge(entry.properties);
+    const command = [editModeGuard()];
+    command.push(`local service=game:GetService(${JSON.stringify(entry.path)})`);
+    appendManagedValues(command, "service", entry.properties, {}, entry.path);
+    operations.push({
+      type: "setLighting",
+      path: entry.path,
+      className: entry.className,
+      overwrite: true,
+      properties: bridgeProperties,
+      command: command.join(";"),
+    });
+    blueprintSteps.push({
+      type: "setLighting",
+      properties: bridgeProperties,
+    });
+  }
   for (const entry of manifest.instances) {
     const bridgeProperties = valueMapToBridge(entry.properties);
     const bridgeAttributes = valueMapToBridge(entry.attributes);

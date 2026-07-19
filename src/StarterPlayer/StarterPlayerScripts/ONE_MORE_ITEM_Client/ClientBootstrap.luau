@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local controllers = script.Parent:WaitForChild("Controllers")
+local ArrivalCurtainController = require(controllers:WaitForChild("ArrivalCurtainController"))
 local CameraController = require(controllers:WaitForChild("CameraController"))
 local CharacterController = require(controllers:WaitForChild("CharacterController"))
 local ClientProfileStore = require(controllers:WaitForChild("ClientProfileStore"))
@@ -20,6 +21,7 @@ local RoundUIController = require(controllers:WaitForChild("RoundUIController"))
 local StationContextController = require(controllers:WaitForChild("StationContextController"))
 local StarterMissionUIController = require(controllers:WaitForChild("StarterMissionUIController"))
 local ViewportPreviewController = require(controllers:WaitForChild("ViewportPreviewController"))
+local WorldLabelController = require(controllers:WaitForChild("WorldLabelController"))
 
 type Snapshot = ClientRoundStore.Snapshot
 type PlacementResponse = ClientRoundStore.PlacementResponse
@@ -153,6 +155,8 @@ end
 local store = ClientRoundStore.new()
 local profileStore = ClientProfileStore.new()
 local camera = CameraController.new()
+local arrivalCurtain = ArrivalCurtainController.new(gameplayGui, arena, camera)
+local worldLabels = WorldLabelController.new(stations)
 local character = CharacterController.new()
 local roundUI = RoundUIController.new(gameplayGui, resolveItemName)
 local inputMode: InputMode = "KeyboardMouse"
@@ -414,6 +418,8 @@ stationContext = StationContextController.new({
 		end,
 		AssignmentChanged = function(isAssigned: boolean, stationId: string?)
 			input:SetAssigned(isAssigned)
+			arrivalCurtain:SetAssignment(isAssigned, stationId)
+			worldLabels:SetAssignedStation(if isAssigned then stationId else nil)
 			script:SetAttribute("StationId", stationId)
 			if not isAssigned then
 				viewportPreview:Clear()
@@ -465,6 +471,7 @@ local unsubscribeProfile = profileStore:Subscribe(function(snapshot: ProfileSnap
 	if destroyed then
 		return
 	end
+	arrivalCurtain:ApplyProfileSnapshot(snapshot)
 	profileUI:ApplyProfileSnapshot(snapshot)
 	onboardingUI:ApplyProfileSnapshot(snapshot)
 	starterMissionUI:ApplyProfileSnapshot(snapshot)
@@ -507,6 +514,7 @@ local function cleanup()
 	if context ~= nil then
 		context:Destroy()
 	end
+	worldLabels:Destroy()
 	profileUIForLayout = nil
 	profileUIForModal = nil
 	profileUI:Destroy()
@@ -522,6 +530,7 @@ local function cleanup()
 	responsiveUI:Destroy()
 	viewportPreview:Destroy()
 	roundUI:Destroy()
+	arrivalCurtain:Destroy()
 	camera:Destroy()
 	character:Destroy()
 	store:Destroy()
@@ -532,7 +541,7 @@ end
 table.insert(connections, script.Destroying:Connect(cleanup))
 
 script:SetAttribute("Initialized", true)
-script:SetAttribute("ClientVersion", "phase06")
+script:SetAttribute("ClientVersion", "phase07")
 script:SetAttribute("ProfileMenuOpen", false)
 script:SetAttribute("StarterPathOpen", false)
 script:SetAttribute("InputMode", inputMode)
